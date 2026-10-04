@@ -1221,7 +1221,63 @@ class DatabaseService {
     );
     return this.db.SYSTEM_CONFIG;
   }
+  // RESET TOÀN BỘ DỮ LIỆU DEMO - GIỮ LẠI ADMIN
+  public resetDemoData(adminUser: { HoTen: string; Email: string }) {
+    // Kiểm tra tài khoản Admin NV001 phải tồn tại
+    const admin = this.db.NHANVIEN.find(
+      (nv) => nv.NhanVienID === 'NV001' && nv.Quyen === 'Admin'
+    );
 
+    if (!admin) {
+      throw new Error('Không tìm thấy tài khoản Admin NV001. Không thể reset dữ liệu.');
+    }
+
+    // Tạo backup trước khi xóa
+    const backup = this.backupDatabase();
+
+    // GIỮ LẠI DUY NHẤT TÀI KHOẢN ADMIN
+    this.db.NHANVIEN = [admin];
+
+    // XÓA TOÀN BỘ DỮ LIỆU NGHIỆP VỤ DEMO
+    this.db.CHAMCONG = [];
+    this.db.LUONG = [];
+    this.db.HOAHONG = [];
+    this.db.NOTIFICATIONS = [];
+    this.db.AUDIT_LOG = [];
+
+    // Tắt tự động tạo lương trong thời gian nhập dữ liệu mới
+    this.db.SYSTEM_CONFIG = {
+      ...this.db.SYSTEM_CONFIG,
+      AutomationEnabled: false,
+      LanChayCuoi: new Date().toISOString(),
+    };
+
+    // Tính lại KPI từ database mới
+    this.refreshKPIs();
+
+    // Lưu database
+    this.save();
+
+    // Ghi lại một log duy nhất cho thao tác reset
+    this.logAudit(
+      adminUser.HoTen,
+      adminUser.Email,
+      'Reset dữ liệu demo',
+      'Đã xóa toàn bộ dữ liệu demo, giữ lại tài khoản Admin và cấu hình hệ thống.'
+    );
+
+    return {
+      success: true,
+      message: 'Đã xóa toàn bộ dữ liệu demo thành công.',
+      backupFile: backup.filename,
+      remainingAdmin: admin.NhanVienID,
+      nhanVien: this.db.NHANVIEN.length,
+      chamCong: this.db.CHAMCONG.length,
+      luong: this.db.LUONG.length,
+      hoaHong: this.db.HOAHONG.length,
+      notifications: this.db.NOTIFICATIONS.length,
+    };
+  }
   public getRawData(): DatabaseSchema {
     return this.db;
   }
