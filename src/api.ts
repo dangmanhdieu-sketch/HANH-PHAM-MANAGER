@@ -316,7 +316,21 @@ export const api = {
       });
     },
   },
-
+ async resetDemoData(): Promise<{
+      success: boolean;
+      message: string;
+      backupFile: string;
+      remainingAdmin: string;
+      nhanVien: number;
+      chamCong: number;
+      luong: number;
+      hoaHong: number;
+      notifications: number;
+    }> {
+      return request('/api/admin/reset-demo-data', {
+        method: 'POST',
+      });
+    },
   theme: {
     async get(): Promise<AppDesignTheme> {
       return request<AppDesignTheme>('/api/theme');
