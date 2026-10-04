@@ -1,0 +1,6 @@
+{
+  "name": "Hanh Pham Bridal - Quản Lý Nhân Sự & Chấm Công Lương",
+  "description": "Hệ thống quản lý nhân sự, chấm công GPS & ảnh, tính lương tự động và quản lý hoa hồng cho studio Hanh Pham Bridal.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
