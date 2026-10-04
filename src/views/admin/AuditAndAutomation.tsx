@@ -29,6 +29,7 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
   const [runningAuto, setRunningAuto] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [logSearch, setLogSearch] = useState('');
 
   const loadData = async () => {
@@ -122,7 +123,50 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
     };
     reader.readAsText(file);
   };
+  const handleResetDemoData = async () => {
+    const confirmed = window.confirm(
+      '⚠️ CẢNH BÁO!\n\n' +
+      'Bạn sắp XÓA TOÀN BỘ DỮ LIỆU DEMO.\n\n' +
+      'Sẽ xóa:\n' +
+      '• Nhân viên mẫu\n' +
+      '• Chấm công\n' +
+      '• Lương\n' +
+      '• Hoa hồng\n' +
+      '• Thông báo\n' +
+      '• Lịch sử dữ liệu demo\n\n' +
+      'Tài khoản ADMIN sẽ được giữ lại.\n\n' +
+      'Hệ thống sẽ tự động tạo bản backup trước khi xóa.\n\n' +
+      'Bạn có chắc chắn muốn tiếp tục?'
+    );
 
+    if (!confirmed) return;
+
+    setResetting(true);
+
+    try {
+      const result = await api.system.resetDemoData();
+
+      alert(
+        '✅ ĐÃ XÓA DỮ LIỆU DEMO THÀNH CÔNG!\n\n' +
+        `Admin được giữ lại: ${result.remainingAdmin}\n` +
+        `Nhân viên còn lại: ${result.nhanVien}\n` +
+        `Chấm công: ${result.chamCong}\n` +
+        `Lương: ${result.luong}\n` +
+        `Hoa hồng: ${result.hoaHong}\n\n` +
+        `Backup đã tạo: ${result.backupFile}`
+      );
+
+      await loadData();
+      onRefreshAll();
+    } catch (err: any) {
+      alert(
+        '❌ Không thể xóa dữ liệu demo.\n\n' +
+        (err?.message || 'Đã xảy ra lỗi không xác định.')
+      );
+    } finally {
+      setResetting(false);
+    }
+  };
   const filteredLogs = auditLogs.filter((log) => {
     const term = logSearch.toLowerCase();
     return (
@@ -277,6 +321,40 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
                 onChange={handleRestoreFile}
               />
             </label>
+          </div>
+        </div>
+                {/* RESET DEMO DATA */}
+        <div className="mt-4 p-5 rounded-xl border-2 border-red-200 bg-red-50">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-red-800 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                XÓA DỮ LIỆU DEMO
+              </h3>
+
+              <p className="text-xs text-red-700 mt-1 leading-relaxed">
+                Xóa nhân viên mẫu, chấm công, lương, hoa hồng và dữ liệu demo.
+                Tài khoản Admin sẽ được giữ lại.
+              </p>
+
+              <p className="text-[11px] text-red-600 mt-1">
+                Hệ thống sẽ tự động tạo bản backup trước khi xóa.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleResetDemoData}
+              disabled={resetting}
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span>
+                {resetting
+                  ? 'Đang xóa dữ liệu...'
+                  : 'XÓA TOÀN BỘ DỮ LIỆU DEMO'}
+              </span>
+            </button>
           </div>
         </div>
       </div>
