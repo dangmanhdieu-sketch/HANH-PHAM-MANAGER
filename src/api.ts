@@ -315,7 +315,7 @@ export const api = {
         body: JSON.stringify(data),
       });
     },
-  },
+  
  async resetDemoData(): Promise<{
       success: boolean;
       message: string;
