@@ -307,7 +307,6 @@ export const api = {
     },
   },
   theme: {
-  theme: {
     async get(): Promise<AppDesignTheme> {
       return request<AppDesignTheme>('/api/theme');
     },
