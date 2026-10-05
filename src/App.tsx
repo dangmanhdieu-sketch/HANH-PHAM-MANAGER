@@ -96,52 +96,102 @@ function AppContent() {
     setInitializing(false);
   }, []);
 
-  // Fetch full data according to user role
   const refreshAllData = useCallback(async () => {
     if (!currentUser) return;
 
-    try {
-      if (currentUser.Quyen === 'Admin') {
-        const [statsData, staffData, attData, payData, commData, notifData] =
-          await Promise.all([
-            api.dashboard.getStats(),
-            api.staff.getAll(),
-            api.attendance.getAll(),
-            api.payroll.getAll(),
-            api.commission.getAll(),
-            api.dashboard.getNotifications(),
-          ]);
+    if (currentUser.Quyen === 'Admin') {
+      const results = await Promise.allSettled([
+        api.dashboard.getStats(),
+        api.staff.getAll(),
+        api.attendance.getAll(),
+        api.payroll.getAll(),
+        api.commission.getAll(),
+        api.dashboard.getNotifications(),
+      ]);
 
+      const [statsResult, staffResult, attendanceResult, payrollResult, commissionResult, notificationResult] = results;
+
+      if (statsResult.status === 'fulfilled') {
+        const statsData = statsResult.value;
         setKpis(statsData.kpis || []);
         setAutomationStatus(statsData.automation || null);
-        setStaffList(staffData);
-        setAttendanceList(attData);
-        setPayrollList(payData);
-        setCommissionList(commData);
-        setNotifications(notifData);
       } else {
-        // Employee data fetching (Strictly scoped by backend)
-        const [statsData, myAtt, myPay, myComm, notifData, staffData] = await Promise.all([
-          api.dashboard.getStats(),
-          api.attendance.getAll(),
-          api.payroll.getAll(),
-          api.commission.getAll(),
-          api.dashboard.getNotifications(),
-          api.staff.getAll(),
-        ]);
+        console.error('Lỗi tải Dashboard:', statsResult.reason);
+      }
 
-        setAttendanceList(myAtt);
-        setPayrollList(myPay);
-        setCommissionList(myComm);
-        setNotifications(notifData);
-        setStaffList(staffData);
+      if (staffResult.status === 'fulfilled') {
+        setStaffList(staffResult.value);
+      } else {
+        console.error('Lỗi tải nhân viên:', staffResult.reason);
+      }
 
+      if (attendanceResult.status === 'fulfilled') {
+        setAttendanceList(attendanceResult.value);
+      } else {
+        console.error('Lỗi tải chấm công:', attendanceResult.reason);
+      }
+
+      if (payrollResult.status === 'fulfilled') {
+        setPayrollList(payrollResult.value);
+      } else {
+        console.error('Lỗi tải lương:', payrollResult.reason);
+      }
+
+      if (commissionResult.status === 'fulfilled') {
+        setCommissionList(commissionResult.value);
+      } else {
+        console.error('Lỗi tải hoa hồng:', commissionResult.reason);
+      }
+
+      if (notificationResult.status === 'fulfilled') {
+        setNotifications(notificationResult.value);
+      } else {
+        console.error('Lỗi tải thông báo:', notificationResult.reason);
+      }
+    } else {
+      const results = await Promise.allSettled([
+        api.dashboard.getStats(),
+        api.attendance.getAll(),
+        api.payroll.getAll(),
+        api.commission.getAll(),
+        api.dashboard.getNotifications(),
+        api.staff.getAll(),
+      ]);
+
+      const [statsResult, attendanceResult, payrollResult, commissionResult, notificationResult, staffResult] = results;
+
+      if (statsResult.status === 'fulfilled') {
+        const statsData = statsResult.value;
         setTodayAttendanceRecord(statsData.todayRecord || null);
         setMyTotalCommission(statsData.tongHoaHong || 0);
         setMyTotalWorkDays(statsData.tongNgayCong || 0);
       }
-    } catch (err) {
-      console.error('Failed to load application data:', err);
+
+      if (attendanceResult.status === 'fulfilled') {
+        setAttendanceList(attendanceResult.value);
+      }
+
+      if (payrollResult.status === 'fulfilled') {
+        setPayrollList(payrollResult.value);
+      }
+
+      if (commissionResult.status === 'fulfilled') {
+        setCommissionList(commissionResult.value);
+      }
+
+      if (notificationResult.status === 'fulfilled') {
+        setNotifications(notificationResult.value);
+      }
+
+      if (staffResult.status === 'fulfilled') {
+        setStaffList(staffResult.value);
+      }
+
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          console.error(`Lỗi tải dữ liệu employee #${index}:`, result.reason);
+        }
+      });
     }
   }, [currentUser]);
 
