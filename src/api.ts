@@ -290,40 +290,6 @@ export const api = {
   },
 
    system: {
-    async getConfig(): Promise<SystemConfig> {
-      return request<SystemConfig>('/api/config');
-    },
-
-    async updateConfig(data: Partial<SystemConfig>): Promise<SystemConfig> {
-      return request<SystemConfig>('/api/config', {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
-    },
-
-    getExportUrl(type: 'nhanvien' | 'chamcong' | 'luong' | 'hoahong'): string {
-      return `/api/export/${type}`;
-    },
-
-    async downloadBackup(): Promise<Blob> {
-      const token = authStorage.getToken();
-
-      const res = await fetch('/api/backup/download', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      return res.blob();
-    },
-
-    async restoreBackup(data: any): Promise<{ message: string }> {
-      return request('/api/backup/restore', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-    },
-
     async resetDemoData(): Promise<{
       success: boolean;
       message: string;
@@ -340,6 +306,7 @@ export const api = {
       });
     },
   },
+  theme: {
   theme: {
     async get(): Promise<AppDesignTheme> {
       return request<AppDesignTheme>('/api/theme');
