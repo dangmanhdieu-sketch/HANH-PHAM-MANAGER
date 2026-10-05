@@ -290,6 +290,13 @@ export const api = {
   },
 
    system: {
+   system: {
+    getExportUrl(
+      type: 'nhanvien' | 'chamcong' | 'luong' | 'hoahong'
+    ): string {
+      return `/api/export/${type}`;
+    },
+
     async resetDemoData(): Promise<{
       success: boolean;
       message: string;
@@ -305,7 +312,7 @@ export const api = {
         method: 'POST',
       });
     },
-  },
+  },  
   theme: {
     async get(): Promise<AppDesignTheme> {
       return request<AppDesignTheme>('/api/theme');
