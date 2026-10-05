@@ -290,7 +290,6 @@ export const api = {
   },
 
    system: {
-   system: {
     getExportUrl(
       type: 'nhanvien' | 'chamcong' | 'luong' | 'hoahong'
     ): string {
