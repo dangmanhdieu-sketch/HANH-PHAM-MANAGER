@@ -57,6 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'chamcong', label: 'Chấm công', icon: Clock },
     { id: 'luong', label: 'Bảng lương', icon: DollarSign },
     { id: 'hoahong', label: 'Hoa hồng & Show', icon: Award },
+    { id: 'automation', label: 'Hệ thống', icon: Settings },
     { id: 'thietke', label: 'Thiết kế app', icon: Palette },
   ];
 
