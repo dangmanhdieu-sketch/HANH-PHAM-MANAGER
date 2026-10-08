@@ -20,6 +20,7 @@ interface ModuleConfig {
 interface Props {
   module: QuanLyModule;
   staffList: NhanVien[];
+  currentUser?: NhanVien | null;
   onRefresh: () => void;
 }
 
@@ -87,7 +88,8 @@ const CONFIG: Record<QuanLyModule, ModuleConfig> = {
   },
 };
 
-export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }) => {
+export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser, onRefresh }) => {
+  const isEmployee = currentUser?.Quyen !== 'Admin';
   const config = CONFIG[module];
   const Icon = config.icon;
 
@@ -98,6 +100,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [cashflowType, setCashflowType] = useState<'THU' | 'CHI'>('THU');
 
   const loadRecords = async () => {
     try {
@@ -129,13 +132,26 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }
     return new Date(now.getTime() - offset * 60 * 1000).toISOString().slice(0, 10);
   };
 
-  const openCreate = () => {
+  const openCreate = (type?: 'THU' | 'CHI') => {
     setEditing(null);
-    setFormData(module === 'THU_CHI' ? { Ngay: getTodayLocal(), Loai: 'THU' } : {});
+    const loai = type || cashflowType;
+    setCashflowType(loai);
+    if (module === 'THU_CHI') {
+      setFormData({
+        Ngay: getTodayLocal(),
+        Loai: loai,
+        NhanVienID: currentUser?.NhanVienID || '',
+        NhanVien: currentUser?.HoTen || '',
+        TrangThaiDuyet: isEmployee ? 'Chờ Admin duyệt' : 'Đã duyệt',
+      });
+    } else {
+      setFormData({});
+    }
     setFormOpen(true);
   };
 
   const openEdit = (record: QuanLyRecord) => {
+    if (module === 'THU_CHI' && isEmployee) return;
     setEditing(record);
     setFormData({ ...record.DuLieu });
     setFormOpen(true);
@@ -181,6 +197,19 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }
     }
   };
 
+  const handleProofImage = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn file hình ảnh.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setFormData((prev) => ({ ...prev, AnhChungTu: String(reader.result || '') }));
+    reader.readAsDataURL(file);
+  };
+
+  const getStatus = (record: QuanLyRecord) => String(record.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt');
+
   const getTitle = (record: QuanLyRecord) => {
     const data = record.DuLieu || {};
 
@@ -206,24 +235,34 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }
 
   return (
     <div className="space-y-5">
-      <div className="bg-white p-5 rounded-2xl border border-[#E7DFD5] flex flex-col sm:flex-row gap-3 justify-between">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Icon className="w-5 h-5 text-[#bf954f]" />
-            {config.title}
-          </h1>
-          <p className="text-xs text-stone-500 mt-1">
-            Dữ liệu nghiệp vụ được lưu tập trung và có thể liên kết với nhân viên, hợp đồng và tài chính.
-          </p>
+      <div className="bg-white p-5 rounded-2xl border border-[#E7DFD5]">
+        <div className="flex flex-col sm:flex-row gap-3 justify-between">
+          <div>
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              <Icon className="w-5 h-5 text-[#bf954f]" />
+              {config.title}
+            </h1>
+            <p className="text-xs text-stone-500 mt-1">
+              {module === 'THU_CHI'
+                ? 'Quản lý phiếu thu, phiếu chi và trạng thái duyệt.'
+                : 'Dữ liệu nghiệp vụ được lưu tập trung và có thể liên kết với nhân viên, hợp đồng và tài chính.'}
+            </p>
+          </div>
+          {module !== 'THU_CHI' ? (
+            <button type="button" onClick={() => openCreate()} className="px-4 py-2.5 bg-stone-900 text-white rounded-xl text-xs font-bold flex items-center gap-2">
+              <Plus className="w-4 h-4" /> THÊM {config.title.toUpperCase()}
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button type="button" onClick={() => openCreate('THU')} className="px-4 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2">
+                <Plus className="w-4 h-4" /> PHIẾU THU
+              </button>
+              <button type="button" onClick={() => openCreate('CHI')} className="px-4 py-2.5 bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-2">
+                <Plus className="w-4 h-4" /> PHIẾU CHI
+              </button>
+            </div>
+          )}
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="px-4 py-2.5 bg-stone-900 text-white rounded-xl text-xs font-bold flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          THÊM {config.title.toUpperCase()}
-        </button>
       </div>
 
       <div className="bg-white p-3 rounded-xl border border-[#E7DFD5] flex items-center gap-2">
@@ -242,7 +281,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }
             <thead className="bg-[#FAF8F5]">
               <tr>
                 <th className="p-3 text-left">Nội dung chính</th>
-                <th className="p-3 text-left">Liên kết</th>
+                <th className="p-3 text-left">Số tiền</th>
+                <th className="p-3 text-left">Trạng thái</th>
                 <th className="p-3 text-left">Cập nhật</th>
                 <th className="p-3 text-right">Thao tác</th>
               </tr>
@@ -250,37 +290,42 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }
             <tbody className="divide-y divide-[#E7DFD5]">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="p-10 text-center text-stone-400">Đang tải dữ liệu...</td>
+                  <td colSpan={5} className="p-10 text-center text-stone-400">Đang tải dữ liệu...</td>
                 </tr>
               ) : filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-10 text-center text-stone-400">Chưa có dữ liệu.</td>
+                  <td colSpan={5} className="p-10 text-center text-stone-400">Chưa có dữ liệu.</td>
                 </tr>
               ) : (
                 filteredRecords.map((record) => (
                   <tr key={record.QuanLyID} className="hover:bg-[#FAF8F5]">
                     <td className="p-3 font-semibold">{getTitle(record)}</td>
-                    <td className="p-3 text-stone-500">{getLink(record)}</td>
+                    <td className="p-3 text-stone-700 font-semibold">
+                      {module === 'THU_CHI' && record.DuLieu?.SoTien
+                        ? Number(record.DuLieu.SoTien).toLocaleString('vi-VN') + ' đ'
+                        : getLink(record)}
+                    </td>
+                    <td className="p-3">
+                      {module === 'THU_CHI' ? (
+                        <span className={getStatus(record) === 'Đã duyệt' ? 'px-2 py-1 rounded-full bg-emerald-50 text-emerald-700' : 'px-2 py-1 rounded-full bg-amber-50 text-amber-700'}>
+                          {getStatus(record)}
+                        </span>
+                      ) : '—'}
+                    </td>
                     <td className="p-3 text-stone-400">
                       {new Date(record.CapNhatLuc).toLocaleString('vi-VN')}
                     </td>
                     <td className="p-3 text-right whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(record)}
-                        className="p-2 text-stone-500 hover:text-stone-900"
-                        title="Sửa"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(record)}
-                        className="p-2 text-stone-400 hover:text-rose-600"
-                        title="Xóa"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!isEmployee && (
+                        <>
+                          <button type="button" onClick={() => openEdit(record)} className="p-2 text-stone-500 hover:text-stone-900" title="Sửa">
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button type="button" onClick={() => void handleDelete(record)} className="p-2 text-stone-400 hover:text-rose-600" title="Xóa">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -305,6 +350,31 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }
               </button>
             </div>
 
+            {module === 'THU_CHI' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label className="block text-xs font-semibold mb-1">Ngày {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
+                  <input type="date" value={String(formData.Ngay ?? '')} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Nhân viên {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
+                  <input value={String(formData.NhanVien ?? currentUser?.HoTen ?? '')} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Khách hàng / Đối tượng</label>
+                  <input value={String(formData.KhachHang ?? '')} onChange={e=>setFormData({...formData,KhachHang:e.target.value,DoiTuong:e.target.value})} placeholder="Nhập tên khách hàng..." className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="block text-xs font-semibold mb-1">{cashflowType === 'THU' ? 'Nội dung thu' : 'Lý do chi'}</label>
+                  <select value={String(formData.NoiDungThu ?? formData.DanhMuc ?? '')} onChange={e=>setFormData({...formData,NoiDungThu:e.target.value,DanhMuc:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+                    {(cashflowType === 'THU' ? ['Tiền cọc','Thanh toán hợp đồng','Tiền thuê váy','Tiền dịch vụ','Tiền phát sinh','Khác'] : ['Mua sắm','Marketing','Lương','Vận hành','Hoàn tiền','Khác']).map(x=><option key={x} value={x}>{x}</option>)}
+                  </select></div>
+                <div><label className="block text-xs font-semibold mb-1">Số tiền {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
+                  <input type="number" min="0" value={String(formData.SoTien ?? '')} onChange={e=>setFormData({...formData,SoTien:Number(e.target.value)})} className="w-full border rounded-lg px-3 py-2 text-sm" required /></div>
+                <div><label className="block text-xs font-semibold mb-1">Phương thức thanh toán</label>
+                  <select value={String(formData.PhuongThucThanhToan ?? 'Tiền mặt')} onChange={e=>setFormData({...formData,PhuongThucThanhToan:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option>Tiền mặt</option><option>Chuyển khoản</option></select></div>
+                <div><label className="block text-xs font-semibold mb-1">Mã hợp đồng liên quan</label>
+                  <input value={String(formData.HopDongID ?? '')} onChange={e=>setFormData({...formData,HopDongID:e.target.value})} placeholder="Có thể bỏ trống" className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Ảnh chứng từ</label>
+                  <input type="file" accept="image/*" capture="environment" onChange={e=>handleProofImage(e.target.files?.[0])} className="w-full text-xs" />
+                  {formData.AnhChungTu && <img src={String(formData.AnhChungTu)} className="mt-2 h-24 rounded-lg object-cover border" />}</div>
+                <div className="sm:col-span-2"><label className="block text-xs font-semibold mb-1">Ghi chú</label>
+                  <textarea value={String(formData.GhiChu ?? '')} onChange={e=>setFormData({...formData,GhiChu:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" rows={3} /></div>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {config.fields.map((field) => (
                 <div
@@ -360,6 +430,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }
                 </div>
               ))}
             </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-2">
               <button
@@ -376,7 +447,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }
                 className="px-5 py-2 rounded-lg bg-stone-900 text-white font-bold flex gap-2 items-center"
               >
                 <Save className="w-4 h-4" />
-                {saving ? 'Đang lưu...' : 'Lưu dữ liệu'}
+                {saving ? 'Đang lưu...' : module === 'THU_CHI' && isEmployee ? 'GỬI PHIẾU' : 'Lưu dữ liệu'}
               </button>
             </div>
           </form>
