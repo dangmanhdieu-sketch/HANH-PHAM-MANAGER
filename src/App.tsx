@@ -403,7 +403,6 @@ function AppContent() {
                 staffList={staffList}
                 payrollList={payrollList}
                 commissionList={commissionList}
-                attendanceList={attendanceList}
               />
             )}
 
