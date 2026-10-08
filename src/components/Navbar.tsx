@@ -46,27 +46,88 @@ export const Navbar: React.FC<NavbarProps> = ({
   const unreadCount = notifications.filter((n) => !n.DaDoc).length;
   const isAdmin = currentUser.Quyen === 'Admin';
 
+  // ============================================================
+  // ADMIN MENU
+  // ============================================================
   const adminTabs = [
-    { id: 'dashboard', label: 'Tổng quan', icon: BarChart3 },
-    { id: 'nhanvien', label: 'Nhân viên & Danh bạ', icon: Users },
-    { id: 'chamcong', label: 'Chấm công', icon: Clock },
-    { id: 'luong', label: 'Bảng lương', icon: DollarSign },
-    { id: 'hoahong', label: 'Hoa hồng & Show', icon: Award },
-    { id: 'automation', label: 'Hệ thống', icon: Settings },
-    { id: 'thietke', label: 'Thiết kế app', icon: Palette },
+    {
+      id: 'dashboard',
+      label: 'Tổng quan',
+      icon: BarChart3,
+    },
+    {
+      id: 'nhanvien',
+      label: 'Nhân viên & Danh bạ',
+      icon: Users,
+    },
+    {
+      id: 'chamcong',
+      label: 'Chấm công',
+      icon: Clock,
+    },
+    {
+      id: 'luong',
+      label: 'Bảng lương',
+      icon: DollarSign,
+    },
+    {
+      id: 'hoahong',
+      label: 'Hoa hồng & Show',
+      icon: Award,
+    },
+    {
+      id: 'automation',
+      label: 'Hệ thống',
+      icon: Settings,
+    },
+    {
+      id: 'thietke',
+      label: 'Thiết kế app',
+      icon: Palette,
+    },
   ];
 
+  // ============================================================
+  // EMPLOYEE MENU
+  // ============================================================
   const employeeTabs = [
-    { id: 'home', label: 'Chấm công', icon: Clock },
-    { id: 'hoahong_me', label: 'Kê khai Show & Hoa hồng', icon: Award },
-    { id: 'luong_me', label: 'Lương của tôi', icon: DollarSign },
-    { id: 'chamcong_me', label: 'Lịch sử công', icon: BarChart3 },
-    { id: 'danhba_me', label: 'Danh bạ studio', icon: Contact },
-    { id: 'profile_me', label: 'Hồ sơ', icon: User },
+    {
+      id: 'home',
+      label: 'Chấm công',
+      icon: Clock,
+    },
+    {
+      id: 'hoahong_me',
+      label: 'Kê khai Show & Hoa hồng',
+      icon: Award,
+    },
+    {
+      id: 'luong_me',
+      label: 'Lương của tôi',
+      icon: DollarSign,
+    },
+    {
+      id: 'chamcong_me',
+      label: 'Lịch sử công',
+      icon: BarChart3,
+    },
+    {
+      id: 'danhba_me',
+      label: 'Danh bạ studio',
+      icon: Contact,
+    },
+    {
+      id: 'profile_me',
+      label: 'Hồ sơ',
+      icon: User,
+    },
   ];
 
   const activeTabs = isAdmin ? adminTabs : employeeTabs;
 
+  // ============================================================
+  // QUICK SWITCH USER
+  // ============================================================
   const quickUsers = [
     {
       name: 'Hạnh Phạm (Admin / Giám Đốc)',
@@ -80,96 +141,102 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
   ];
 
-  // 4 nút quan trọng luôn hiển thị ở thanh dưới mobile
-  const mobileMainTabs = isAdmin
-    ? [
-        adminTabs.find((tab) => tab.id === 'dashboard')!,
-        adminTabs.find((tab) => tab.id === 'chamcong')!,
-        adminTabs.find((tab) => tab.id === 'luong')!,
-      ]
-    : [
-        employeeTabs.find((tab) => tab.id === 'home')!,
-        employeeTabs.find((tab) => tab.id === 'chamcong_me')!,
-        employeeTabs.find((tab) => tab.id === 'luong_me')!,
-      ];
-
+  // ============================================================
+  // TAB CHANGE
+  // ============================================================
   const handleTabChange = (tab: string) => {
     onTabChange(tab);
     setMobileMenuOpen(false);
     setSwitchDropdownOpen(false);
+    setNotifDropdownOpen(false);
   };
 
+  // ============================================================
+  // LOGOUT
+  // ============================================================
   const handleLogout = () => {
     setMobileMenuOpen(false);
+    setSwitchDropdownOpen(false);
+    setNotifDropdownOpen(false);
     onLogout();
   };
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-[#E7DFD5] shadow-sm">
-      {/* =======================================================
+      {/* ======================================================
           MOBILE HEADER
-      ======================================================= */}
+      ====================================================== */}
       <div className="lg:hidden">
-        <div className="h-[68px] px-4 flex items-center justify-between">
-          {/* LOGO + BRAND */}
+        <div className="min-h-[64px] px-3 sm:px-4 flex items-center justify-between gap-3">
+          {/* --------------------------------------------------
+              LOGO + BRAND
+          -------------------------------------------------- */}
           <button
             type="button"
             onClick={() =>
               handleTabChange(isAdmin ? 'dashboard' : 'home')
             }
-            className="flex items-center gap-2.5 min-w-0"
+            className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
+            aria-label="Trang chủ"
           >
-            <div className="shrink-0 scale-90">
-              <HanhPhamLogo size="md" variant="gold" />
+            <div className="shrink-0">
+              <HanhPhamLogo
+                size="sm"
+                variant="gold"
+              />
             </div>
 
-            <div className="min-w-0 text-left">
-              <div className="font-bridal text-[15px] leading-tight font-bold tracking-[0.08em] text-stone-900 whitespace-nowrap">
+            <div className="min-w-0">
+              <div className="font-bridal text-[14px] sm:text-[15px] leading-tight font-bold tracking-[0.08em] text-stone-900 whitespace-nowrap">
                 HẠNH PHẠM
               </div>
 
-              <div className="text-[9px] leading-tight tracking-[0.22em] text-[#a97d3e] font-semibold">
+              <div className="text-[8px] sm:text-[9px] leading-tight tracking-[0.22em] text-[#a97d3e] font-semibold">
                 MANAGER
               </div>
             </div>
           </button>
 
-          {/* MOBILE ACTIONS */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Notification */}
+          {/* --------------------------------------------------
+              MOBILE ACTIONS
+          -------------------------------------------------- */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* ================= NOTIFICATION ================= */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => {
-                  setNotifDropdownOpen(!notifDropdownOpen);
+                  setNotifDropdownOpen((prev) => !prev);
+                  setSwitchDropdownOpen(false);
 
                   if (!notifDropdownOpen && unreadCount > 0) {
                     onMarkReadNotifications();
                   }
                 }}
-                className="relative w-10 h-10 flex items-center justify-center rounded-xl text-stone-600 hover:bg-[#FAF8F5]"
+                className="relative w-10 h-10 flex items-center justify-center rounded-xl text-stone-600 hover:bg-[#FAF8F5] active:bg-[#F4EEE7] transition"
                 aria-label="Thông báo"
               >
                 <Bell className="w-[19px] h-[19px]" />
 
                 {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 min-w-[17px] h-[17px] px-1 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                    {unreadCount}
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </button>
 
-              {/* Mobile notification dropdown */}
+              {/* Mobile Notification Dropdown */}
               {notifDropdownOpen && (
-                <div className="absolute right-0 top-12 w-[min(88vw,340px)] bg-white rounded-2xl shadow-2xl border border-[#E7DFD5] p-3 z-[70]">
+                <div className="absolute right-0 top-12 w-[min(88vw,340px)] bg-white rounded-2xl shadow-2xl border border-[#E7DFD5] p-3 z-[120]">
                   <div className="flex items-center justify-between pb-2 border-b border-stone-100">
                     <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
                       Thông báo
                     </span>
 
                     <button
+                      type="button"
                       onClick={onMarkReadNotifications}
-                      className="text-[11px] text-[#bf954f]"
+                      className="text-[11px] text-[#bf954f] hover:underline"
                     >
                       Đã đọc tất cả
                     </button>
@@ -205,14 +272,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* Menu */}
+            {/* ================= MOBILE MENU ================= */}
             <button
               type="button"
               onClick={() => {
                 setMobileMenuOpen(true);
                 setNotifDropdownOpen(false);
+                setSwitchDropdownOpen(false);
               }}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-stone-900 text-[#dfc79f] shadow-sm"
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-stone-900 text-[#dfc79f] shadow-sm hover:bg-stone-800 active:scale-95 transition"
               aria-label="Mở menu"
             >
               <Menu className="w-5 h-5" />
@@ -221,15 +289,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* =======================================================
+      {/* ======================================================
           DESKTOP HEADER
-      ======================================================= */}
+      ====================================================== */}
       <div className="hidden lg:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* LOGO */}
+            {/* --------------------------------------------------
+                DESKTOP LOGO
+            -------------------------------------------------- */}
             <div className="flex items-center gap-3">
-              <HanhPhamLogo size="md" variant="gold" />
+              <HanhPhamLogo
+                size="md"
+                variant="gold"
+              />
 
               <div className="flex items-center gap-2">
                 <span className="font-bridal text-xl font-bold tracking-wider text-stone-900 uppercase">
@@ -248,9 +321,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* DESKTOP ACTIONS */}
+            {/* --------------------------------------------------
+                DESKTOP ACTIONS
+            -------------------------------------------------- */}
             <div className="flex items-center gap-2 sm:gap-4">
-              {/* Design */}
+              {/* ================= DESIGN ================= */}
               {isAdmin && (
                 <button
                   type="button"
@@ -267,22 +342,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               )}
 
-              {/* Account switch */}
+              {/* ================= ACCOUNT SWITCH ================= */}
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() =>
-                    setSwitchDropdownOpen(!switchDropdownOpen)
-                  }
+                  onClick={() => {
+                    setSwitchDropdownOpen((prev) => !prev);
+                    setNotifDropdownOpen(false);
+                  }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#e7dfd5] text-[11px] font-medium text-stone-700 bg-[#faf8f5] hover:bg-[#f4eee7] transition"
                 >
                   <ArrowRightLeft className="w-3.5 h-3.5 text-[#bf954f]" />
+
                   <span>Đổi tài khoản</span>
+
                   <ChevronDown className="w-3 h-3 text-stone-400" />
                 </button>
 
                 {switchDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-[#e7dfd5] p-2 z-[70]">
+                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-[#e7dfd5] p-2 z-[120]">
                     <p className="text-[10px] uppercase font-bold text-stone-400 px-2 py-1 tracking-wider">
                       Chuyển đổi tài khoản
                     </p>
@@ -291,6 +369,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {quickUsers.map((u) => (
                         <button
                           key={u.email}
+                          type="button"
                           onClick={() => {
                             setSwitchDropdownOpen(false);
                             onQuickSwitchUser(u.email);
@@ -302,7 +381,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                           }`}
                         >
                           <div className="truncate">
-                            <p className="truncate">{u.name}</p>
+                            <p className="truncate">
+                              {u.name}
+                            </p>
+
                             <p className="text-[10px] text-stone-400 truncate">
                               {u.email}
                             </p>
@@ -318,36 +400,39 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
 
-              {/* Notification */}
+              {/* ================= DESKTOP NOTIFICATION ================= */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => {
-                    setNotifDropdownOpen(!notifDropdownOpen);
+                    setNotifDropdownOpen((prev) => !prev);
+                    setSwitchDropdownOpen(false);
 
                     if (!notifDropdownOpen && unreadCount > 0) {
                       onMarkReadNotifications();
                     }
                   }}
                   className="relative p-2 text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-full transition"
+                  aria-label="Thông báo"
                 >
                   <Bell className="w-5 h-5" />
 
                   {unreadCount > 0 && (
                     <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                      {unreadCount}
+                      {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
                 </button>
 
                 {notifDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-[#e7dfd5] p-3 z-[70] max-h-96 overflow-y-auto">
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-[#e7dfd5] p-3 z-[120] max-h-96 overflow-y-auto">
                     <div className="flex items-center justify-between pb-2 border-b border-stone-100">
                       <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
                         Thông Báo Hệ Thống
                       </span>
 
                       <button
+                        type="button"
                         onClick={onMarkReadNotifications}
                         className="text-[11px] text-[#bf954f] hover:underline"
                       >
@@ -375,8 +460,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                             </p>
 
                             <p className="text-[9px] text-stone-400">
-                              {new Date(n.TaoLuc).toLocaleTimeString('vi-VN')} •{' '}
-                              {new Date(n.TaoLuc).toLocaleDateString('vi-VN')}
+                              {new Date(
+                                n.TaoLuc
+                              ).toLocaleTimeString('vi-VN')}{' '}
+                              •{' '}
+                              {new Date(
+                                n.TaoLuc
+                              ).toLocaleDateString('vi-VN')}
                             </p>
                           </div>
                         ))
@@ -386,7 +476,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
 
-              {/* Avatar + Logout */}
+              {/* ================= AVATAR + LOGOUT ================= */}
               <div className="flex items-center gap-2 pl-2 border-l border-stone-200">
                 <img
                   src={
@@ -410,7 +500,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* DESKTOP NAVIGATION */}
+          {/* ====================================================
+              DESKTOP NAVIGATION
+          ==================================================== */}
           <nav className="flex space-x-1 border-t border-[#f4eee7] py-1.5 overflow-x-auto">
             {activeTabs.map((tab) => {
               const Icon = tab.icon;
@@ -419,6 +511,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               return (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => handleTabChange(tab.id)}
                   className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium tracking-wide transition-all whitespace-nowrap ${
                     isActive
@@ -428,7 +521,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <Icon
                     className={`w-3.5 h-3.5 ${
-                      isActive ? 'text-[#c5a059]' : 'text-stone-400'
+                      isActive
+                        ? 'text-[#c5a059]'
+                        : 'text-stone-400'
                     }`}
                   />
 
@@ -440,12 +535,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* =======================================================
+      {/* ======================================================
           MOBILE DRAWER
-      ======================================================= */}
+      ====================================================== */}
       {mobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-[100]">
-          {/* Overlay */}
+          {/* --------------------------------------------------
+              OVERLAY
+          -------------------------------------------------- */}
           <button
             type="button"
             aria-label="Đóng menu"
@@ -453,14 +550,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="absolute inset-0 bg-black/35 backdrop-blur-[2px]"
           />
 
-          {/* Drawer */}
+          {/* --------------------------------------------------
+              DRAWER
+          -------------------------------------------------- */}
           <aside className="absolute top-0 right-0 bottom-0 w-[88vw] max-w-[390px] bg-[#FCFBF9] shadow-2xl flex flex-col">
-            {/* Drawer Header */}
+            {/* =================================================
+                DRAWER HEADER
+            ================================================= */}
             <div className="px-5 pt-5 pb-4 border-b border-[#E7DFD5] bg-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="shrink-0 scale-90">
-                    <HanhPhamLogo size="md" variant="gold" />
+                  <div className="shrink-0">
+                    <HanhPhamLogo
+                      size="sm"
+                      variant="gold"
+                    />
                   </div>
 
                   <div>
@@ -477,14 +581,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600"
+                  className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600 hover:bg-stone-200 transition"
                   aria-label="Đóng menu"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* User */}
+              {/* =================================================
+                  USER INFO
+              ================================================= */}
               <div className="mt-4 flex items-center gap-3 p-3 rounded-2xl bg-[#F6F1E8] border border-[#E7DFD5]">
                 <img
                   src={
@@ -513,7 +619,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* Menu Items */}
+            {/* =================================================
+                MENU CONTENT
+            ================================================= */}
             <div className="flex-1 overflow-y-auto px-4 py-4">
               <p className="px-2 mb-2 text-[10px] uppercase tracking-[0.18em] font-bold text-stone-400">
                 Điều hướng
@@ -545,8 +653,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <Icon className="w-5 h-5" />
                       </span>
 
-                      <span className="flex-1">
-                        <span className="block text-sm font-semibold">
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm font-semibold truncate">
                           {tab.label}
                         </span>
 
@@ -559,7 +667,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                       <span
                         className={`text-lg ${
-                          isActive ? 'text-[#dfc79f]' : 'text-stone-300'
+                          isActive
+                            ? 'text-[#dfc79f]'
+                            : 'text-stone-300'
                         }`}
                       >
                         ›
@@ -569,7 +679,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 })}
               </div>
 
-              {/* Account switch */}
+              {/* =================================================
+                  ACCOUNT SWITCH
+              ================================================= */}
               <div className="mt-6">
                 <p className="px-2 mb-2 text-[10px] uppercase tracking-[0.18em] font-bold text-stone-400">
                   Tài khoản
@@ -579,7 +691,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button
                     type="button"
                     onClick={() =>
-                      setSwitchDropdownOpen(!switchDropdownOpen)
+                      setSwitchDropdownOpen(
+                        (prev) => !prev
+                      )
                     }
                     className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
                   >
@@ -599,7 +713,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                     <ChevronDown
                       className={`w-4 h-4 text-stone-400 transition-transform ${
-                        switchDropdownOpen ? 'rotate-180' : ''
+                        switchDropdownOpen
+                          ? 'rotate-180'
+                          : ''
                       }`}
                     />
                   </button>
@@ -640,23 +756,43 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               </div>
 
-              {/* Design */}
+              {/* =================================================
+                  DESIGN APP
+              ================================================= */}
               {isAdmin && (
                 <button
                   type="button"
-                  onClick={() => handleTabChange('thietke')}
-                  className="w-full mt-3 flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-white border border-[#EEE7DE] text-left"
+                  onClick={() =>
+                    handleTabChange('thietke')
+                  }
+                  className={`w-full mt-3 flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition ${
+                    currentTab === 'thietke'
+                      ? 'bg-stone-900 text-white'
+                      : 'bg-white border border-[#EEE7DE]'
+                  }`}
                 >
-                  <span className="w-10 h-10 rounded-xl bg-[#F7F3ED] text-[#a97d3e] flex items-center justify-center">
+                  <span
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      currentTab === 'thietke'
+                        ? 'bg-white/10 text-[#dfc79f]'
+                        : 'bg-[#F7F3ED] text-[#a97d3e]'
+                    }`}
+                  >
                     <Palette className="w-5 h-5" />
                   </span>
 
                   <span>
-                    <span className="block text-sm font-semibold text-stone-800">
+                    <span className="block text-sm font-semibold">
                       Thiết kế app
                     </span>
 
-                    <span className="block text-[10px] text-stone-400 mt-0.5">
+                    <span
+                      className={`block text-[10px] mt-0.5 ${
+                        currentTab === 'thietke'
+                          ? 'text-[#dfc79f]'
+                          : 'text-stone-400'
+                      }`}
+                    >
                       Tùy biến giao diện
                     </span>
                   </span>
@@ -664,12 +800,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* Logout */}
+            {/* =================================================
+                LOGOUT
+            ================================================= */}
             <div className="p-4 border-t border-[#E7DFD5] bg-white">
               <button
                 type="button"
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 font-bold text-sm"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 font-bold text-sm hover:bg-rose-100 active:scale-[0.99] transition"
               >
                 <LogOut className="w-4 h-4" />
                 Đăng xuất
@@ -678,78 +816,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           </aside>
         </div>
       )}
-
-      {/* =======================================================
-          MOBILE BOTTOM NAVIGATION
-      ======================================================= */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/95 backdrop-blur-xl border-t border-[#E7DFD5] shadow-[0_-8px_25px_rgba(0,0,0,0.08)] px-2 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom))]">
-        <div className="flex items-center gap-1 max-w-lg mx-auto">
-          {mobileMainTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = currentTab === tab.id;
-
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTabChange(tab.id)}
-                className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1.5 rounded-xl transition-all ${
-                  isActive
-                    ? 'text-stone-900'
-                    : 'text-stone-400 hover:text-stone-600'
-                }`}
-              >
-                <span
-                  className={`w-9 h-7 flex items-center justify-center rounded-xl ${
-                    isActive
-                      ? 'bg-stone-900 text-[#dfc79f]'
-                      : 'bg-transparent'
-                  }`}
-                >
-                  <Icon className="w-[17px] h-[17px]" />
-                </span>
-
-                <span
-                  className={`text-[9px] mt-0.5 truncate max-w-[72px] ${
-                    isActive ? 'font-bold' : 'font-medium'
-                  }`}
-                >
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
-
-          {/* MORE */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(true)}
-            className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1.5 rounded-xl ${
-              mobileMenuOpen
-                ? 'text-stone-900'
-                : 'text-stone-400'
-            }`}
-          >
-            <span
-              className={`w-9 h-7 flex items-center justify-center rounded-xl ${
-                mobileMenuOpen
-                  ? 'bg-stone-900 text-[#dfc79f]'
-                  : 'bg-transparent'
-              }`}
-            >
-              <Menu className="w-[18px] h-[18px]" />
-            </span>
-
-            <span
-              className={`text-[9px] mt-0.5 ${
-                mobileMenuOpen ? 'font-bold' : 'font-medium'
-              }`}
-            >
-              Thêm
-            </span>
-          </button>
-        </div>
-      </nav>
     </header>
   );
 };
