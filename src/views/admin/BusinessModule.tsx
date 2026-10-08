@@ -185,6 +185,18 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     }
   };
 
+  const approveCashflow = async (record: QuanLyRecord) => {
+    if (module !== 'THU_CHI' || getStatus(record) === 'Đã duyệt') return;
+    if (!window.confirm('Duyệt phiếu này?')) return;
+    try {
+      await api.quanLy.update(record.QuanLyID, { TrangThaiDuyet: 'Đã duyệt' });
+      await loadRecords();
+      onRefresh();
+    } catch (error: any) {
+      alert(error?.message || 'Không thể duyệt phiếu.');
+    }
+  };
+
   const handleDelete = async (record: QuanLyRecord) => {
     if (!window.confirm('Bạn có chắc muốn xóa bản ghi này?')) return;
 
@@ -318,6 +330,11 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                     <td className="p-3 text-right whitespace-nowrap">
                       {!isEmployee && (
                         <>
+                          {module === 'THU_CHI' && getStatus(record) !== 'Đã duyệt' && (
+                            <button type="button" onClick={() => void approveCashflow(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold" title="Duyệt phiếu">
+                              DUYỆT
+                            </button>
+                          )}
                           <button type="button" onClick={() => openEdit(record)} className="p-2 text-stone-500 hover:text-stone-900" title="Sửa">
                             <Edit3 className="w-4 h-4" />
                           </button>
