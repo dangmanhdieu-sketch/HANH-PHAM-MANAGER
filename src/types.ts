@@ -48,6 +48,19 @@ export interface ChamCong {
   GhiChu?: string;
 }
 
+export interface TamUng {
+  TamUngID: string;
+  NhanVienID: string;
+  HoTen: string;
+  Ngay: string;
+  Thang: string;
+  SoTien: number;
+  LyDo?: string;
+  GhiChu?: string;
+  TaoLuc: string;
+  TaoBoi: string;
+}
+
 export interface Luong {
   LuongID: string;
   NhanVienID: string;
