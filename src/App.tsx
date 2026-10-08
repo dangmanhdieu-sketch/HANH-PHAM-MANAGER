@@ -498,6 +498,15 @@ function AppContent() {
               />
             )}
 
+            {currentTab === 'thuchi_me' && (
+              <BusinessModule
+                module="THU_CHI"
+                staffList={staffList}
+                currentUser={currentUser}
+                onRefresh={refreshAllData}
+              />
+            )}
+
             {currentTab === 'profile_me' && (
               <MyProfile currentUser={currentUser} onRefresh={refreshAllData} />
             )}
