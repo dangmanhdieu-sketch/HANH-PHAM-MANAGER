@@ -14,7 +14,6 @@ import {
   ArrowRightLeft,
   ChevronDown,
   Contact,
-  Palette,
   CheckSquare,
   Shirt,
   FileText,
