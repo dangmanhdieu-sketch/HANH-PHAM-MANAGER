@@ -14,6 +14,8 @@ import type {
   ThongBao,
   SystemConfig,
   AppDesignTheme,
+  QuanLyRecord,
+  QuanLyModule,
 } from '../src/types.ts';
 
 export const DEFAULT_THEME: AppDesignTheme = {
@@ -46,6 +48,7 @@ interface DatabaseSchema {
   THONGKE: ThongKeKPI[];
   AUDIT_LOG: AuditLog[];
   NOTIFICATIONS: ThongBao[];
+  QUAN_LY: QuanLyRecord[];
   SYSTEM_CONFIG: SystemConfig;
   THEME?: AppDesignTheme;
 }
@@ -313,6 +316,7 @@ function getInitialData(): DatabaseSchema {
     THONGKE: thongke,
     AUDIT_LOG: auditLogs,
     NOTIFICATIONS: notifications,
+    QUAN_LY: [],
     SYSTEM_CONFIG: DEFAULT_CONFIG,
   };
 }
@@ -334,6 +338,7 @@ class DatabaseService {
     'THONGKE',
     'AUDIT_LOG',
     'NOTIFICATIONS',
+    'QUAN_LY',
     'SYSTEM_CONFIG',
     'THEME',
   ] as const;
@@ -531,6 +536,7 @@ class DatabaseService {
             THONGKE: Array.isArray(loaded.THONGKE) ? loaded.THONGKE : this.db.THONGKE,
             AUDIT_LOG: Array.isArray(loaded.AUDIT_LOG) ? loaded.AUDIT_LOG : this.db.AUDIT_LOG,
             NOTIFICATIONS: Array.isArray(loaded.NOTIFICATIONS) ? loaded.NOTIFICATIONS : this.db.NOTIFICATIONS,
+            QUAN_LY: Array.isArray(loaded.QUAN_LY) ? loaded.QUAN_LY : (this.db.QUAN_LY || []),
             SYSTEM_CONFIG: loaded.SYSTEM_CONFIG || this.db.SYSTEM_CONFIG,
             THEME: loaded.THEME || this.db.THEME,
           };
@@ -1677,6 +1683,49 @@ class DatabaseService {
       notifications: this.db.NOTIFICATIONS.length,
     };
   }
+  public getQuanLyRecords(module?: QuanLyModule): QuanLyRecord[] {
+    const list = this.db.QUAN_LY || [];
+    return module ? list.filter((x) => x.Module === module) : [...list];
+  }
+
+  public createQuanLyRecord(module: QuanLyModule, data: Record<string, any>, adminUser: { HoTen: string; Email: string }): QuanLyRecord {
+    if (!['CONG_VIEC', 'VAY_CUOI', 'HOP_DONG', 'THU_CHI'].includes(module)) {
+      throw new Error('Module nghiệp vụ không hợp lệ.');
+    }
+    const now = new Date().toISOString();
+    const record: QuanLyRecord = {
+      QuanLyID: `QL-${module}-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`,
+      Module: module,
+      DuLieu: data || {},
+      TaoLuc: now,
+      CapNhatLuc: now,
+      TaoBoi: adminUser.HoTen,
+    };
+    this.db.QUAN_LY.unshift(record);
+    this.save();
+    this.logAudit(adminUser.HoTen, adminUser.Email, `Tạo ${module}`, JSON.stringify(data || {}));
+    return record;
+  }
+
+  public updateQuanLyRecord(id: string, data: Record<string, any>, adminUser: { HoTen: string; Email: string }): QuanLyRecord {
+    const record = (this.db.QUAN_LY || []).find((x) => x.QuanLyID === id);
+    if (!record) throw new Error('Không tìm thấy dữ liệu nghiệp vụ.');
+    record.DuLieu = { ...record.DuLieu, ...(data || {}) };
+    record.CapNhatLuc = new Date().toISOString();
+    this.save();
+    this.logAudit(adminUser.HoTen, adminUser.Email, `Cập nhật ${record.Module}`, id);
+    return record;
+  }
+
+  public deleteQuanLyRecord(id: string, adminUser: { HoTen: string; Email: string }) {
+    const index = (this.db.QUAN_LY || []).findIndex((x) => x.QuanLyID === id);
+    if (index < 0) throw new Error('Không tìm thấy dữ liệu nghiệp vụ.');
+    const [removed] = this.db.QUAN_LY.splice(index, 1);
+    this.save();
+    this.logAudit(adminUser.HoTen, adminUser.Email, `Xóa ${removed.Module}`, id);
+    return { message: 'Xóa dữ liệu thành công.' };
+  }
+
   public getRawData(): DatabaseSchema {
     return this.db;
   }
