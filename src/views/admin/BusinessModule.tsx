@@ -38,21 +38,6 @@ const CONFIG: Record<QuanLyModule, ModuleConfig> = {
       { key: 'GhiChu', label: 'Ghi chú', placeholder: 'Nội dung chi tiết' },
     ],
   },
-  VAY_CUOI: {
-    title: 'Váy cưới',
-    icon: Shirt,
-    fields: [
-      { key: 'MaVay', label: 'Mã váy' },
-      { key: 'TenVay', label: 'Tên váy' },
-      { key: 'BoSuuTap', label: 'Bộ sưu tập' },
-      { key: 'Size', label: 'Size' },
-      { key: 'Mau', label: 'Màu' },
-      { key: 'GiaThue', label: 'Giá thuê', type: 'number' },
-      { key: 'TrangThai', label: 'Trạng thái', placeholder: 'Sẵn sàng / Đang giữ / Đã thuê / Bảo trì' },
-      { key: 'HopDongID', label: 'Mã hợp đồng đang sử dụng', placeholder: 'Có thể bỏ trống' },
-      { key: 'GhiChu', label: 'Ghi chú' },
-    ],
-  },
   HOP_DONG: {
     title: 'Hợp đồng',
     icon: FileText,
