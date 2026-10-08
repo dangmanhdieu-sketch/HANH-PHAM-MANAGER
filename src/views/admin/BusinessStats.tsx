@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BarChart3, TrendingUp, Wallet, FileText, Shirt, CheckSquare } from 'lucide-react';
 import type { QuanLyRecord, NhanVien, Luong, HoaHong, ChamCong } from '../../types';
 import { api } from '../../api';
