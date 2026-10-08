@@ -52,7 +52,6 @@ const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.resolve(DATA_DIR, 'database.json');
 const BACKUP_DIR = path.resolve(DATA_DIR, 'backups');
 
-// Studio coordinates: Hanh Pham Bridal - 156 Nam Ky Khoi Nghia, District 1, Ho Chi Minh City
 const DEFAULT_CONFIG: SystemConfig = {
   TenStudio: 'HANH PHAM BRIDAL',
   DiaChi: '156 Nam Kỳ Khởi Nghĩa, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
@@ -72,6 +71,7 @@ function ensureDirs() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
+
   if (!fs.existsSync(BACKUP_DIR)) {
     fs.mkdirSync(BACKUP_DIR, { recursive: true });
   }
@@ -93,7 +93,8 @@ function getInitialData(): DatabaseSchema {
       LuongCoBan: 35000000,
       NgayVaoLam: '2024-01-01',
       TrangThai: 'Đang Làm',
-      AnhNhanVien: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
+      AnhNhanVien:
+        'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
       Quyen: 'Admin',
       MatKhau: adminHash,
       MatKhauHienThi: 'admin123',
@@ -115,7 +116,8 @@ function getInitialData(): DatabaseSchema {
       LuongCoBan: 14000000,
       NgayVaoLam: '2024-03-01',
       TrangThai: 'Đang Làm',
-      AnhNhanVien: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
+      AnhNhanVien:
+        'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
       Quyen: 'Nhân viên',
       MatKhau: staffHash,
       MatKhauHienThi: '123456',
@@ -125,7 +127,7 @@ function getInitialData(): DatabaseSchema {
       ChiNhanhNganHang: 'Bến Nghé, Q.1',
       BiKhoa: false,
       TaoLuc: '2024-03-01T08:00:00Z',
-    }
+    },
   ];
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -138,13 +140,14 @@ function getInitialData(): DatabaseSchema {
       HoTen: 'Đỗ Mai Linh',
       Ngay: todayStr,
       CheckIn: '08:30:00',
-      AnhCheckIn: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
+      AnhCheckIn:
+        'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
       GPSCheckIn: '10.7769, 106.6953 (Studio Hanh Pham)',
       CheckOut: undefined,
       SoGioLam: 0,
       TrangThai: 'Có mặt',
       GhiChu: 'Đón cô dâu thử váy ca sáng',
-    }
+    },
   ];
 
   const currentMonth = '10/2026';
@@ -192,7 +195,7 @@ function getInitialData(): DatabaseSchema {
       TrangThai: 'Chờ duyệt',
       NgayTao: '2026-10-01T00:05:00Z',
       GhiChu: 'Bảng lương tháng 10/2026',
-    }
+    },
   ];
 
   const hoahongs: HoaHong[] = [
@@ -210,7 +213,7 @@ function getInitialData(): DatabaseSchema {
       NgayDuyet: '2026-10-02T16:00:00Z',
       NguoiDuyet: 'Hạnh Phạm',
       GhiChu: 'Tư vấn xuất sắc',
-    }
+    },
   ];
 
   const auditLogs: AuditLog[] = [
@@ -222,18 +225,19 @@ function getInitialData(): DatabaseSchema {
       ChiTiet: 'Hệ thống Quản trị Hanh Pham Bridal hoạt động',
       IP: '127.0.0.1',
       ThoiGian: '2026-10-01T00:00:00Z',
-    }
+    },
   ];
 
   const notifications: ThongBao[] = [
     {
       NotificationID: 'TB-001',
       TieuDe: 'Chào mừng bạn đến với Hanh Pham Bridal',
-      NoiDung: 'Hệ thống Quản trị Nhân sự & Chấm công lương chính thức đi vào hoạt động.',
+      NoiDung:
+        'Hệ thống Quản trị Nhân sự & Chấm công lương chính thức đi vào hoạt động.',
       Loai: 'success',
       DaDoc: false,
       TaoLuc: new Date().toISOString(),
-    }
+    },
   ];
 
   const thongke: ThongKeKPI[] = [
@@ -264,7 +268,7 @@ function getInitialData(): DatabaseSchema {
       MoTa: 'Lương đã thanh toán',
       GiaTri: 22000000,
       CapNhatLuc: new Date().toISOString(),
-    }
+    },
   ];
 
   return {
@@ -285,8 +289,13 @@ class DatabaseService {
   private firestoreSaveQueued = false;
   private firestore: Firestore | null = null;
   private firestoreEnabled = false;
-  private readonly firestoreCollection = process.env.FIREBASE_COLLECTION || 'hanh_pham_manager';
-  private readonly firestoreDocument = process.env.FIREBASE_DOCUMENT || 'database';
+
+  private readonly firestoreCollection =
+    process.env.FIREBASE_COLLECTION || 'hanh_pham_manager';
+
+  private readonly firestoreDocument =
+    process.env.FIREBASE_DOCUMENT || 'database';
+
   private readonly firestoreTables = [
     'NHANVIEN',
     'CHAMCONG',
@@ -298,19 +307,25 @@ class DatabaseService {
     'SYSTEM_CONFIG',
     'THEME',
   ] as const;
+
   private readyPromise: Promise<void>;
 
   constructor() {
     ensureDirs();
 
-    // Local file is retained only as a fallback/cache. Firestore is the
-    // authoritative persistent database when FIREBASE_SERVICE_ACCOUNT_JSON exists.
+    /*
+     * database.json CHỈ được dùng làm dữ liệu khởi tạo ban đầu.
+     * Khi Firestore đã tồn tại, Firestore sẽ là nguồn dữ liệu chính.
+     */
     if (fs.existsSync(DB_FILE)) {
       try {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
         this.db = JSON.parse(raw);
       } catch (err) {
-        console.error('Failed reading database.json, initializing defaults:', err);
+        console.error(
+          'Không đọc được database.json, tạm thời dùng dữ liệu mặc định:',
+          err
+        );
         this.db = getInitialData();
       }
     } else {
@@ -319,26 +334,35 @@ class DatabaseService {
 
     this.applyMigrations();
     this.refreshKPIs();
-    this.saveSync();
 
+    /*
+     * KHÔNG saveSync() trước khi Firestore được đọc.
+     *
+     * Đây là điểm rất quan trọng:
+     * nếu save database demo trước, một số trường hợp khởi động lại
+     * có thể khiến database local trở thành nguồn dữ liệu sai.
+     */
     this.initializeFirestore();
+
     this.readyPromise = this.loadFromFirestore();
   }
 
   private applyMigrations(): boolean {
     let hasMigration = false;
 
-    // Migration: Ensure all staff have a unique username.
     if (this.db.NHANVIEN && Array.isArray(this.db.NHANVIEN)) {
       const usedUsernames = new Set<string>();
 
       this.db.NHANVIEN.forEach((nv) => {
-        let username = String(nv.TenDangNhap || '').trim().toLowerCase();
+        let username = String(nv.TenDangNhap || '')
+          .trim()
+          .toLowerCase();
 
         if (!username) {
-          username = nv.NhanVienID === 'NV001'
-            ? 'admin'
-            : nv.NhanVienID.toLowerCase();
+          username =
+            nv.NhanVienID === 'NV001'
+              ? 'admin'
+              : nv.NhanVienID.toLowerCase();
         }
 
         if (usedUsernames.has(username)) {
@@ -351,37 +375,55 @@ class DatabaseService {
         } else {
           nv.TenDangNhap = username;
         }
+
         usedUsernames.add(username);
       });
     }
 
-    // Migration: Ensure all staff have bank account & credential fields.
     const defaultBanks = [
-      { stk: '0071000888999', bank: 'Vietcombank', name: 'PHAM THI HANH', branch: 'TP. Hồ Chí Minh' },
-      { stk: '19036888666011', bank: 'Techcombank', name: 'DO MAI LINH', branch: 'Bến Nghé, Q.1' },
+      {
+        stk: '0071000888999',
+        bank: 'Vietcombank',
+        name: 'PHAM THI HANH',
+        branch: 'TP. Hồ Chí Minh',
+      },
+      {
+        stk: '19036888666011',
+        bank: 'Techcombank',
+        name: 'DO MAI LINH',
+        branch: 'Bến Nghé, Q.1',
+      },
     ];
 
     if (this.db.NHANVIEN && Array.isArray(this.db.NHANVIEN)) {
       this.db.NHANVIEN.forEach((nv, idx) => {
         const def = defaultBanks[idx % defaultBanks.length];
+
         if (!nv.SoTaiKhoan) {
           nv.SoTaiKhoan = def.stk;
           hasMigration = true;
         }
+
         if (!nv.NganHang) {
           nv.NganHang = def.bank;
           hasMigration = true;
         }
+
         if (!nv.TenChuTaiKhoan) {
-          nv.TenChuTaiKhoan = nv.HoTen ? nv.HoTen.toUpperCase() : def.name;
+          nv.TenChuTaiKhoan = nv.HoTen
+            ? nv.HoTen.toUpperCase()
+            : def.name;
           hasMigration = true;
         }
+
         if (!nv.ChiNhanhNganHang) {
           nv.ChiNhanhNganHang = def.branch;
           hasMigration = true;
         }
+
         if (!nv.MatKhauHienThi) {
-          nv.MatKhauHienThi = nv.Quyen === 'Admin' ? 'admin123' : '123456';
+          nv.MatKhauHienThi =
+            nv.Quyen === 'Admin' ? 'admin123' : '123456';
           hasMigration = true;
         }
       });
@@ -394,48 +436,80 @@ class DatabaseService {
     const rawCredentials = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
     if (!rawCredentials) {
-      console.warn('[Firebase] FIREBASE_SERVICE_ACCOUNT_JSON chưa được cấu hình. Đang dùng database.json làm fallback.');
+      console.warn(
+        '[Firebase] FIREBASE_SERVICE_ACCOUNT_JSON chưa được cấu hình. ' +
+          'Đang dùng database.json làm fallback.'
+      );
       return;
     }
 
     try {
       const serviceAccount = JSON.parse(rawCredentials);
-      const app = getApps().length > 0
-        ? getApps()[0]
-        : initializeApp({ credential: cert(serviceAccount) });
+
+      const app =
+        getApps().length > 0
+          ? getApps()[0]
+          : initializeApp({
+              credential: cert(serviceAccount),
+            });
 
       this.firestore = getFirestore(app);
       this.firestoreEnabled = true;
-      console.log(`[Firebase] Firestore enabled: ${this.firestoreCollection}/${this.firestoreDocument}`);
+
+      console.log(
+        `[Firebase] Firestore enabled: ${this.firestoreCollection}/${this.firestoreDocument}`
+      );
     } catch (err) {
       this.firestore = null;
       this.firestoreEnabled = false;
-      console.error('[Firebase] Không thể khởi tạo Firebase Admin SDK:', err);
+
+      console.error(
+        '[Firebase] Không thể khởi tạo Firebase Admin SDK:',
+        err
+      );
     }
   }
 
-  /** Wait until the persistent database has been loaded before handling API requests. */
   public async waitUntilReady(): Promise<void> {
     await this.readyPromise;
   }
 
   private async loadFromFirestore(): Promise<void> {
-    if (!this.firestoreEnabled || !this.firestore) return;
+    if (!this.firestoreEnabled || !this.firestore) {
+      return;
+    }
 
     try {
-      const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+      const rootRef = this.firestore
+        .collection(this.firestoreCollection)
+        .doc(this.firestoreDocument);
+
       const rootSnap = await rootRef.get();
 
+      /*
+       * CHỈ migrate database.json lên Firebase nếu Firebase hoàn toàn
+       * chưa có document.
+       *
+       * Sau lần đầu này, database.json KHÔNG BAO GIỜ được dùng để
+       * ghi đè dữ liệu Firebase khi server restart/redeploy.
+       */
       if (!rootSnap.exists) {
-        // First-time migration: copy the current local database into Firestore.
         await this.persistToFirestoreNow();
-        console.log('[Firebase] Firestore document chưa tồn tại. Đã migrate database.json lên Firestore.');
+
+        console.log(
+          '[Firebase] Firestore document chưa tồn tại. ' +
+            'Đã migrate database.json lên Firestore lần đầu.'
+        );
+
         return;
       }
 
       const rootData = rootSnap.data() || {};
       const schemaVersion = Number(rootData.__schemaVersion || 1);
 
+      /*
+       * SCHEMA V2 - dữ liệu nằm trong subcollection tables.
+       */
       if (schemaVersion >= 2) {
         const tableSnaps = await Promise.all(
           this.firestoreTables.map((table) =>
@@ -444,1097 +518,174 @@ class DatabaseService {
         );
 
         const loaded: Partial<DatabaseSchema> = {};
+
         tableSnaps.forEach((snap, index) => {
-          if (!snap.exists) return;
+          if (!snap.exists) {
+            return;
+          }
+
           const table = this.firestoreTables[index];
           const data = snap.data()?.data;
+
           if (data !== undefined) {
             (loaded as any)[table] = data;
           }
         });
 
-        if (loaded.NHANVIEN || loaded.CHAMCONG || loaded.LUONG || loaded.HOAHONG) {
+        /*
+         * Nếu NHANVIEN tồn tại trong Firebase thì Firebase được xem là
+         * nguồn dữ liệu chính tuyệt đối.
+         */
+        if (Array.isArray(loaded.NHANVIEN)) {
           this.db = {
             ...this.db,
             ...loaded,
-            NHANVIEN: Array.isArray(loaded.NHANVIEN) ? loaded.NHANVIEN : this.db.NHANVIEN,
-            CHAMCONG: Array.isArray(loaded.CHAMCONG) ? loaded.CHAMCONG : this.db.CHAMCONG,
-            LUONG: Array.isArray(loaded.LUONG) ? loaded.LUONG : this.db.LUONG,
-            HOAHONG: Array.isArray(loaded.HOAHONG) ? loaded.HOAHONG : this.db.HOAHONG,
-            THONGKE: Array.isArray(loaded.THONGKE) ? loaded.THONGKE : this.db.THONGKE,
-            AUDIT_LOG: Array.isArray(loaded.AUDIT_LOG) ? loaded.AUDIT_LOG : this.db.AUDIT_LOG,
-            NOTIFICATIONS: Array.isArray(loaded.NOTIFICATIONS) ? loaded.NOTIFICATIONS : this.db.NOTIFICATIONS,
-            SYSTEM_CONFIG: loaded.SYSTEM_CONFIG || this.db.SYSTEM_CONFIG,
-            THEME: loaded.THEME || this.db.THEME,
+
+            NHANVIEN: loaded.NHANVIEN,
+
+            CHAMCONG: Array.isArray(loaded.CHAMCONG)
+              ? loaded.CHAMCONG
+              : [],
+
+            LUONG: Array.isArray(loaded.LUONG)
+              ? loaded.LUONG
+              : [],
+
+            HOAHONG: Array.isArray(loaded.HOAHONG)
+              ? loaded.HOAHONG
+              : [],
+
+            THONGKE: Array.isArray(loaded.THONGKE)
+              ? loaded.THONGKE
+              : [],
+
+            AUDIT_LOG: Array.isArray(loaded.AUDIT_LOG)
+              ? loaded.AUDIT_LOG
+              : [],
+
+            NOTIFICATIONS: Array.isArray(loaded.NOTIFICATIONS)
+              ? loaded.NOTIFICATIONS
+              : [],
+
+            SYSTEM_CONFIG:
+              loaded.SYSTEM_CONFIG || this.db.SYSTEM_CONFIG,
+
+            THEME:
+              loaded.THEME || this.db.THEME,
           };
 
           const migrated = this.applyMigrations();
           this.refreshKPIs();
+
+          /*
+           * Chỉ ghi ngược lên Firebase khi thực sự có migration
+           * như username/bank fields.
+           */
+          if (migrated) {
+            await this.persistToFirestoreNow();
+          }
+
           this.saveSync();
-          if (migrated) await this.persistToFirestoreNow();
-          console.log('[Firebase] Đã tải dữ liệu persistent từ Firestore.');
+
+          console.log(
+            '[Firebase] Đã tải dữ liệu persistent từ Firestore.'
+          );
+
           return;
         }
+
+        /*
+         * Schema v2 tồn tại nhưng thiếu NHANVIEN:
+         *
+         * TUYỆT ĐỐI KHÔNG lấy database.json demo ghi đè Firebase.
+         */
+        console.error(
+          '[Firebase] Schema v2 tồn tại nhưng không có bảng NHANVIEN ' +
+            'trong Firestore. KHÔNG ghi đè bằng database.json demo.'
+        );
+
+        return;
       }
 
-      // Legacy Firestore format: /hanh_pham_manager/database contains all tables
-      // as fields. Read it once, then upgrade to split table documents so the
-      // attendance photo data cannot eventually hit Firestore's 1 MiB document limit.
+      /*
+       * LEGACY FORMAT
+       *
+       * Dữ liệu cũ nằm trực tiếp trong document:
+       * /hanh_pham_manager/database
+       *
+       * Đọc dữ liệu cũ từ Firebase rồi nâng cấp sang schema v2.
+       */
       const legacy: Partial<DatabaseSchema> = rootData as any;
+
       this.db = {
         ...this.db,
         ...legacy,
-        NHANVIEN: Array.isArray(legacy.NHANVIEN) ? legacy.NHANVIEN : this.db.NHANVIEN,
-        CHAMCONG: Array.isArray(legacy.CHAMCONG) ? legacy.CHAMCONG : this.db.CHAMCONG,
-        LUONG: Array.isArray(legacy.LUONG) ? legacy.LUONG : this.db.LUONG,
-        HOAHONG: Array.isArray(legacy.HOAHONG) ? legacy.HOAHONG : this.db.HOAHONG,
-        THONGKE: Array.isArray(legacy.THONGKE) ? legacy.THONGKE : this.db.THONGKE,
-        AUDIT_LOG: Array.isArray(legacy.AUDIT_LOG) ? legacy.AUDIT_LOG : this.db.AUDIT_LOG,
-        NOTIFICATIONS: Array.isArray(legacy.NOTIFICATIONS) ? legacy.NOTIFICATIONS : this.db.NOTIFICATIONS,
-        SYSTEM_CONFIG: legacy.SYSTEM_CONFIG || this.db.SYSTEM_CONFIG,
-        THEME: legacy.THEME || this.db.THEME,
+
+        NHANVIEN: Array.isArray(legacy.NHANVIEN)
+          ? legacy.NHANVIEN
+          : this.db.NHANVIEN,
+
+        CHAMCONG: Array.isArray(legacy.CHAMCONG)
+          ? legacy.CHAMCONG
+          : this.db.CHAMCONG,
+
+        LUONG: Array.isArray(legacy.LUONG)
+          ? legacy.LUONG
+          : this.db.LUONG,
+
+        HOAHONG: Array.isArray(legacy.HOAHONG)
+          ? legacy.HOAHONG
+          : this.db.HOAHONG,
+
+        THONGKE: Array.isArray(legacy.THONGKE)
+          ? legacy.THONGKE
+          : this.db.THONGKE,
+
+        AUDIT_LOG: Array.isArray(legacy.AUDIT_LOG)
+          ? legacy.AUDIT_LOG
+          : this.db.AUDIT_LOG,
+
+        NOTIFICATIONS: Array.isArray(legacy.NOTIFICATIONS)
+          ? legacy.NOTIFICATIONS
+          : this.db.NOTIFICATIONS,
+
+        SYSTEM_CONFIG:
+          legacy.SYSTEM_CONFIG || this.db.SYSTEM_CONFIG,
+
+        THEME:
+          legacy.THEME || this.db.THEME,
       };
 
       const migrated = this.applyMigrations();
       this.refreshKPIs();
-      this.saveSync();
+
+      /*
+       * Legacy Firebase data đã có -> nâng cấp sang schema v2.
+       * Không dùng database.json để thay thế dữ liệu legacy.
+       */
       await this.persistToFirestoreNow();
-      if (migrated) console.log('[Firebase] Đã áp dụng migration username/ngân hàng.');
-      console.log('[Firebase] Đã đọc database Firestore cũ và nâng cấp sang schema persistent v2.');
-    } catch (err) {
-      console.error('[Firebase] Lỗi tải dữ liệu Firestore. Giữ database.json làm fallback:', err);
-    }
-  }
 
-  private async persistToFirestoreNow(): Promise<void> {
-    if (!this.firestoreEnabled || !this.firestore) return;
-    try {
-      const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
-      const batch = this.firestore.batch();
+      this.saveSync();
 
-      // Metadata on the root document. We intentionally keep the existing
-      // document instead of deleting it, so the data already visible in the
-      // user's Firebase Console remains recoverable.
-      batch.set(rootRef, {
-        __schemaVersion: 2,
-        __updatedAt: new Date().toISOString(),
-        __storage: 'Firestore split tables',
-      }, { merge: true });
-
-      for (const table of this.firestoreTables) {
-        const value = (this.db as any)[table];
-        if (value === undefined) continue;
-        batch.set(
-          rootRef.collection('tables').doc(table),
-          {
-            data: value,
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: false }
+      if (migrated) {
+        console.log(
+          '[Firebase] Đã áp dụng migration username/ngân hàng.'
         );
       }
 
-      await batch.commit();
+      console.log(
+        '[Firebase] Đã đọc dữ liệu Firestore cũ và nâng cấp ' +
+          'sang schema persistent v2.'
+      );
     } catch (err) {
-      console.error('[Firebase] Firestore save error:', err);
-    }
-  }
-
-  private queueFirestoreSave() {
-    if (!this.firestoreEnabled || !this.firestore) return;
-    this.firestoreSaveQueued = true;
-    this.firestoreSaveQueue = this.firestoreSaveQueue
-      .then(async () => {
-        if (!this.firestoreSaveQueued) return;
-        this.firestoreSaveQueued = false;
-        await this.persistToFirestoreNow();
-      })
-      .catch((err) => {
-        console.error('[Firebase] Firestore queued save error:', err);
-      });
-  }
-
-  private saveSync() {
-    try {
-      const tempPath = `${DB_FILE}.tmp`;
-      fs.writeFileSync(tempPath, JSON.stringify(this.db, null, 2), 'utf-8');
-      fs.renameSync(tempPath, DB_FILE);
-    } catch (e) {
-      console.error('Database write error:', e);
-    }
-  }
-
-  public save() {
-    this.saveSync();
-    this.queueFirestoreSave();
-  }
-
-  public logAudit(nguoiThucHien: string, email: string, hanhDong: string, chiTiet: string, ip?: string) {
-    const log: AuditLog = {
-      LogID: `LOG-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
-      NguoiThucHien: nguoiThucHien,
-      Email: email,
-      HanhDong: hanhDong,
-      ChiTiet: chiTiet,
-      IP: ip || '127.0.0.1',
-      ThoiGian: new Date().toISOString(),
-    };
-    this.db.AUDIT_LOG.unshift(log);
-    // Keep max 2000 logs
-    if (this.db.AUDIT_LOG.length > 2000) {
-      this.db.AUDIT_LOG.length = 2000;
-    }
-    this.save();
-    return log;
-  }
-
-  public addNotification(tieuDe: string, noiDung: string, loai: 'info' | 'success' | 'warning' | 'alert' = 'info', nhanVienId?: string) {
-    const notif: ThongBao = {
-      NotificationID: `NOTIF-${Date.now().toString(36)}`,
-      NhanVienID: nhanVienId,
-      TieuDe: tieuDe,
-      NoiDung: noiDung,
-      Loai: loai,
-      DaDoc: false,
-      TaoLuc: new Date().toISOString(),
-    };
-    this.db.NOTIFICATIONS.unshift(notif);
-    this.save();
-    return notif;
-  }
-
-  public getTheme(): AppDesignTheme {
-    if (!this.db.THEME) {
-      this.db.THEME = { ...DEFAULT_THEME };
-      this.save();
-    }
-    return this.db.THEME;
-  }
-
-  public updateTheme(updated: Partial<AppDesignTheme>): AppDesignTheme {
-    this.db.THEME = { ...this.getTheme(), ...updated };
-    this.save();
-    return this.db.THEME;
-  }
-
-  public resetTheme(): AppDesignTheme {
-    this.db.THEME = { ...DEFAULT_THEME };
-    this.save();
-    return this.db.THEME;
-  }
-
-  public refreshKPIs() {
-    const today = new Date().toISOString().split('T')[0];
-    const tongNhanVienDangLam = this.db.NHANVIEN.filter((nv) => nv.TrangThai === 'Đang Làm').length;
-    const chamCongHomNay = this.db.CHAMCONG.filter((cc) => cc.Ngay === today && cc.CheckIn).length;
-    
-    const luongChoDuyet = this.db.LUONG
-      .filter((l) => l.TrangThai === 'Chờ duyệt')
-      .reduce((sum, l) => sum + (l.ThucLanh || 0), 0);
-      
-    const daThanhToan = this.db.LUONG
-      .filter((l) => l.TrangThai === 'Đã thanh toán')
-      .reduce((sum, l) => sum + (l.ThucLanh || 0), 0);
-
-    const now = new Date().toISOString();
-    this.db.THONGKE = [
-      {
-        KPI_ID: 'NV',
-        TieuDe: 'TỔNG NHÂN VIÊN',
-        MoTa: 'Số nhân viên đang làm việc tại studio',
-        GiaTri: tongNhanVienDangLam,
-        CapNhatLuc: now,
-      },
-      {
-        KPI_ID: 'CC',
-        TieuDe: 'CHẤM CÔNG HÔM NAY',
-        MoTa: 'Nhân viên đã check-in hôm nay',
-        GiaTri: chamCongHomNay,
-        CapNhatLuc: now,
-      },
-      {
-        KPI_ID: 'CD',
-        TieuDe: 'LƯƠNG CHỜ DUYỆT',
-        MoTa: 'Tổng thực lãnh các phiếu lương chờ duyệt',
-        GiaTri: luongChoDuyet,
-        CapNhatLuc: now,
-      },
-      {
-        KPI_ID: 'TT',
-        TieuDe: 'ĐÃ THANH TOÁN',
-        MoTa: 'Tổng số tiền lương đã thanh toán',
-        GiaTri: daThanhToan,
-        CapNhatLuc: now,
-      },
-    ];
-  }
-
-  // NHANVIEN methods
-  public getNhanVienList(): NhanVien[] {
-    return this.db.NHANVIEN;
-  }
-
-  public findNhanVienById(id: string): NhanVien | undefined {
-    return this.db.NHANVIEN.find((nv) => nv.NhanVienID === id);
-  }
-
-  public findNhanVienByEmail(email: string): NhanVien | undefined {
-    return this.db.NHANVIEN.find((nv) => nv.Email.toLowerCase() === email.toLowerCase());
-  }
-
-  public findNhanVienByUsername(username: string): NhanVien | undefined {
-    const normalized = String(username || '').trim().toLowerCase();
-    if (!normalized) return undefined;
-
-    return this.db.NHANVIEN.find(
-      (nv) => String(nv.TenDangNhap || '').trim().toLowerCase() === normalized
-    );
-  }
-
-  public createNhanVien(data: Partial<NhanVien>, adminUser: { HoTen: string; Email: string }): NhanVien {
-    // Generate next NhanVienID: NV001, NV002, ...
-    const existingIds = this.db.NHANVIEN.map((nv) => {
-      const match = nv.NhanVienID.match(/\d+/);
-      return match ? parseInt(match[0], 10) : 0;
-    });
-    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-    const nextNum = maxId + 1;
-    const generatedId = `NV${String(nextNum).padStart(3, '0')}`;
-
-    const tenDangNhap =
-      String(data.TenDangNhap || '').trim().toLowerCase() ||
-      generatedId.toLowerCase();
-
-    if (!/^[a-zA-Z0-9._-]{3,50}$/.test(tenDangNhap)) {
-      throw new Error(
-        'Tên đăng nhập phải có ít nhất 3 ký tự và chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.'
+      /*
+       * Nếu Firebase lỗi mạng/tạm thời:
+       * giữ dữ liệu local hiện tại nhưng KHÔNG ghi local demo lên Firebase.
+       */
+      console.error(
+        '[Firebase] Lỗi tải dữ liệu Firestore. ' +
+          'Không ghi đè dữ liệu Firebase:',
+        err
       );
     }
-
-    if (this.findNhanVienByUsername(tenDangNhap)) {
-      throw new Error(`Tên đăng nhập "${tenDangNhap}" đã tồn tại trong hệ thống!`);
-    }
-
-    // Validate email uniqueness
-    if (this.findNhanVienByEmail(data.Email || '')) {
-      throw new Error(`Email ${data.Email} đã tồn tại trong hệ thống!`);
-    }
-
-    const salt = bcrypt.genSaltSync(10);
-    const password = data.MatKhau || '123456';
-    const hashedPassword = bcrypt.hashSync(password, salt);
-
-    const newNhanVien: NhanVien = {
-      NhanVienID: generatedId,
-      TenDangNhap: tenDangNhap,
-      HoTen: data.HoTen?.trim() || '',
-      Email: data.Email?.trim().toLowerCase() || '',
-      SDT: data.SDT?.trim() || '',
-      ChucVu: data.ChucVu?.trim() || 'Nhân viên',
-      LuongCoBan: Number(data.LuongCoBan) || 0,
-      NgayVaoLam: data.NgayVaoLam || new Date().toISOString().split('T')[0],
-      TrangThai: data.TrangThai || 'Đang Làm',
-      AnhNhanVien: data.AnhNhanVien || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-      Quyen: data.Quyen || 'Nhân viên',
-      MatKhau: hashedPassword,
-      MatKhauHienThi: password,
-      SoTaiKhoan: data.SoTaiKhoan?.trim() || '',
-      NganHang: data.NganHang?.trim() || 'Vietcombank',
-      TenChuTaiKhoan: data.TenChuTaiKhoan?.trim() || (data.HoTen ? data.HoTen.toUpperCase() : ''),
-      ChiNhanhNganHang: data.ChiNhanhNganHang?.trim() || '',
-      BiKhoa: false,
-      GhiChu: data.GhiChu || '',
-      TaoLuc: new Date().toISOString(),
-    };
-
-    this.db.NHANVIEN.push(newNhanVien);
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Thêm nhân viên mới',
-      `Tạo nhân viên ${newNhanVien.HoTen} (${newNhanVien.NhanVienID}, ${newNhanVien.ChucVu})`
-    );
-
-    return newNhanVien;
   }
-
-  public updateNhanVien(id: string, updates: Partial<NhanVien>, adminUser: { HoTen: string; Email: string }): NhanVien {
-    const index = this.db.NHANVIEN.findIndex((nv) => nv.NhanVienID === id);
-    if (index === -1) {
-      throw new Error(`Không tìm thấy nhân viên với ID ${id}`);
-    }
-
-    const current = this.db.NHANVIEN[index];
-
-    let tenDangNhap = current.TenDangNhap || current.NhanVienID.toLowerCase();
-
-    if (updates.TenDangNhap !== undefined) {
-      tenDangNhap = String(updates.TenDangNhap || '').trim().toLowerCase();
-
-      if (!/^[a-zA-Z0-9._-]{3,50}$/.test(tenDangNhap)) {
-        throw new Error(
-          'Tên đăng nhập phải có ít nhất 3 ký tự và chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.'
-        );
-      }
-
-      const usernameOwner = this.findNhanVienByUsername(tenDangNhap);
-      if (usernameOwner && usernameOwner.NhanVienID !== id) {
-        throw new Error(`Tên đăng nhập "${tenDangNhap}" đã được sử dụng bởi nhân viên khác.`);
-      }
-    }
-
-    // Check email uniqueness if email changed
-    if (updates.Email && updates.Email.toLowerCase() !== current.Email.toLowerCase()) {
-      if (this.findNhanVienByEmail(updates.Email)) {
-        throw new Error(`Email ${updates.Email} đã được sử dụng bởi nhân viên khác.`);
-      }
-    }
-
-    let hashedPassword = current.MatKhau;
-    let plainPassword = current.MatKhauHienThi;
-    if (updates.MatKhau && updates.MatKhau.trim() !== '') {
-      const salt = bcrypt.genSaltSync(10);
-      hashedPassword = bcrypt.hashSync(updates.MatKhau.trim(), salt);
-      plainPassword = updates.MatKhau.trim();
-    }
-
-    const updated: NhanVien = {
-      ...current,
-      TenDangNhap: tenDangNhap,
-      HoTen: updates.HoTen !== undefined ? updates.HoTen.trim() : current.HoTen,
-      Email: updates.Email !== undefined ? updates.Email.trim().toLowerCase() : current.Email,
-      SDT: updates.SDT !== undefined ? updates.SDT.trim() : current.SDT,
-      ChucVu: updates.ChucVu !== undefined ? updates.ChucVu.trim() : current.ChucVu,
-      LuongCoBan: updates.LuongCoBan !== undefined ? Number(updates.LuongCoBan) : current.LuongCoBan,
-      NgayVaoLam: updates.NgayVaoLam || current.NgayVaoLam,
-      TrangThai: updates.TrangThai || current.TrangThai,
-      AnhNhanVien: updates.AnhNhanVien || current.AnhNhanVien,
-      Quyen: updates.Quyen || current.Quyen,
-      BiKhoa: updates.BiKhoa !== undefined ? updates.BiKhoa : current.BiKhoa,
-      GhiChu: updates.GhiChu !== undefined ? updates.GhiChu : current.GhiChu,
-      SoTaiKhoan: updates.SoTaiKhoan !== undefined ? updates.SoTaiKhoan.trim() : current.SoTaiKhoan,
-      NganHang: updates.NganHang !== undefined ? updates.NganHang.trim() : current.NganHang,
-      TenChuTaiKhoan: updates.TenChuTaiKhoan !== undefined ? updates.TenChuTaiKhoan.trim() : current.TenChuTaiKhoan,
-      ChiNhanhNganHang: updates.ChiNhanhNganHang !== undefined ? updates.ChiNhanhNganHang.trim() : current.ChiNhanhNganHang,
-      MatKhau: hashedPassword,
-      MatKhauHienThi: plainPassword,
-    };
-
-    this.db.NHANVIEN[index] = updated;
-
-    // Sync HoTen / Email to related tables if updated
-    if (updated.HoTen !== current.HoTen) {
-      this.db.CHAMCONG.forEach((cc) => {
-        if (cc.NhanVienID === id) cc.HoTen = updated.HoTen;
-      });
-      this.db.LUONG.forEach((l) => {
-        if (l.NhanVienID === id) {
-          l.HoTen = updated.HoTen;
-          // If Luong is still Chờ duyệt, update LuongCoBan if changed
-          if (l.TrangThai === 'Chờ duyệt') {
-            l.LuongCoBan = updated.LuongCoBan;
-            this.recalculateLuong(l);
-          }
-        }
-      });
-      this.db.HOAHONG.forEach((hh) => {
-        if (hh.NhanVienID === id) hh.HoTen = updated.HoTen;
-      });
-    }
-
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Cập nhật nhân viên',
-      `Sửa thông tin nhân viên ${updated.HoTen} (${updated.NhanVienID})`
-    );
-
-    return updated;
-  }
-
-  public deleteNhanVien(id: string, adminUser: { HoTen: string; Email: string }): boolean {
-    const nv = this.findNhanVienById(id);
-    if (!nv) throw new Error('Nhân viên không tồn tại');
-    if (nv.Quyen === 'Admin' && nv.NhanVienID === 'NV001') {
-      throw new Error('Không thể xóa tài khoản Quản trị viên tối cao');
-    }
-
-    this.db.NHANVIEN = this.db.NHANVIEN.filter((item) => item.NhanVienID !== id);
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Xóa nhân viên',
-      `Xóa nhân viên ${nv.HoTen} (${nv.NhanVienID}) khỏi hệ thống`
-    );
-    return true;
-  }
-
-  // CHAMCONG methods
-  public getChamCongList(filter?: { date?: string; month?: string; nhanVienId?: string; trangThai?: string }): ChamCong[] {
-    let result = [...this.db.CHAMCONG];
-    if (filter?.date) {
-      result = result.filter((cc) => cc.Ngay === filter.date);
-    }
-    if (filter?.month) {
-      // MM/YYYY matching YYYY-MM-DD
-      const [m, y] = filter.month.split('/');
-      if (m && y) {
-        const prefix = `${y}-${m.padStart(2, '0')}`;
-        result = result.filter((cc) => cc.Ngay.startsWith(prefix));
-      }
-    }
-    if (filter?.nhanVienId) {
-      result = result.filter((cc) => cc.NhanVienID === filter.nhanVienId);
-    }
-    if (filter?.trangThai) {
-      result = result.filter((cc) => cc.TrangThai === filter.trangThai);
-    }
-
-    // Sort descending by date, then check-in time
-    return result.sort((a, b) => {
-      const cmpDate = b.Ngay.localeCompare(a.Ngay);
-      if (cmpDate !== 0) return cmpDate;
-      return (b.CheckIn || '').localeCompare(a.CheckIn || '');
-    });
-  }
-
-  public checkIn(
-    user: NhanVien,
-    data: { anh: string; gps: string; ghiChu?: string }
-  ): ChamCong {
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const timeStr = now.toTimeString().split(' ')[0]; // HH:mm:ss
-
-    // Check if already checked in today
-    let record = this.db.CHAMCONG.find(
-      (cc) => cc.NhanVienID === user.NhanVienID && cc.Ngay === todayStr
-    );
-
-    if (record && record.CheckIn) {
-      throw new Error(`Bạn đã Check-in hôm nay lúc ${record.CheckIn}. Không thể Check-in lại!`);
-    }
-
-    // Evaluate on-time or late based on config (08:30)
-    const [h, m] = this.db.SYSTEM_CONFIG.GioVaoCaChuan.split(':').map(Number);
-    const standardCheckInMinutes = h * 60 + m;
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-    let trangThai: ChamCong['TrangThai'] = 'Có mặt';
-    if (currentMinutes > standardCheckInMinutes) {
-      trangThai = 'Đi trễ';
-    }
-
-    const chamCongId = `CC-${todayStr.replace(/-/g, '')}-${user.NhanVienID}`;
-
-    if (!record) {
-      record = {
-        ChamCongID: chamCongId,
-        NhanVienEmail: user.Email,
-        NhanVienID: user.NhanVienID,
-        HoTen: user.HoTen,
-        Ngay: todayStr,
-        CheckIn: timeStr,
-        AnhCheckIn: data.anh,
-        GPSCheckIn: data.gps,
-        SoGioLam: 0,
-        TrangThai: trangThai,
-        GhiChu: data.ghiChu || '',
-      };
-      this.db.CHAMCONG.unshift(record);
-    } else {
-      record.CheckIn = timeStr;
-      record.AnhCheckIn = data.anh;
-      record.GPSCheckIn = data.gps;
-      record.TrangThai = trangThai;
-      if (data.ghiChu) record.GhiChu = data.ghiChu;
-    }
-
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      user.HoTen,
-      user.Email,
-      'Check-in chấm công',
-      `Check-in lúc ${timeStr}, GPS: ${data.gps}, Trạng thái: ${trangThai}`
-    );
-
-    return record;
-  }
-
-  public checkOut(
-    user: NhanVien,
-    data: { anh: string; gps: string; ghiChu?: string }
-  ): ChamCong {
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const timeStr = now.toTimeString().split(' ')[0];
-
-    const record = this.db.CHAMCONG.find(
-      (cc) => cc.NhanVienID === user.NhanVienID && cc.Ngay === todayStr
-    );
-
-    if (!record || !record.CheckIn) {
-      throw new Error('Bạn chưa Check-in hôm nay. Vui lòng Check-in trước khi Check-out!');
-    }
-
-    if (record.CheckOut) {
-      throw new Error(`Bạn đã Check-out hôm nay lúc ${record.CheckOut}.`);
-    }
-
-    record.CheckOut = timeStr;
-    record.AnhCheckOut = data.anh;
-    record.GPSCheckOut = data.gps;
-    if (data.ghiChu) record.GhiChu = (record.GhiChu ? record.GhiChu + ' | ' : '') + data.ghiChu;
-
-    // Calculate SoGioLam
-    const [inH, inM, inS] = record.CheckIn.split(':').map(Number);
-    const [outH, outM, outS] = timeStr.split(':').map(Number);
-    const inTotalSec = inH * 3600 + inM * 60 + (inS || 0);
-    const outTotalSec = outH * 3600 + outM * 60 + (outS || 0);
-
-    const diffHours = Math.max(0, (outTotalSec - inTotalSec) / 3600);
-    record.SoGioLam = Math.round(diffHours * 100) / 100;
-
-    // Check early leave if before 17:30
-    const [stdOutH, stdOutM] = this.db.SYSTEM_CONFIG.GioTanCaChuan.split(':').map(Number);
-    const stdOutMinutes = stdOutH * 60 + stdOutM;
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-    if (currentMinutes < stdOutMinutes && record.TrangThai === 'Có mặt') {
-      record.TrangThai = 'Về sớm';
-    }
-
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      user.HoTen,
-      user.Email,
-      'Check-out chấm công',
-      `Check-out lúc ${timeStr}, Tổng giờ làm: ${record.SoGioLam} giờ`
-    );
-
-    return record;
-  }
-
-  // LUONG methods & Anti-duplicate check
-  public recalculateLuong(luong: Luong): void {
-    const tong =
-      (luong.LuongCoBan || 0) +
-      (luong.PhuCap || 0) +
-      (luong.Thuong || 0) +
-      (luong.HoaHong || 0) -
-      (luong.Phat || 0) -
-      (luong.TamUng || 0);
-    luong.TongLuong = Math.max(0, tong);
-    luong.ThucLanh = luong.TongLuong;
-  }
-
-  public getLuongList(filter?: { thang?: string; nhanVienId?: string; trangThai?: string }): Luong[] {
-    let result = [...this.db.LUONG];
-    if (filter?.thang) {
-      result = result.filter((l) => l.Thang === filter.thang);
-    }
-    if (filter?.nhanVienId) {
-      result = result.filter((l) => l.NhanVienID === filter.nhanVienId);
-    }
-    if (filter?.trangThai) {
-      result = result.filter((l) => l.TrangThai === filter.trangThai);
-    }
-    return result.sort((a, b) => b.Thang.localeCompare(a.Thang) || a.NhanVienID.localeCompare(b.NhanVienID));
-  }
-
-  public findLuongById(id: string): Luong | undefined {
-    return this.db.LUONG.find((l) => l.LuongID === id);
-  }
-
-  /**
-   * Tạo bảng lương tháng cho toàn bộ nhân viên TrangThai = 'Đang Làm'
-   * CRITICAL: CHỐNG TRÙNG LƯƠNG!
-   * Không được tạo 2 bản ghi cùng NhanVienID + cùng Thang.
-   * Trả về { createdCount, skippedCount, createdItems, skippedItems }
-   */
-  public taoBangLuongThang(
-    thang: string, // MM/YYYY
-    adminUser: { HoTen: string; Email: string }
-  ): {
-    createdCount: number;
-    skippedCount: number;
-    createdItems: string[];
-    skippedItems: string[];
-  } {
-    const activeStaff = this.db.NHANVIEN.filter((nv) => nv.TrangThai === 'Đang Làm');
-    let createdCount = 0;
-    let skippedCount = 0;
-    const createdItems: string[] = [];
-    const skippedItems: string[] = [];
-
-    // Parse month prefix to calculate real hours and days from CHAMCONG
-    const [m, y] = thang.split('/');
-    const monthPrefix = `${y}-${m.padStart(2, '0')}`;
-
-    for (const nv of activeStaff) {
-      // CHỐNG TRÙNG: Kiểm tra đã có bảng lương của nhân viên trong tháng này chưa
-      const exists = this.db.LUONG.some(
-        (l) => l.NhanVienID === nv.NhanVienID && l.Thang === thang
-      );
-
-      if (exists) {
-        skippedCount++;
-        skippedItems.push(`${nv.HoTen} (${nv.NhanVienID})`);
-        continue;
-      }
-
-      // Calculate attendance statistics for this employee in this month
-      const attendance = this.db.CHAMCONG.filter(
-        (cc) => cc.NhanVienID === nv.NhanVienID && cc.Ngay.startsWith(monthPrefix)
-      );
-      const soNgayCong = attendance.filter((cc) => cc.CheckIn).length;
-      const soGioLam = attendance.reduce((sum, cc) => sum + (cc.SoGioLam || 0), 0);
-
-      // Sum approved commissions for this month
-      const approvedCommissions = this.db.HOAHONG.filter(
-        (hh) =>
-          hh.NhanVienID === nv.NhanVienID &&
-          hh.Ngay.startsWith(monthPrefix) &&
-          hh.TrangThai === 'Đã duyệt'
-      );
-      const tongHoaHong = approvedCommissions.reduce((sum, hh) => sum + (hh.SoTienHoaHong || 0), 0);
-
-      const luongId = `L-${thang.replace('/', '')}-${nv.NhanVienID}`;
-      const newLuong: Luong = {
-        LuongID: luongId,
-        NhanVienID: nv.NhanVienID,
-        HoTen: nv.HoTen,
-        Thang: thang,
-        LuongCoBan: nv.LuongCoBan,
-        SoNgayCong: soNgayCong,
-        SoGioLam: Math.round(soGioLam * 100) / 100,
-        PhuCap: 0,
-        Thuong: 0,
-        HoaHong: tongHoaHong,
-        Phat: 0,
-        TamUng: 0,
-        TongLuong: 0,
-        ThucLanh: 0,
-        TrangThai: 'Chờ duyệt',
-        NgayTao: new Date().toISOString(),
-        GhiChu: `Bảng lương ${thang} tạo tự động`,
-      };
-
-      this.recalculateLuong(newLuong);
-      this.db.LUONG.push(newLuong);
-
-      // Link approved commissions to this new LuongID
-      approvedCommissions.forEach((hh) => {
-        hh.LuongID = luongId;
-      });
-
-      createdCount++;
-      createdItems.push(`${nv.HoTen} (${nv.NhanVienID})`);
-    }
-
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Tạo bảng lương tháng',
-      `Tạo bảng lương tháng ${thang}: Đã tạo ${createdCount}, Bỏ qua ${skippedCount} do đã tồn tại`
-    );
-
-    this.addNotification(
-      `Bảng lương tháng ${thang} đã được tạo`,
-      `Đã khởi tạo bảng lương cho ${createdCount} nhân viên. ${skippedCount > 0 ? `Đã bỏ qua ${skippedCount} nhân viên đã có bảng lương.` : ''}`,
-      'info'
-    );
-
-    return { createdCount, skippedCount, createdItems, skippedItems };
-  }
-
-  public updateLuongDetail(
-    luongId: string,
-    updates: Partial<Luong>,
-    adminUser: { HoTen: string; Email: string }
-  ): Luong {
-    const luong = this.findLuongById(luongId);
-    if (!luong) throw new Error('Không tìm thấy bảng lương');
-    if (luong.TrangThai === 'Đã thanh toán') {
-      throw new Error('Bảng lương đã thanh toán, không thể chỉnh sửa');
-    }
-
-    if (updates.LuongCoBan !== undefined) luong.LuongCoBan = Number(updates.LuongCoBan);
-    if (updates.SoNgayCong !== undefined) luong.SoNgayCong = Number(updates.SoNgayCong);
-    if (updates.SoGioLam !== undefined) luong.SoGioLam = Number(updates.SoGioLam);
-    if (updates.PhuCap !== undefined) luong.PhuCap = Number(updates.PhuCap);
-    if (updates.Thuong !== undefined) luong.Thuong = Number(updates.Thuong);
-    if (updates.HoaHong !== undefined) luong.HoaHong = Number(updates.HoaHong);
-    if (updates.Phat !== undefined) luong.Phat = Number(updates.Phat);
-    if (updates.TamUng !== undefined) luong.TamUng = Number(updates.TamUng);
-    if (updates.GhiChu !== undefined) luong.GhiChu = updates.GhiChu;
-
-    this.recalculateLuong(luong);
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Chỉnh sửa bảng lương',
-      `Sửa bảng lương ${luong.LuongID} của ${luong.HoTen}: Thực lãnh mới = ${luong.ThucLanh.toLocaleString('vi-VN')} đ`
-    );
-
-    return luong;
-  }
-
-  public duyetLuong(luongId: string, adminUser: { HoTen: string; Email: string }): Luong {
-    const luong = this.findLuongById(luongId);
-    if (!luong) throw new Error('Không tìm thấy bảng lương');
-    if (luong.TrangThai !== 'Chờ duyệt') {
-      throw new Error(`Bảng lương đang ở trạng thái "${luong.TrangThai}", không thể duyệt lại.`);
-    }
-
-    luong.TrangThai = 'Đã duyệt';
-    luong.NgayDuyet = new Date().toISOString();
-    luong.NguoiDuyet = adminUser.HoTen;
-
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Duyệt lương',
-      `Duyệt phiếu lương ${luong.LuongID} của ${luong.HoTen} (Thực lãnh: ${luong.ThucLanh.toLocaleString('vi-VN')} đ)`
-    );
-
-    this.addNotification(
-      `Lương tháng ${luong.Thang} đã được duyệt`,
-      `Phiếu lương của bạn đã được quản trị viên duyệt với số tiền thực lãnh là ${luong.ThucLanh.toLocaleString('vi-VN')} đ.`,
-      'success',
-      luong.NhanVienID
-    );
-
-    return luong;
-  }
-
-  public thanhToanLuong(luongId: string, adminUser: { HoTen: string; Email: string }): Luong {
-    const luong = this.findLuongById(luongId);
-    if (!luong) throw new Error('Không tìm thấy bảng lương');
-    if (luong.TrangThai !== 'Đã duyệt') {
-      throw new Error('Chỉ có thể thanh toán bảng lương đã được duyệt');
-    }
-
-    luong.TrangThai = 'Đã thanh toán';
-    luong.NgayThanhToan = new Date().toISOString();
-    luong.NguoiThanhToan = adminUser.HoTen;
-
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Thanh toán lương',
-      `Xác nhận thanh toán lương ${luong.LuongID} của ${luong.HoTen} (${luong.ThucLanh.toLocaleString('vi-VN')} đ)`
-    );
-
-    this.addNotification(
-      `Đã thanh toán lương tháng ${luong.Thang}`,
-      `Lương tháng ${luong.Thang} (${luong.ThucLanh.toLocaleString('vi-VN')} đ) đã được studio thanh toán thành công!`,
-      'success',
-      luong.NhanVienID
-    );
-
-    return luong;
-  }
-
-  // HOAHONG methods
-  public getHoaHongList(filter?: { nhanVienId?: string; trangThai?: string; month?: string }): HoaHong[] {
-    let result = [...this.db.HOAHONG];
-    if (filter?.nhanVienId) {
-      result = result.filter((hh) => hh.NhanVienID === filter.nhanVienId);
-    }
-    if (filter?.trangThai) {
-      result = result.filter((hh) => hh.TrangThai === filter.trangThai);
-    }
-    if (filter?.month) {
-      const [m, y] = filter.month.split('/');
-      const prefix = `${y}-${m.padStart(2, '0')}`;
-      result = result.filter((hh) => hh.Ngay.startsWith(prefix));
-    }
-    return result.sort((a, b) => b.Ngay.localeCompare(a.Ngay));
-  }
-
-  public createHoaHong(
-    data: {
-      NhanVienID: string;
-      Ngay: string;
-      NoiDung: string;
-      LoaiKhoan?: 'Tiền Show' | 'Hoa Hồng';
-      DoanhThu?: number;
-      TyLeHoaHong?: number;
-      SoTienHoaHong?: number;
-      AnhChungTu?: string;
-      GhiChu?: string;
-      TaoBoi?: 'Admin' | 'Nhân viên';
-    },
-    user: { HoTen: string; Email: string; Quyen?: string }
-  ): HoaHong {
-    const nv = this.findNhanVienById(data.NhanVienID);
-    if (!nv) throw new Error('Nhân viên không tồn tại');
-
-    const loaiKhoan = data.LoaiKhoan || 'Hoa Hồng';
-    const doanhThu = Number(data.DoanhThu) || 0;
-    const tyLe = Number(data.TyLeHoaHong) || 0;
-
-    let soTien = 0;
-    if (loaiKhoan === 'Tiền Show') {
-      soTien = data.SoTienHoaHong !== undefined && data.SoTienHoaHong > 0
-        ? Number(data.SoTienHoaHong)
-        : Math.round((doanhThu * (tyLe > 0 ? tyLe : 100)) / 100);
-    } else {
-      soTien = data.SoTienHoaHong && tyLe === 0
-        ? Number(data.SoTienHoaHong)
-        : Math.round((doanhThu * tyLe) / 100);
-    }
-
-    const hoaHongId = `HH-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
-
-    const newHoaHong: HoaHong = {
-      HoaHongID: hoaHongId,
-      NhanVienID: nv.NhanVienID,
-      HoTen: nv.HoTen,
-      Ngay: data.Ngay || new Date().toISOString().split('T')[0],
-      NoiDung: data.NoiDung.trim(),
-      LoaiKhoan: loaiKhoan,
-      DoanhThu: doanhThu,
-      TyLeHoaHong: tyLe,
-      SoTienHoaHong: soTien,
-      AnhChungTu: data.AnhChungTu,
-      TrangThai: 'Chờ duyệt',
-      GhiChu: data.GhiChu || '',
-      TaoBoi: data.TaoBoi || (user.Quyen === 'Admin' ? 'Admin' : 'Nhân viên'),
-    };
-
-    this.db.HOAHONG.unshift(newHoaHong);
-    this.save();
-
-    this.logAudit(
-      user.HoTen,
-      user.Email,
-      `Thêm kê khai ${loaiKhoan}`,
-      `Kê khai ${newHoaHong.HoaHongID} (${loaiKhoan}) cho ${nv.HoTen}: ${soTien.toLocaleString('vi-VN')} đ`
-    );
-
-    // If submitted by employee, send notification to admin
-    if (newHoaHong.TaoBoi === 'Nhân viên') {
-      this.addNotification(
-        `Yêu cầu duyệt ${loaiKhoan} từ ${nv.HoTen}`,
-        `${nv.HoTen} vừa gửi kê khai ${loaiKhoan}: "${newHoaHong.NoiDung}" với số tiền ${soTien.toLocaleString('vi-VN')} đ. Vui lòng kiểm tra và duyệt.`,
-        'info'
-      );
-    }
-
-    return newHoaHong;
-  }
-
-  public duyetHoaHong(
-    hoaHongId: string,
-    dongY: boolean,
-    adminUser: { HoTen: string; Email: string }
-  ): HoaHong {
-    const hh = this.db.HOAHONG.find((item) => item.HoaHongID === hoaHongId);
-    if (!hh) throw new Error('Không tìm thấy bản ghi hoa hồng');
-
-    if (dongY) {
-      hh.TrangThai = 'Đã duyệt';
-      hh.NgayDuyet = new Date().toISOString();
-      hh.NguoiDuyet = adminUser.HoTen;
-
-      // Tự động cộng vào bảng lương của nhân viên trong tháng đó nếu đang 'Chờ duyệt'
-      const [year, month] = hh.Ngay.split('-');
-      const thangStr = `${month}/${year}`;
-      const luong = this.db.LUONG.find(
-        (l) => l.NhanVienID === hh.NhanVienID && l.Thang === thangStr
-      );
-
-      if (luong && luong.TrangThai === 'Chờ duyệt') {
-        luong.HoaHong = (luong.HoaHong || 0) + hh.SoTienHoaHong;
-        this.recalculateLuong(luong);
-        hh.LuongID = luong.LuongID;
-      }
-    } else {
-      hh.TrangThai = 'Từ chối';
-      hh.NgayDuyet = new Date().toISOString();
-      hh.NguoiDuyet = adminUser.HoTen;
-    }
-
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      dongY ? 'Duyệt hoa hồng' : 'Từ chối hoa hồng',
-      `${dongY ? 'Duyệt' : 'Từ chối'} hoa hồng ${hh.HoaHongID} của ${hh.HoTen} (${hh.SoTienHoaHong.toLocaleString('vi-VN')} đ)`
-    );
-
-    this.addNotification(
-      dongY ? 'Hoa hồng đã được duyệt' : 'Hoa hồng bị từ chối',
-      `Khoản hoa hồng "${hh.NoiDung}" (${hh.SoTienHoaHong.toLocaleString('vi-VN')} đ) đã ${dongY ? 'được duyệt và cộng vào lương' : 'bị từ chối'}.`,
-      dongY ? 'success' : 'warning',
-      hh.NhanVienID
-    );
-
-    return hh;
-  }
-
-  public deleteHoaHong(id: string, adminUser: { HoTen: string; Email: string }): boolean {
-    const hh = this.db.HOAHONG.find((h) => h.HoaHongID === id);
-    if (!hh) throw new Error('Hoa hồng không tồn tại');
-
-    // If already linked to a Luong, subtract from Luong if Luong is still Chờ duyệt
-    if (hh.LuongID && hh.TrangThai === 'Đã duyệt') {
-      const luong = this.findLuongById(hh.LuongID);
-      if (luong && luong.TrangThai === 'Chờ duyệt') {
-        luong.HoaHong = Math.max(0, (luong.HoaHong || 0) - hh.SoTienHoaHong);
-        this.recalculateLuong(luong);
-      }
-    }
-
-    this.db.HOAHONG = this.db.HOAHONG.filter((h) => h.HoaHongID !== id);
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Xóa hoa hồng',
-      `Xóa hoa hồng ${hh.HoaHongID} của ${hh.HoTen}`
-    );
-    return true;
-  }
-
-  // Backup & Restore
-  public backupDatabase(): { filename: string; data: DatabaseSchema } {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `backup_hanhphambridal_${timestamp}.json`;
-    const backupPath = path.resolve(BACKUP_DIR, filename);
-    fs.writeFileSync(backupPath, JSON.stringify(this.db, null, 2), 'utf-8');
-    return { filename, data: this.db };
-  }
-
-  public restoreDatabase(incoming: DatabaseSchema, adminUser: { HoTen: string; Email: string }): boolean {
-    if (!incoming.NHANVIEN || !Array.isArray(incoming.NHANVIEN)) {
-      throw new Error('Dữ liệu phục hồi không hợp lệ: thiếu bảng NHANVIEN');
-    }
-    // Make safety backup of current state first
-    this.backupDatabase();
-
-    this.db = incoming;
-    this.refreshKPIs();
-    this.save();
-
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Khôi phục database',
-      `Đã khôi phục toàn bộ database từ bản backup`
-    );
-    return true;
-  }
-
-  public getConfig(): SystemConfig {
-    return this.db.SYSTEM_CONFIG;
-  }
-
-  public updateConfig(newConfig: Partial<SystemConfig>, adminUser: { HoTen: string; Email: string }): SystemConfig {
-    this.db.SYSTEM_CONFIG = {
-      ...this.db.SYSTEM_CONFIG,
-      ...newConfig,
-    };
-    this.save();
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Cập nhật cấu hình hệ thống',
-      'Thay đổi thiết lập giờ làm / studio / tự động hóa'
-    );
-    return this.db.SYSTEM_CONFIG;
-  }
-  // RESET TOÀN BỘ DỮ LIỆU DEMO - GIỮ LẠI ADMIN
-  public resetDemoData(adminUser: { HoTen: string; Email: string }) {
-    // Kiểm tra tài khoản Admin NV001 phải tồn tại
-    const admin = this.db.NHANVIEN.find(
-      (nv) => nv.NhanVienID === 'NV001' && nv.Quyen === 'Admin'
-    );
-
-    if (!admin) {
-      throw new Error('Không tìm thấy tài khoản Admin NV001. Không thể reset dữ liệu.');
-    }
-
-    // Tạo backup trước khi xóa
-    const backup = this.backupDatabase();
-
-    // GIỮ LẠI DUY NHẤT TÀI KHOẢN ADMIN
-    this.db.NHANVIEN = [admin];
-
-    // XÓA TOÀN BỘ DỮ LIỆU NGHIỆP VỤ DEMO
-    this.db.CHAMCONG = [];
-    this.db.LUONG = [];
-    this.db.HOAHONG = [];
-    this.db.NOTIFICATIONS = [];
-    this.db.AUDIT_LOG = [];
-
-    // Tắt tự động tạo lương trong thời gian nhập dữ liệu mới
-    this.db.SYSTEM_CONFIG = {
-      ...this.db.SYSTEM_CONFIG,
-      AutomationEnabled: false,
-      LanChayCuoi: new Date().toISOString(),
-    };
-
-    // Tính lại KPI từ database mới
-    this.refreshKPIs();
-
-    // Lưu database
-    this.save();
-
-    // Ghi lại một log duy nhất cho thao tác reset
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Reset dữ liệu demo',
-      'Đã xóa toàn bộ dữ liệu demo, giữ lại tài khoản Admin và cấu hình hệ thống.'
-    );
-
-    return {
-      success: true,
-      message: 'Đã xóa toàn bộ dữ liệu demo thành công.',
-      backupFile: backup.filename,
-      remainingAdmin: admin.NhanVienID,
-      nhanVien: this.db.NHANVIEN.length,
-      chamCong: this.db.CHAMCONG.length,
-      luong: this.db.LUONG.length,
-      hoaHong: this.db.HOAHONG.length,
-      notifications: this.db.NOTIFICATIONS.length,
-    };
-  }
-  public getRawData(): DatabaseSchema {
-    return this.db;
-  }
-}
-
-export const dbService = new DatabaseService();
