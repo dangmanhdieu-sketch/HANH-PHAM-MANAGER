@@ -2,6 +2,7 @@ import type {
   NhanVien,
   ChamCong,
   Luong,
+  TamUng,
   HoaHong,
   ThongKeKPI,
   AuditLog,
@@ -464,6 +465,25 @@ export const api = {
           method: 'POST',
         }
       );
+    },
+  },
+
+  // =========================================================
+  // TẠM ỨNG LƯƠNG
+  // =========================================================
+
+  tamUng: {
+    async getAll(params?: { thang?: string; nhanVienId?: string }): Promise<TamUng[]> {
+      const q = new URLSearchParams();
+      if (params?.thang) q.append('thang', params.thang);
+      if (params?.nhanVienId) q.append('nhanVienId', params.nhanVienId);
+      return request<TamUng[]>(`/api/tam-ung?${q.toString()}`);
+    },
+    async create(data: { NhanVienID: string; Ngay: string; SoTien: number; LyDo?: string; GhiChu?: string }): Promise<TamUng> {
+      return request<TamUng>('/api/tam-ung', { method: 'POST', body: JSON.stringify(data) });
+    },
+    async delete(id: string): Promise<{ message: string }> {
+      return request(`/api/tam-ung/${id}`, { method: 'DELETE' });
     },
   },
 
