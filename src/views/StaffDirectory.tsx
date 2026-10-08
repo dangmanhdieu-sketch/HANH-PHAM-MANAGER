@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import type { NhanVien } from '../types';
 import { HanhPhamLogo } from '../components/HanhPhamLogo';
+import { api } from '../api';
 
 interface StaffDirectoryProps {
   staffList: NhanVien[];
@@ -37,8 +38,20 @@ export const StaffDirectory: React.FC<StaffDirectoryProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState('Đang Làm');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [directoryStaff, setDirectoryStaff] = useState<NhanVien[]>(staffList);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
+  useEffect(() => {
+    setDirectoryStaff(staffList);
+  }, [staffList]);
+
+  useEffect(() => {
+    if (staffList.length > 0) return;
+    void api.staff.getAll().then(setDirectoryStaff).catch((error) => {
+      console.error('Không thể tải danh bạ ngân hàng:', error);
+    });
+  }, [staffList.length]);
 
   // Copied account number feedback state
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -76,7 +89,7 @@ export const StaffDirectory: React.FC<StaffDirectoryProps> = ({
   };
 
   // Filter staff
-  const filteredStaff = staffList.filter((nv) => {
+  const filteredStaff = directoryStaff.filter((nv) => {
     const term = searchTerm.toLowerCase();
     const matchSearch =
       nv.HoTen.toLowerCase().includes(term) ||
@@ -191,13 +204,13 @@ export const StaffDirectory: React.FC<StaffDirectoryProps> = ({
           <div>
             <span className="text-[11px] text-stone-400 uppercase tracking-wider block">Đang làm việc</span>
             <span className="text-xl sm:text-2xl font-bold font-bridal text-emerald-400">
-              {staffList.filter((nv) => nv.TrangThai === 'Đang Làm').length} <span className="text-xs font-normal text-stone-400">nhân sự</span>
+              {directoryStaff.filter((nv) => nv.TrangThai === 'Đang Làm').length} <span className="text-xs font-normal text-stone-400">nhân sự</span>
             </span>
           </div>
           <div>
             <span className="text-[11px] text-stone-400 uppercase tracking-wider block">Đã có số tài khoản</span>
             <span className="text-xl sm:text-2xl font-bold font-bridal text-sky-400">
-              {staffList.filter((nv) => nv.SoTaiKhoan).length} <span className="text-xs font-normal text-stone-400">tài khoản</span>
+              {directoryStaff.filter((nv) => nv.SoTaiKhoan).length} <span className="text-xs font-normal text-stone-400">tài khoản</span>
             </span>
           </div>
           <div>
@@ -294,7 +307,7 @@ export const StaffDirectory: React.FC<StaffDirectoryProps> = ({
 
         <div className="flex items-center justify-between text-xs text-stone-500 pt-1 border-t border-stone-100">
           <span>
-            Hiển thị <strong>{filteredStaff.length}</strong> / {staffList.length} nhân sự
+            Hiển thị <strong>{filteredStaff.length}</strong> / {directoryStaff.length} nhân sự
           </span>
           {currentUser.Quyen === 'Admin' && onNavigateToStaffManagement && (
             <button
