@@ -52,6 +52,40 @@ const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.resolve(DATA_DIR, 'database.json');
 const BACKUP_DIR = path.resolve(DATA_DIR, 'backups');
 
+const DEFAULT_APP_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh';
+
+function getZonedParts(date: Date, timeZone: string = DEFAULT_APP_TIMEZONE) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
+    return {
+      date: `${get('year')}-${get('month')}-${get('day')}`,
+      time: `${get('hour')}:${get('minute')}:${get('second')}`,
+      hour: Number(get('hour') || 0),
+      minute: Number(get('minute') || 0),
+      second: Number(get('second') || 0),
+    };
+  } catch {
+    const fallback = new Date(date);
+    return {
+      date: fallback.toISOString().split('T')[0],
+      time: fallback.toTimeString().split(' ')[0],
+      hour: fallback.getHours(),
+      minute: fallback.getMinutes(),
+      second: fallback.getSeconds(),
+    };
+  }
+}
+
 // Studio coordinates: Hanh Pham Bridal - 156 Nam Ky Khoi Nghia, District 1, Ho Chi Minh City
 const DEFAULT_CONFIG: SystemConfig = {
   TenStudio: 'HANH PHAM BRIDAL',
@@ -518,7 +552,7 @@ class DatabaseService {
   }
 
   public refreshKPIs() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getZonedParts(new Date()).date;
     const tongNhanVienDangLam = this.db.NHANVIEN.filter((nv) => nv.TrangThai === 'Đang Làm').length;
     const chamCongHomNay = this.db.CHAMCONG.filter((cc) => cc.Ngay === today && cc.CheckIn).length;
     
@@ -803,11 +837,19 @@ class DatabaseService {
 
   public checkIn(
     user: NhanVien,
-    data: { anh: string; gps: string; ghiChu?: string }
+    data: {
+      anh: string;
+      gps: string;
+      ghiChu?: string;
+      deviceTime?: string;
+      deviceTimeZone?: string;
+    }
   ): ChamCong {
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const timeStr = now.toTimeString().split(' ')[0]; // HH:mm:ss
+    const now = data.deviceTime ? new Date(data.deviceTime) : new Date();
+    const zone = data.deviceTimeZone || DEFAULT_APP_TIMEZONE;
+    const zoned = getZonedParts(now, zone);
+    const todayStr = zoned.date;
+    const timeStr = zoned.time;
 
     // Check if already checked in today
     let record = this.db.CHAMCONG.find(
@@ -821,7 +863,7 @@ class DatabaseService {
     // Evaluate on-time or late based on config (08:30)
     const [h, m] = this.db.SYSTEM_CONFIG.GioVaoCaChuan.split(':').map(Number);
     const standardCheckInMinutes = h * 60 + m;
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const currentMinutes = zoned.hour * 60 + zoned.minute;
 
     let trangThai: ChamCong['TrangThai'] = 'Có mặt';
     if (currentMinutes > standardCheckInMinutes) {
@@ -868,11 +910,19 @@ class DatabaseService {
 
   public checkOut(
     user: NhanVien,
-    data: { anh: string; gps: string; ghiChu?: string }
+    data: {
+      anh: string;
+      gps: string;
+      ghiChu?: string;
+      deviceTime?: string;
+      deviceTimeZone?: string;
+    }
   ): ChamCong {
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const timeStr = now.toTimeString().split(' ')[0];
+    const now = data.deviceTime ? new Date(data.deviceTime) : new Date();
+    const zone = data.deviceTimeZone || DEFAULT_APP_TIMEZONE;
+    const zoned = getZonedParts(now, zone);
+    const todayStr = zoned.date;
+    const timeStr = zoned.time;
 
     const record = this.db.CHAMCONG.find(
       (cc) => cc.NhanVienID === user.NhanVienID && cc.Ngay === todayStr
@@ -903,7 +953,7 @@ class DatabaseService {
     // Check early leave if before 17:30
     const [stdOutH, stdOutM] = this.db.SYSTEM_CONFIG.GioTanCaChuan.split(':').map(Number);
     const stdOutMinutes = stdOutH * 60 + stdOutM;
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const currentMinutes = zoned.hour * 60 + zoned.minute;
 
     if (currentMinutes < stdOutMinutes && record.TrangThai === 'Có mặt') {
       record.TrangThai = 'Về sớm';
