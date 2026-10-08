@@ -83,6 +83,7 @@ function getInitialData(): DatabaseSchema {
   const employees: NhanVien[] = [
     {
       NhanVienID: 'NV001',
+      TenDangNhap: 'admin',
       HoTen: 'Hạnh Phạm',
       Email: 'admin@hanhphambridal.vn',
       SDT: '0903888999',
@@ -104,6 +105,7 @@ function getInitialData(): DatabaseSchema {
     },
     {
       NhanVienID: 'NV002',
+      TenDangNhap: 'nv002',
       HoTen: 'Đỗ Mai Linh',
       Email: 'linh.mai@hanhphambridal.vn',
       SDT: '0912345678',
@@ -295,18 +297,25 @@ class DatabaseService {
       this.saveSync();
     }
 
-    // Ensure only 1 Admin and 1 Employee as requested (purge mock legacy accounts)
-    if (this.db.NHANVIEN && this.db.NHANVIEN.length > 2) {
-      const allowedIds = new Set(['NV001', 'NV002']);
-      this.db.NHANVIEN = this.db.NHANVIEN.filter((nv) => allowedIds.has(nv.NhanVienID));
-      this.db.CHAMCONG = this.db.CHAMCONG.filter((cc) => allowedIds.has(cc.NhanVienID));
-      this.db.LUONG = this.db.LUONG.filter((l) => allowedIds.has(l.NhanVienID));
-      this.db.HOAHONG = this.db.HOAHONG.filter((h) => allowedIds.has(h.NhanVienID));
-      this.saveSync();
+    // Migration: Ensure all staff have username + bank account + credential fields
+    let hasMigration = false;
+    if (this.db.NHANVIEN && Array.isArray(this.db.NHANVIEN)) {
+      this.db.NHANVIEN.forEach((nv) => {
+        const fallbackUsername = nv.NhanVienID === 'NV001' ? 'admin' : nv.NhanVienID.toLowerCase();
+        if (!nv.TenDangNhap || !nv.TenDangNhap.trim()) {
+          nv.TenDangNhap = fallbackUsername;
+          hasMigration = true;
+        } else {
+          const normalizedUsername = nv.TenDangNhap.trim().toLowerCase();
+          if (nv.TenDangNhap !== normalizedUsername) {
+            nv.TenDangNhap = normalizedUsername;
+            hasMigration = true;
+          }
+        }
+      });
     }
 
     // Migration: Ensure all staff have bank account & credential fields
-    let hasMigration = false;
     const defaultBanks = [
       { stk: '0071000888999', bank: 'Vietcombank', name: 'PHAM THI HANH', branch: 'TP. Hồ Chí Minh' },
       { stk: '19036888666011', bank: 'Techcombank', name: 'DO MAI LINH', branch: 'Bến Nghé, Q.1' },
@@ -470,6 +479,12 @@ class DatabaseService {
     return this.db.NHANVIEN.find((nv) => nv.Email.toLowerCase() === email.toLowerCase());
   }
 
+  public findNhanVienByUsername(username: string): NhanVien | undefined {
+    const normalized = String(username || '').trim().toLowerCase();
+    if (!normalized) return undefined;
+    return this.db.NHANVIEN.find((nv) => String(nv.TenDangNhap || '').trim().toLowerCase() === normalized);
+  }
+
   public createNhanVien(data: Partial<NhanVien>, adminUser: { HoTen: string; Email: string }): NhanVien {
     // Generate next NhanVienID: NV001, NV002, ...
     const existingIds = this.db.NHANVIEN.map((nv) => {
@@ -479,6 +494,14 @@ class DatabaseService {
     const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
     const nextNum = maxId + 1;
     const generatedId = `NV${String(nextNum).padStart(3, '0')}`;
+
+    const tenDangNhap = String(data.TenDangNhap || '').trim().toLowerCase() || generatedId.toLowerCase();
+    if (!/^[a-zA-Z0-9._-]{3,50}$/.test(tenDangNhap)) {
+      throw new Error('Tên đăng nhập phải có ít nhất 3 ký tự và chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.');
+    }
+    if (this.findNhanVienByUsername(tenDangNhap)) {
+      throw new Error(`Tên đăng nhập "${tenDangNhap}" đã tồn tại trong hệ thống!`);
+    }
 
     // Validate email uniqueness
     if (this.findNhanVienByEmail(data.Email || '')) {
@@ -491,6 +514,7 @@ class DatabaseService {
 
     const newNhanVien: NhanVien = {
       NhanVienID: generatedId,
+      TenDangNhap: tenDangNhap,
       HoTen: data.HoTen?.trim() || '',
       Email: data.Email?.trim().toLowerCase() || '',
       SDT: data.SDT?.trim() || '',
@@ -540,6 +564,18 @@ class DatabaseService {
       }
     }
 
+    // Check username uniqueness if username changed
+    if (updates.TenDangNhap !== undefined) {
+      const newUsername = String(updates.TenDangNhap || '').trim().toLowerCase();
+      if (!/^[a-zA-Z0-9._-]{3,50}$/.test(newUsername)) {
+        throw new Error('Tên đăng nhập phải có ít nhất 3 ký tự và chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.');
+      }
+      if (newUsername !== String(current.TenDangNhap || '').trim().toLowerCase()) {
+        const existingUser = this.findNhanVienByUsername(newUsername);
+        if (existingUser && existingUser.NhanVienID !== id) throw new Error(`Tên đăng nhập "${newUsername}" đã được sử dụng bởi nhân viên khác.`);
+      }
+    }
+
     let hashedPassword = current.MatKhau;
     let plainPassword = current.MatKhauHienThi;
     if (updates.MatKhau && updates.MatKhau.trim() !== '') {
@@ -550,6 +586,7 @@ class DatabaseService {
 
     const updated: NhanVien = {
       ...current,
+      TenDangNhap: updates.TenDangNhap !== undefined ? String(updates.TenDangNhap).trim().toLowerCase() : (current.TenDangNhap || (current.NhanVienID === 'NV001' ? 'admin' : current.NhanVienID.toLowerCase())),
       HoTen: updates.HoTen !== undefined ? updates.HoTen.trim() : current.HoTen,
       Email: updates.Email !== undefined ? updates.Email.trim().toLowerCase() : current.Email,
       SDT: updates.SDT !== undefined ? updates.SDT.trim() : current.SDT,
