@@ -8,6 +8,7 @@ interface FieldConfig {
   label: string;
   type?: 'text' | 'date' | 'number';
   placeholder?: string;
+  options?: Array<{ value: string; label: string }>;
 }
 
 interface ModuleConfig {
@@ -73,8 +74,11 @@ const CONFIG: Record<QuanLyModule, ModuleConfig> = {
     icon: Wallet,
     fields: [
       { key: 'Ngay', label: 'Ngày', type: 'date' },
-      { key: 'Loai', label: 'Loại', placeholder: 'THU hoặc CHI' },
-      { key: 'DanhMuc', label: 'Danh mục', placeholder: 'Váy / Marketing / Lương / Khách hàng...' },
+      { key: 'Loai', label: 'Loại', options: [
+        { value: 'THU', label: 'THU' },
+        { value: 'CHI', label: 'CHI' },
+      ] },
+      { key: 'DanhMuc', label: 'Lý do chi', placeholder: 'Nhập lý do thu/chi...' },
       { key: 'SoTien', label: 'Số tiền', type: 'number' },
       { key: 'HopDongID', label: 'Mã hợp đồng liên quan', placeholder: 'Có thể bỏ trống' },
       { key: 'DoiTuong', label: 'Đối tượng' },
@@ -119,9 +123,15 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }
     );
   }, [records, search]);
 
+  const getTodayLocal = () => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    return new Date(now.getTime() - offset * 60 * 1000).toISOString().slice(0, 10);
+  };
+
   const openCreate = () => {
     setEditing(null);
-    setFormData({});
+    setFormData(module === 'THU_CHI' ? { Ngay: getTodayLocal(), Loai: 'THU' } : {});
     setFormOpen(true);
   };
 
@@ -315,6 +325,20 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, onRefresh }
                       {staffList.map((staff) => (
                         <option key={staff.NhanVienID} value={staff.NhanVienID}>
                           {staff.HoTen} ({staff.NhanVienID})
+                        </option>
+                      ))}
+                    </select>
+                  ) : field.options ? (
+                    <select
+                      value={String(formData[field.key] ?? '')}
+                      onChange={(event) =>
+                        setFormData({ ...formData, [field.key]: event.target.value })
+                      }
+                      className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    >
+                      {field.options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
                         </option>
                       ))}
                     </select>
