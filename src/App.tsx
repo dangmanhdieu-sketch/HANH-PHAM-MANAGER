@@ -37,7 +37,6 @@ import { MyAttendance } from './views/employee/MyAttendance';
 import { MyPayroll } from './views/employee/MyPayroll';
 import { MyCommissions } from './views/employee/MyCommissions';
 import { MyProfile } from './views/employee/MyProfile';
-import { VisualDesignEditor } from './views/admin/VisualDesignEditor';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 
 function AppContent() {
