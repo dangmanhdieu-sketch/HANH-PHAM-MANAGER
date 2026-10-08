@@ -9,6 +9,8 @@ export type LoaiKhoanThuNhap = 'Tiền Show' | 'Hoa Hồng';
 
 export interface NhanVien {
   NhanVienID: string;
+   // Tên dùng để đăng nhập hệ thống
+  TenDangNhap: string;
   HoTen: string;
   Email: string;
   SDT: string;
