@@ -28,6 +28,8 @@ import { StaffManagement } from './views/admin/StaffManagement';
 import { AttendanceManagement } from './views/admin/AttendanceManagement';
 import { PayrollManagement } from './views/admin/PayrollManagement';
 import { AuditAndAutomation } from './views/admin/AuditAndAutomation';
+import { BusinessModule } from './views/admin/BusinessModule';
+import { BusinessStats } from './views/admin/BusinessStats';
 
 // Employee Views
 import { EmployeeDashboard } from './views/employee/EmployeeDashboard';
@@ -353,14 +355,6 @@ function AppContent() {
               />
             )}
 
-            {currentTab === 'danhba' && (
-              <StaffDirectory
-                staffList={staffList}
-                currentUser={currentUser}
-                onNavigateToStaffManagement={() => setCurrentTab('nhanvien')}
-              />
-            )}
-
             {currentTab === 'chamcong' && (
               <AttendanceManagement
                 attendanceList={attendanceList}
@@ -401,11 +395,23 @@ function AppContent() {
               />
             )}
 
-            {currentTab === 'automation' && (
+            {currentTab === 'congviec' && <BusinessModule module="CONG_VIEC" staffList={staffList} onRefresh={refreshAllData} />}
+            {currentTab === 'vaycuoi' && <BusinessModule module="VAY_CUOI" staffList={staffList} onRefresh={refreshAllData} />}
+            {currentTab === 'hopdong' && <BusinessModule module="HOP_DONG" staffList={staffList} onRefresh={refreshAllData} />}
+            {currentTab === 'thuchi' && <BusinessModule module="THU_CHI" staffList={staffList} onRefresh={refreshAllData} />}
+            {currentTab === 'thongke' && (
+              <BusinessStats
+                staffList={staffList}
+                payrollList={payrollList}
+                commissionList={commissionList}
+                attendanceList={attendanceList}
+              />
+            )}
+
+            {currentTab === 'thietlap' && (
               <AuditAndAutomation onRefreshAll={refreshAllData} />
             )}
 
-            {currentTab === 'thietke' && <VisualDesignEditor />}
           </>
         )}
 
