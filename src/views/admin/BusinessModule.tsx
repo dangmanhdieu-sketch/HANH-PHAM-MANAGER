@@ -89,7 +89,7 @@ const CONFIG: Record<QuanLyModule, ModuleConfig> = {
 };
 
 export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser, onRefresh }) => {
-  const isEmployee = currentUser?.Quyen !== 'Admin';
+  const isEmployee = !!currentUser && currentUser.Quyen !== 'Admin';
   const config = CONFIG[module];
   const Icon = config.icon;
 
