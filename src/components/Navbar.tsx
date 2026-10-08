@@ -70,15 +70,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     {
       id: 'luong',
-      label: 'Bảng lương',
-      shortLabel: 'Bảng lương',
+      label: 'Lương & Hoa hồng',
+      shortLabel: 'Lương & HH',
       icon: DollarSign,
-    },
-    {
-      id: 'hoahong',
-      label: 'Hoa hồng & Show',
-      shortLabel: 'Hoa hồng',
-      icon: Award,
     },
     {
       id: 'automation',
