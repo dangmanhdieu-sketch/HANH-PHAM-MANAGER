@@ -15,10 +15,10 @@ import {
   Camera,
   Clock,
   User,
+  Upload,
 } from 'lucide-react';
 import type { HoaHong, NhanVien, LoaiKhoanThuNhap } from '../../types';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
-import { Upload } from 'lucide-react';
 import { api } from '../../api';
 
 interface CommissionManagementProps {
@@ -709,7 +709,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
         </div>
       )}
 
-      {/* Confirmation Modal for Delete */
+      {/* Confirmation Modal for Delete */}
       <ConfirmationModal
         isOpen={Boolean(deleteConfirmHH)}
         onClose={() => setDeleteConfirmHH(null)}
