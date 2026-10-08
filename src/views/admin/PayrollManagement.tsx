@@ -809,8 +809,6 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
         confirmText="XÁC NHẬN ĐÃ THANH TOÁN"
         type="success"
       />
-    </div>
-
       {/* GỘP HOA HỒNG & SHOW VÀO CÙNG TAB LƯƠNG */}
       {initialFilterStatus === 'ALL' && (
         <CommissionManagement
@@ -819,5 +817,6 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
           onRefresh={onRefresh}
         />
       )}
+    </div>
   );
 };
