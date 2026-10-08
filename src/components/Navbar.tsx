@@ -481,28 +481,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* ACTIONS */}
             <div className="flex items-center gap-2 sm:gap-4">
 
-              {/* DESIGN */}
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleTabChange('thietke')
-                  }
-                  title="Tùy biến thiết kế"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition shadow-sm ${
-                    currentTab === 'thietke'
-                      ? 'bg-stone-900 text-[#f3dfa2] border-[#c5a059]'
-                      : 'bg-[#FAF8F5] hover:bg-[#F4EEE7] text-stone-800 border-[#E7DFD5]'
-                  }`}
-                >
-                  <Palette className="w-3.5 h-3.5 text-[#c5a059]" />
-                  <span>Thiết kế app</span>
-                </button>
-              )}
-
-              {/* ACCOUNT SWITCH */}
-              <div className="relative">
-                <button
                   type="button"
                   onClick={() => {
                     setSwitchDropdownOpen((prev) => !prev);
@@ -990,42 +968,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               </div>
 
-              {/* DESIGN */}
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleTabChange('thietke')
-                  }
-                  className={`w-full mt-3 flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left ${
-                    currentTab === 'thietke'
-                      ? 'bg-stone-900 text-white'
-                      : 'bg-white border border-[#EEE7DE]'
-                  }`}
-                >
-
-                  <span
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      currentTab === 'thietke'
-                        ? 'bg-white/10 text-[#dfc79f]'
-                        : 'bg-[#F7F3ED] text-[#a97d3e]'
-                    }`}
-                  >
-                    <Palette className="w-5 h-5" />
-                  </span>
-
-                  <span>
-
-                    <span className="block text-sm font-semibold">
-                      Thiết kế app
-                    </span>
-
-                    <span
-                      className={`block text-[10px] mt-0.5 ${
-                        currentTab === 'thietke'
-                          ? 'text-[#dfc79f]'
-                          : 'text-stone-400'
-                      }`}
                     >
                       Tùy biến giao diện
                     </span>
