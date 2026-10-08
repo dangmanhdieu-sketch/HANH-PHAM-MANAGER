@@ -100,6 +100,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       icon: Contact,
     },
     {
+      id: 'thuchi_me',
+      label: 'Phiếu thu & chi',
+      shortLabel: 'Thu & Chi',
+      icon: Wallet,
+    },
+    {
       id: 'profile_me',
       label: 'Hồ sơ',
       shortLabel: 'Hồ sơ',
