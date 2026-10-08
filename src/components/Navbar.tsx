@@ -15,7 +15,6 @@ import {
   ChevronDown,
   Contact,
   CheckSquare,
-  Shirt,
   FileText,
   Wallet,
 } from 'lucide-react';
@@ -58,7 +57,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'chamcong', label: 'Chấm công', shortLabel: 'Chấm công', icon: Clock },
     { id: 'luong', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
     { id: 'congviec', label: 'Công việc', shortLabel: 'Công việc', icon: CheckSquare },
-    { id: 'vaycuoi', label: 'Váy cưới', shortLabel: 'Váy cưới', icon: Shirt },
     { id: 'hopdong', label: 'Hợp đồng', shortLabel: 'Hợp đồng', icon: FileText },
     { id: 'thuchi', label: 'Thu chi', shortLabel: 'Thu chi', icon: Wallet },
     { id: 'thongke', label: 'Thống kê', shortLabel: 'Thống kê', icon: BarChart3 },
