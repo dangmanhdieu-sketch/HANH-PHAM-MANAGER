@@ -1138,7 +1138,7 @@ class DatabaseService {
     const [yyyy, mm] = String(data.Ngay).split('-');
     const thang = `${mm}/${yyyy}`;
     const luong = this.db.LUONG.find((l) => l.NhanVienID === nv.NhanVienID && l.Thang === thang);
-    if (luong?.TrangThai === 'Đã thanh toán') throw new Error('Bảng lương tháng này đã thanh toán, không thể thêm tạm ứng.');
+    if (luong && luong.TrangThai !== 'Chờ duyệt') throw new Error('Bảng lương tháng này đã duyệt/đã thanh toán, không thể thêm tạm ứng.');
     const item: TamUng = {
       TamUngID: `TU-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
       NhanVienID: nv.NhanVienID,
@@ -1164,7 +1164,7 @@ class DatabaseService {
     if (index === -1) throw new Error('Không tìm thấy khoản tạm ứng.');
     const item = this.db.TAM_UNG[index];
     const luong = this.db.LUONG.find((l) => l.NhanVienID === item.NhanVienID && l.Thang === item.Thang);
-    if (luong?.TrangThai === 'Đã thanh toán') throw new Error('Bảng lương tháng này đã thanh toán, không thể xóa tạm ứng.');
+    if (luong && luong.TrangThai !== 'Chờ duyệt') throw new Error('Bảng lương tháng này đã duyệt/đã thanh toán, không thể xóa tạm ứng.');
     this.db.TAM_UNG.splice(index, 1);
     if (luong) this.syncTamUngToLuong(luong);
     this.refreshKPIs();
