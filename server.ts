@@ -460,7 +460,52 @@ app.post('/api/chamcong/checkout', authenticateToken, (req: AuthRequest, res: Re
 });
 
 // ==========================================
-// 4. LUONG (PAYROLL) ROUTES
+// QUẢN LÝ NGHIỆP VỤ LIÊN KẾT
+// ==========================================
+app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => {
+  const module = req.query.module as any;
+  return res.json(dbService.getQuanLyRecords(module || undefined));
+});
+
+app.post('/api/quan-ly', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const { module, data } = req.body || {};
+    const record = dbService.createQuanLyRecord(module, data, {
+      HoTen: req.user!.HoTen,
+      Email: req.user!.Email,
+    });
+    return res.status(201).json(record);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Không thể tạo dữ liệu.' });
+  }
+});
+
+app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const record = dbService.updateQuanLyRecord(req.params.id, req.body?.data || {}, {
+      HoTen: req.user!.HoTen,
+      Email: req.user!.Email,
+    });
+    return res.json(record);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Không thể cập nhật dữ liệu.' });
+  }
+});
+
+app.delete('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    return res.json(dbService.deleteQuanLyRecord(req.params.id, {
+      HoTen: req.user!.HoTen,
+      Email: req.user!.Email,
+    }));
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Không thể xóa dữ liệu.' });
+  }
+});
+
+// ==========================================
+// // ==========================================
+// 4 LUONG (PAYROLL) ROUTES
 // ==========================================
 
 app.get('/api/luong', authenticateToken, (req: AuthRequest, res: Response) => {
