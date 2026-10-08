@@ -76,7 +76,6 @@ export const BusinessStats: React.FC<Props> = ({
       staff: staffList.filter((item) => item.TrangThai === 'Đang Làm').length,
       tasks: count('CONG_VIEC'),
       contracts: count('HOP_DONG'),
-      dresses: count('VAY_CUOI'),
       thu,
       chi,
       approvedCommission,
