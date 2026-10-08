@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Palette,
   Sparkles,
@@ -9,17 +9,13 @@ import {
   Layout,
   Crown,
   Image as ImageIcon,
-  Eye,
   Sliders,
   Sun,
   Shield,
-  CreditCard,
-  Phone,
-  Copy,
-  ExternalLink,
 } from 'lucide-react';
 import { useTheme, THEME_PRESETS } from '../../context/ThemeContext';
-import { HanhPhamLogo } from '../../components/HanhPhamLogo';
+import type { SystemConfig } from '../../types';
+import { api } from '../../api';
 
 export const VisualDesignEditor: React.FC = () => {
   const {
@@ -33,7 +29,70 @@ export const VisualDesignEditor: React.FC = () => {
   } = useTheme();
 
   const [activeTab, setActiveTab] = useState<'presets' | 'brand' | 'colors' | 'typography' | 'layout'>('presets');
-  const [copiedStk, setCopiedStk] = useState(false);
+  const [studioConfig, setStudioConfig] = useState<SystemConfig>({
+    TenStudio: '',
+    DiaChi: '',
+    Hotline: '',
+    KinhDoStudio: 0,
+    ViDoStudio: 0,
+    BanKinhChoPhepMet: 200,
+    GioVaoCaChuan: '08:30',
+    GioTanCaChuan: '17:30',
+    TuDongTaoLuongNgay: 1,
+    TuDongTaoLuongGio: '00:05',
+    AutomationEnabled: true,
+  });
+  const [savingStudio, setSavingStudio] = useState(false);
+
+  useEffect(() => {
+    api.system.getConfig()
+      .then((config) => setStudioConfig(config))
+      .catch((err) => console.error('Không thể tải thông tin Studio:', err));
+  }, []);
+
+  const updateStudioField = <K extends keyof SystemConfig>(
+    field: K,
+    value: SystemConfig[K]
+  ) => {
+    setStudioConfig((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const saveStudioConfig = async () => {
+    setSavingStudio(true);
+    try {
+      const saved = await api.system.updateConfig(studioConfig);
+      setStudioConfig(saved);
+      alert('Đã lưu thông tin Studio thành công.');
+    } catch (err: any) {
+      alert(err?.message || 'Không thể lưu thông tin Studio.');
+    } finally {
+      setSavingStudio(false);
+    }
+  };
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Thiết bị/trình duyệt không hỗ trợ lấy vị trí.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setStudioConfig((prev) => ({
+          ...prev,
+          ViDoStudio: Number(position.coords.latitude.toFixed(7)),
+          KinhDoStudio: Number(position.coords.longitude.toFixed(7)),
+        }));
+      },
+      (error) => {
+        alert(
+          error.message ||
+            'Không thể lấy vị trí hiện tại. Hãy cho phép trình duyệt truy cập vị trí.'
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   // Helper for color swatches
   const colorPresets = [
@@ -667,183 +726,154 @@ export const VisualDesignEditor: React.FC = () => {
         </div>
 
         {/* ========================================================
-            RIGHT COLUMN: REALTIME WYSIWYG PREVIEW (5 Cols on LG)
+            RIGHT COLUMN: STUDIO INFORMATION
            ======================================================== */}
-        <div className="lg:col-span-5 sticky top-20 space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
-              <Eye className="w-4 h-4 text-[#bf954f]" />
-              XEM TRƯỚC TRỰC QUAN (REAL-TIME PREVIEW)
-            </span>
-            <span className="text-[10px] text-stone-400 font-mono">Thay đổi tức thì</span>
-          </div>
-
-          {/* Simulated App Frame */}
-          <div
-            className="rounded-3xl border border-stone-300 shadow-2xl overflow-hidden transition-all duration-300"
-            style={{ backgroundColor: previewTheme.appBgColor }}
-          >
-            {/* Simulated Top Navbar */}
-            <div
-              className="px-4 py-3 border-b flex items-center justify-between transition-colors duration-300"
-              style={{
-                backgroundColor: previewTheme.navbarBgColor,
-                color: previewTheme.navbarTextColor,
-                borderColor: `${previewTheme.primaryColor}30`,
-              }}
-            >
-              <div className="flex items-center gap-2.5">
-                <HanhPhamLogo size="sm" variant="gold" />
-                <h4 className="font-bridal text-sm font-bold tracking-wider leading-none">
-                  {previewTheme.brandName}
-                </h4>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <div
-                  className="px-2 py-1 rounded-md text-[10px] font-bold uppercase"
-                  style={{
-                    backgroundColor: `${previewTheme.primaryColor}25`,
-                    color: previewTheme.primaryColor,
-                    borderColor: `${previewTheme.primaryColor}40`,
-                    borderWidth: '1px',
-                  }}
-                >
-                  ADMIN
-                </div>
-              </div>
+        <div className="lg:col-span-5 space-y-4">
+          <div className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#E7DFD5] bg-[#FAF8F5]">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-stone-900">
+                THÔNG TIN STUDIO
+              </h2>
+              <p className="text-xs text-stone-500 mt-1">
+                Cập nhật địa chỉ, hotline và vị trí dùng cho chấm công GPS.
+              </p>
             </div>
 
-            {/* Simulated Page Content Area */}
-            <div className="p-4 space-y-3.5 text-xs">
-              {/* Simulated KPI Banner */}
-              <div
-                className="bg-white p-3.5 border border-stone-200 shadow-sm"
-                style={{
-                  borderRadius:
-                    previewTheme.cardBorderRadius === '3xl'
-                      ? '20px'
-                      : previewTheme.cardBorderRadius === '2xl'
-                      ? '16px'
-                      : '10px',
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase font-bold text-stone-400">
-                    Bảng Lương Tháng
-                  </span>
-                  <span
-                    className="w-2 h-2 rounded-full animate-ping"
-                    style={{ backgroundColor: previewTheme.primaryColor }}
-                  ></span>
-                </div>
-                <div className="mt-1 flex items-baseline justify-between">
-                  <h5 className="text-xl font-bold font-bridal text-stone-900">
-                    22.000.000 <span className="text-[10px] font-normal text-stone-500">VNĐ</span>
-                  </h5>
-                  <span
-                    className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
-                    style={{
-                      backgroundColor: `${previewTheme.primaryColor}20`,
-                      color: previewTheme.primaryHoverColor,
-                    }}
-                  >
-                    ĐÃ DUYỆT
-                  </span>
-                </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Tên Studio
+                </label>
+                <input
+                  value={studioConfig.TenStudio}
+                  onChange={(e) => updateStudioField('TenStudio', e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-stone-300 focus:outline-none focus:border-[#a97d3e]"
+                  placeholder="HANH PHAM BRIDAL"
+                />
               </div>
 
-              {/* Simulated Staff Card with Bank Info */}
-              <div
-                className="bg-white p-4 border border-stone-200 shadow-sm space-y-3"
-                style={{
-                  borderRadius:
-                    previewTheme.cardBorderRadius === '3xl'
-                      ? '20px'
-                      : previewTheme.cardBorderRadius === '2xl'
-                      ? '16px'
-                      : '10px',
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <img
-                    src="https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80"
-                    alt="Staff Preview"
-                    className="w-11 h-11 rounded-full object-cover border-2"
-                    style={{ borderColor: previewTheme.primaryColor }}
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Địa chỉ tiệm
+                </label>
+                <textarea
+                  value={studioConfig.DiaChi}
+                  onChange={(e) => updateStudioField('DiaChi', e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-stone-300 focus:outline-none focus:border-[#a97d3e] resize-none"
+                  placeholder="Nhập địa chỉ đầy đủ của tiệm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Hotline
+                </label>
+                <input
+                  value={studioConfig.Hotline}
+                  onChange={(e) => updateStudioField('Hotline', e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-stone-300 focus:outline-none focus:border-[#a97d3e]"
+                  placeholder="0988 123 456"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Vĩ độ
+                  </label>
+                  <input
+                    type="number"
+                    step="0.0000001"
+                    value={studioConfig.ViDoStudio}
+                    onChange={(e) =>
+                      updateStudioField('ViDoStudio', Number(e.target.value))
+                    }
+                    className="w-full px-3 py-2.5 text-xs font-mono rounded-xl border border-stone-300 focus:outline-none focus:border-[#a97d3e]"
                   />
-                  <div>
-                    <h5 className="font-bold text-sm text-stone-900 font-bridal leading-tight">
-                      Đỗ Mai Linh
-                    </h5>
-                    <p className="text-[10px] text-stone-500">Stylist Váy Cưới VIP</p>
-                  </div>
                 </div>
 
-                {/* Bank account simulation */}
-                <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-3.5 h-3.5 text-stone-400" />
-                    <div>
-                      <span className="text-[9px] font-bold text-stone-500 uppercase block">
-                        Techcombank • DO MAI LINH
-                      </span>
-                      <span className="font-mono font-bold text-stone-800 text-xs">
-                        19036888666011
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCopiedStk(true);
-                      setTimeout(() => setCopiedStk(false), 2000);
-                    }}
-                    className="p-1 text-stone-400 hover:text-stone-900"
-                    title="Sao chép"
-                  >
-                    {copiedStk ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-
-                {/* Action Buttons with Dynamic Primary Color */}
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    className="flex-1 py-2 px-3 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm transition"
-                    style={{
-                      backgroundColor: previewTheme.primaryColor,
-                      borderRadius:
-                        previewTheme.buttonStyle === 'pill'
-                          ? '9999px'
-                          : previewTheme.buttonStyle === 'rounded'
-                          ? '10px'
-                          : '4px',
-                    }}
-                  >
-                    Duyệt Lương
-                  </button>
-                  <button
-                    type="button"
-                    className="py-2 px-3 text-[11px] font-semibold border border-stone-300 text-stone-700 bg-white"
-                    style={{
-                      borderRadius:
-                        previewTheme.buttonStyle === 'pill'
-                          ? '9999px'
-                          : previewTheme.buttonStyle === 'rounded'
-                          ? '10px'
-                          : '4px',
-                    }}
-                  >
-                    Chi Tiết
-                  </button>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Kinh độ
+                  </label>
+                  <input
+                    type="number"
+                    step="0.0000001"
+                    value={studioConfig.KinhDoStudio}
+                    onChange={(e) =>
+                      updateStudioField('KinhDoStudio', Number(e.target.value))
+                    }
+                    className="w-full px-3 py-2.5 text-xs font-mono rounded-xl border border-stone-300 focus:outline-none focus:border-[#a97d3e]"
+                  />
                 </div>
               </div>
 
-              {/* Simulated Footer */}
-              <div className="pt-2 text-center text-[10px] text-stone-400">
-                {previewTheme.footerText}
+              <button
+                type="button"
+                onClick={getCurrentLocation}
+                className="w-full px-4 py-2.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-xs font-bold text-stone-800 transition"
+              >
+                📍 Lấy vị trí hiện tại của tiệm
+              </button>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Bán kính chấm công GPS (mét)
+                </label>
+                <input
+                  type="number"
+                  min={10}
+                  step={10}
+                  value={studioConfig.BanKinhChoPhepMet}
+                  onChange={(e) =>
+                    updateStudioField(
+                      'BanKinhChoPhepMet',
+                      Number(e.target.value)
+                    )
+                  }
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-stone-300 focus:outline-none focus:border-[#a97d3e]"
+                />
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Giờ vào chuẩn
+                  </label>
+                  <input
+                    type="time"
+                    value={studioConfig.GioVaoCaChuan}
+                    onChange={(e) =>
+                      updateStudioField('GioVaoCaChuan', e.target.value)
+                    }
+                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-stone-300 focus:outline-none focus:border-[#a97d3e]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Giờ tan chuẩn
+                  </label>
+                  <input
+                    type="time"
+                    value={studioConfig.GioTanCaChuan}
+                    onChange={(e) =>
+                      updateStudioField('GioTanCaChuan', e.target.value)
+                    }
+                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-stone-300 focus:outline-none focus:border-[#a97d3e]"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={saveStudioConfig}
+                disabled={savingStudio}
+                className="w-full px-5 py-3 rounded-xl bg-stone-900 hover:bg-black text-[#f3dfa2] text-xs font-bold uppercase tracking-wider transition disabled:opacity-50"
+              >
+                {savingStudio ? 'Đang lưu...' : 'Lưu thông tin Studio'}
+              </button>
             </div>
           </div>
         </div>
