@@ -24,6 +24,7 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 function createToken(user: NhanVien): string {
   const payload = {
     id: user.NhanVienID,
+    username: user.TenDangNhap,
     email: user.Email,
     role: user.Quyen,
     exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -31,7 +32,7 @@ function createToken(user: NhanVien): string {
   return Buffer.from(JSON.stringify(payload)).toString('base64');
 }
 
-function parseToken(tokenStr: string): { id: string; email: string; role: string; exp: number } | null {
+function parseToken(tokenStr: string): { id: string; username?: string; email: string; role: string; exp: number } | null {
   try {
     const raw = Buffer.from(tokenStr, 'base64').toString('utf-8');
     const parsed = JSON.parse(raw);
@@ -117,50 +118,24 @@ app.post(
 
 app.post('/api/auth/login', (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Vui lòng nhập đầy đủ Email và Mật khẩu.' });
-    }
+    const username = String(req.body?.username || req.body?.email || '').trim();
+    const password = String(req.body?.password || '');
+    if (!username || !password) return res.status(400).json({ error: 'Vui lòng nhập đầy đủ Tên đăng nhập và Mật khẩu.' });
 
-    let user = dbService.findNhanVienByEmail(email);
-    if (!user && (email.toLowerCase() === 'admin@hanhphambridal.vn' || email.toLowerCase() === 'admin' || email.toLowerCase() === 'hanhs.studio@gmail.com')) {
-      user = dbService.findNhanVienById('NV001');
-    }
+    let user = dbService.findNhanVienByUsername(username);
+    if (!user && username.includes('@')) user = dbService.findNhanVienByEmail(username);
+    if (!user) return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không chính xác.' });
+    if (user.BiKhoa) return res.status(403).json({ error: 'Tài khoản của bạn đã bị khóa.' });
 
-    if (!user) {
-      return res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác.' });
-    }
-
-    if (user.BiKhoa) {
-      return res.status(403).json({ error: 'Tài khoản của bạn đã bị khóa.' });
-    }
-
-    const isMatch =
-      (user.MatKhau && bcrypt.compareSync(password, user.MatKhau)) ||
-      (user.Quyen === 'Admin' && (password === 'admin123' || password === '211811868')) ||
-      (user.Quyen === 'Nhân viên' && password === '123456');
-
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác.' });
-    }
+    const isMatch = !!user.MatKhau && bcrypt.compareSync(password, user.MatKhau);
+    if (!isMatch) return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không chính xác.' });
 
     const token = createToken(user);
     const { MatKhau: _, ...userSafe } = user;
-
-    dbService.logAudit(
-      user.HoTen,
-      user.Email,
-      'Đăng nhập hệ thống',
-      `Đăng nhập thành công với vai trò: ${user.Quyen}`,
-      req.ip
-    );
-
-    return res.json({
-      user: userSafe,
-      token,
-      message: 'Đăng nhập thành công',
-    });
+    dbService.logAudit(user.HoTen, user.Email, 'Đăng nhập hệ thống', `Đăng nhập thành công với username: ${user.TenDangNhap}`, req.ip);
+    return res.json({ user: userSafe, token, message: 'Đăng nhập thành công' });
   } catch (err: any) {
+    console.error('Login error:', err);
     return res.status(500).json({ error: err.message || 'Lỗi server' });
   }
 });
