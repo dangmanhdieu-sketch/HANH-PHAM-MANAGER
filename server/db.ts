@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import type {
   NhanVien,
@@ -51,40 +51,6 @@ interface DatabaseSchema {
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.resolve(DATA_DIR, 'database.json');
 const BACKUP_DIR = path.resolve(DATA_DIR, 'backups');
-
-const DEFAULT_APP_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh';
-
-function getZonedParts(date: Date, timeZone: string = DEFAULT_APP_TIMEZONE) {
-  try {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hourCycle: 'h23',
-    }).formatToParts(date);
-    const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
-    return {
-      date: `${get('year')}-${get('month')}-${get('day')}`,
-      time: `${get('hour')}:${get('minute')}:${get('second')}`,
-      hour: Number(get('hour') || 0),
-      minute: Number(get('minute') || 0),
-      second: Number(get('second') || 0),
-    };
-  } catch {
-    const fallback = new Date(date);
-    return {
-      date: fallback.toISOString().split('T')[0],
-      time: fallback.toTimeString().split(' ')[0],
-      hour: fallback.getHours(),
-      minute: fallback.getMinutes(),
-      second: fallback.getSeconds(),
-    };
-  }
-}
 
 // Studio coordinates: Hanh Pham Bridal - 156 Nam Ky Khoi Nghia, District 1, Ho Chi Minh City
 const DEFAULT_CONFIG: SystemConfig = {
@@ -315,14 +281,30 @@ function getInitialData(): DatabaseSchema {
 
 class DatabaseService {
   private db: DatabaseSchema;
-  private isSaving = false;
-  private firestore: Firestore | null = null;
-  private firestoreReady = false;
   private firestoreSaveQueue: Promise<void> = Promise.resolve();
-  public readonly ready: Promise<void>;
+  private firestoreSaveQueued = false;
+  private firestore: Firestore | null = null;
+  private firestoreEnabled = false;
+  private readonly firestoreCollection = process.env.FIREBASE_COLLECTION || 'hanh_pham_manager';
+  private readonly firestoreDocument = process.env.FIREBASE_DOCUMENT || 'database';
+  private readonly firestoreTables = [
+    'NHANVIEN',
+    'CHAMCONG',
+    'LUONG',
+    'HOAHONG',
+    'THONGKE',
+    'AUDIT_LOG',
+    'NOTIFICATIONS',
+    'SYSTEM_CONFIG',
+    'THEME',
+  ] as const;
+  private readyPromise: Promise<void>;
 
   constructor() {
     ensureDirs();
+
+    // Local file is retained only as a fallback/cache. Firestore is the
+    // authoritative persistent database when FIREBASE_SERVICE_ACCOUNT_JSON exists.
     if (fs.existsSync(DB_FILE)) {
       try {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
@@ -330,15 +312,23 @@ class DatabaseService {
       } catch (err) {
         console.error('Failed reading database.json, initializing defaults:', err);
         this.db = getInitialData();
-        this.saveSync();
       }
     } else {
       this.db = getInitialData();
-      this.saveSync();
     }
 
-    // Migration: Ensure all staff have a unique username
-    let hasUsernameMigration = false;
+    this.applyMigrations();
+    this.refreshKPIs();
+    this.saveSync();
+
+    this.initializeFirestore();
+    this.readyPromise = this.loadFromFirestore();
+  }
+
+  private applyMigrations(): boolean {
+    let hasMigration = false;
+
+    // Migration: Ensure all staff have a unique username.
     if (this.db.NHANVIEN && Array.isArray(this.db.NHANVIEN)) {
       const usedUsernames = new Set<string>();
 
@@ -351,23 +341,26 @@ class DatabaseService {
             : nv.NhanVienID.toLowerCase();
         }
 
-        // Ensure legacy/duplicate usernames are made unique.
         if (usedUsernames.has(username)) {
           username = nv.NhanVienID.toLowerCase();
         }
 
-        nv.TenDangNhap = username;
+        if (nv.TenDangNhap !== username) {
+          nv.TenDangNhap = username;
+          hasMigration = true;
+        } else {
+          nv.TenDangNhap = username;
+        }
         usedUsernames.add(username);
-        hasUsernameMigration = true;
       });
     }
 
-    // Migration: Ensure all staff have bank account & credential fields
-    let hasMigration = hasUsernameMigration;
+    // Migration: Ensure all staff have bank account & credential fields.
     const defaultBanks = [
       { stk: '0071000888999', bank: 'Vietcombank', name: 'PHAM THI HANH', branch: 'TP. Hồ Chí Minh' },
       { stk: '19036888666011', bank: 'Techcombank', name: 'DO MAI LINH', branch: 'Bến Nghé, Q.1' },
     ];
+
     if (this.db.NHANVIEN && Array.isArray(this.db.NHANVIEN)) {
       this.db.NHANVIEN.forEach((nv, idx) => {
         const def = defaultBanks[idx % defaultBanks.length];
@@ -393,92 +386,171 @@ class DatabaseService {
         }
       });
     }
-    if (hasMigration) {
-      this.saveSync();
-    }
 
-    this.refreshKPIs();
-
-    // Firestore is the durable source of truth. The local JSON file remains as a
-    // temporary fallback/compatibility copy and is never required for persistence.
-    this.ready = this.initializeFirestore();
+    return hasMigration;
   }
 
-  private async initializeFirestore(): Promise<void> {
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  private initializeFirestore() {
+    const rawCredentials = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
-    if (!projectId || !clientEmail || !privateKey) {
-      console.warn('[Firestore] Firebase environment variables are missing. Running with local database.json only.');
+    if (!rawCredentials) {
+      console.warn('[Firebase] FIREBASE_SERVICE_ACCOUNT_JSON chưa được cấu hình. Đang dùng database.json làm fallback.');
       return;
     }
 
     try {
-      const app = getApps().length
+      const serviceAccount = JSON.parse(rawCredentials);
+      const app = getApps().length > 0
         ? getApps()[0]
-        : initializeApp({
-            credential: cert({
-              projectId,
-              clientEmail,
-              privateKey,
-            }),
-          });
+        : initializeApp({ credential: cert(serviceAccount) });
 
       this.firestore = getFirestore(app);
-      const docRef = this.firestore.collection('hanh_pham_manager').doc('database');
-      const snapshot = await docRef.get();
-
-      if (snapshot.exists) {
-        const remote = snapshot.data()?.data;
-        if (remote && typeof remote === 'object' && Array.isArray(remote.NHANVIEN)) {
-          this.db = remote as DatabaseSchema;
-          if (!Array.isArray(this.db.CHAMCONG)) this.db.CHAMCONG = [];
-          if (!Array.isArray(this.db.LUONG)) this.db.LUONG = [];
-          if (!Array.isArray(this.db.HOAHONG)) this.db.HOAHONG = [];
-          if (!Array.isArray(this.db.THONGKE)) this.db.THONGKE = [];
-          if (!Array.isArray(this.db.AUDIT_LOG)) this.db.AUDIT_LOG = [];
-          if (!Array.isArray(this.db.NOTIFICATIONS)) this.db.NOTIFICATIONS = [];
-          if (!this.db.SYSTEM_CONFIG) this.db.SYSTEM_CONFIG = { ...DEFAULT_CONFIG };
-          this.refreshKPIs();
-          this.saveSync();
-          console.log('[Firestore] Loaded database from Firestore.');
-        } else {
-          await this.persistToFirestore();
-          console.log('[Firestore] Remote document was invalid; uploaded local database.');
-        }
-      } else {
-        // First migration: upload the current working database to Firestore.
-        await this.persistToFirestore();
-        console.log('[Firestore] First migration completed: local database uploaded.');
-      }
-
-      this.firestoreReady = true;
-    } catch (error) {
-      console.error('[Firestore] Initialization failed. Keeping local database as fallback:', error);
+      this.firestoreEnabled = true;
+      console.log(`[Firebase] Firestore enabled: ${this.firestoreCollection}/${this.firestoreDocument}`);
+    } catch (err) {
+      this.firestore = null;
+      this.firestoreEnabled = false;
+      console.error('[Firebase] Không thể khởi tạo Firebase Admin SDK:', err);
     }
   }
 
-  private async persistToFirestore(): Promise<void> {
-    if (!this.firestore) return;
-    // JSON serialization strips undefined values such as optional CheckOut fields
-    // and produces Firestore-safe plain objects.
-    const safeData = JSON.parse(JSON.stringify(this.db));
-    await this.firestore
-      .collection('hanh_pham_manager')
-      .doc('database')
-      .set({
-        data: safeData,
-        updatedAt: new Date().toISOString(),
-      });
+  /** Wait until the persistent database has been loaded before handling API requests. */
+  public async waitUntilReady(): Promise<void> {
+    await this.readyPromise;
   }
 
-  private queueFirestoreSave(): void {
-    if (!this.firestore || !this.firestoreReady) return;
+  private async loadFromFirestore(): Promise<void> {
+    if (!this.firestoreEnabled || !this.firestore) return;
+
+    try {
+      const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+      const rootSnap = await rootRef.get();
+
+      if (!rootSnap.exists) {
+        // First-time migration: copy the current local database into Firestore.
+        await this.persistToFirestoreNow();
+        console.log('[Firebase] Firestore document chưa tồn tại. Đã migrate database.json lên Firestore.');
+        return;
+      }
+
+      const rootData = rootSnap.data() || {};
+      const schemaVersion = Number(rootData.__schemaVersion || 1);
+
+      if (schemaVersion >= 2) {
+        const tableSnaps = await Promise.all(
+          this.firestoreTables.map((table) =>
+            rootRef.collection('tables').doc(table).get()
+          )
+        );
+
+        const loaded: Partial<DatabaseSchema> = {};
+        tableSnaps.forEach((snap, index) => {
+          if (!snap.exists) return;
+          const table = this.firestoreTables[index];
+          const data = snap.data()?.data;
+          if (data !== undefined) {
+            (loaded as any)[table] = data;
+          }
+        });
+
+        if (loaded.NHANVIEN || loaded.CHAMCONG || loaded.LUONG || loaded.HOAHONG) {
+          this.db = {
+            ...this.db,
+            ...loaded,
+            NHANVIEN: Array.isArray(loaded.NHANVIEN) ? loaded.NHANVIEN : this.db.NHANVIEN,
+            CHAMCONG: Array.isArray(loaded.CHAMCONG) ? loaded.CHAMCONG : this.db.CHAMCONG,
+            LUONG: Array.isArray(loaded.LUONG) ? loaded.LUONG : this.db.LUONG,
+            HOAHONG: Array.isArray(loaded.HOAHONG) ? loaded.HOAHONG : this.db.HOAHONG,
+            THONGKE: Array.isArray(loaded.THONGKE) ? loaded.THONGKE : this.db.THONGKE,
+            AUDIT_LOG: Array.isArray(loaded.AUDIT_LOG) ? loaded.AUDIT_LOG : this.db.AUDIT_LOG,
+            NOTIFICATIONS: Array.isArray(loaded.NOTIFICATIONS) ? loaded.NOTIFICATIONS : this.db.NOTIFICATIONS,
+            SYSTEM_CONFIG: loaded.SYSTEM_CONFIG || this.db.SYSTEM_CONFIG,
+            THEME: loaded.THEME || this.db.THEME,
+          };
+
+          const migrated = this.applyMigrations();
+          this.refreshKPIs();
+          this.saveSync();
+          if (migrated) await this.persistToFirestoreNow();
+          console.log('[Firebase] Đã tải dữ liệu persistent từ Firestore.');
+          return;
+        }
+      }
+
+      // Legacy Firestore format: /hanh_pham_manager/database contains all tables
+      // as fields. Read it once, then upgrade to split table documents so the
+      // attendance photo data cannot eventually hit Firestore's 1 MiB document limit.
+      const legacy: Partial<DatabaseSchema> = rootData as any;
+      this.db = {
+        ...this.db,
+        ...legacy,
+        NHANVIEN: Array.isArray(legacy.NHANVIEN) ? legacy.NHANVIEN : this.db.NHANVIEN,
+        CHAMCONG: Array.isArray(legacy.CHAMCONG) ? legacy.CHAMCONG : this.db.CHAMCONG,
+        LUONG: Array.isArray(legacy.LUONG) ? legacy.LUONG : this.db.LUONG,
+        HOAHONG: Array.isArray(legacy.HOAHONG) ? legacy.HOAHONG : this.db.HOAHONG,
+        THONGKE: Array.isArray(legacy.THONGKE) ? legacy.THONGKE : this.db.THONGKE,
+        AUDIT_LOG: Array.isArray(legacy.AUDIT_LOG) ? legacy.AUDIT_LOG : this.db.AUDIT_LOG,
+        NOTIFICATIONS: Array.isArray(legacy.NOTIFICATIONS) ? legacy.NOTIFICATIONS : this.db.NOTIFICATIONS,
+        SYSTEM_CONFIG: legacy.SYSTEM_CONFIG || this.db.SYSTEM_CONFIG,
+        THEME: legacy.THEME || this.db.THEME,
+      };
+
+      const migrated = this.applyMigrations();
+      this.refreshKPIs();
+      this.saveSync();
+      await this.persistToFirestoreNow();
+      if (migrated) console.log('[Firebase] Đã áp dụng migration username/ngân hàng.');
+      console.log('[Firebase] Đã đọc database Firestore cũ và nâng cấp sang schema persistent v2.');
+    } catch (err) {
+      console.error('[Firebase] Lỗi tải dữ liệu Firestore. Giữ database.json làm fallback:', err);
+    }
+  }
+
+  private async persistToFirestoreNow(): Promise<void> {
+    if (!this.firestoreEnabled || !this.firestore) return;
+    try {
+      const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+      const batch = this.firestore.batch();
+
+      // Metadata on the root document. We intentionally keep the existing
+      // document instead of deleting it, so the data already visible in the
+      // user's Firebase Console remains recoverable.
+      batch.set(rootRef, {
+        __schemaVersion: 2,
+        __updatedAt: new Date().toISOString(),
+        __storage: 'Firestore split tables',
+      }, { merge: true });
+
+      for (const table of this.firestoreTables) {
+        const value = (this.db as any)[table];
+        if (value === undefined) continue;
+        batch.set(
+          rootRef.collection('tables').doc(table),
+          {
+            data: value,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: false }
+        );
+      }
+
+      await batch.commit();
+    } catch (err) {
+      console.error('[Firebase] Firestore save error:', err);
+    }
+  }
+
+  private queueFirestoreSave() {
+    if (!this.firestoreEnabled || !this.firestore) return;
+    this.firestoreSaveQueued = true;
     this.firestoreSaveQueue = this.firestoreSaveQueue
-      .then(() => this.persistToFirestore())
-      .catch((error) => {
-        console.error('[Firestore] Save failed:', error);
+      .then(async () => {
+        if (!this.firestoreSaveQueued) return;
+        this.firestoreSaveQueued = false;
+        await this.persistToFirestoreNow();
+      })
+      .catch((err) => {
+        console.error('[Firebase] Firestore queued save error:', err);
       });
   }
 
@@ -552,7 +624,7 @@ class DatabaseService {
   }
 
   public refreshKPIs() {
-    const today = getZonedParts(new Date()).date;
+    const today = new Date().toISOString().split('T')[0];
     const tongNhanVienDangLam = this.db.NHANVIEN.filter((nv) => nv.TrangThai === 'Đang Làm').length;
     const chamCongHomNay = this.db.CHAMCONG.filter((cc) => cc.Ngay === today && cc.CheckIn).length;
     
@@ -837,19 +909,11 @@ class DatabaseService {
 
   public checkIn(
     user: NhanVien,
-    data: {
-      anh: string;
-      gps: string;
-      ghiChu?: string;
-      deviceTime?: string;
-      deviceTimeZone?: string;
-    }
+    data: { anh: string; gps: string; ghiChu?: string }
   ): ChamCong {
-    const now = data.deviceTime ? new Date(data.deviceTime) : new Date();
-    const zone = data.deviceTimeZone || DEFAULT_APP_TIMEZONE;
-    const zoned = getZonedParts(now, zone);
-    const todayStr = zoned.date;
-    const timeStr = zoned.time;
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0]; // HH:mm:ss
 
     // Check if already checked in today
     let record = this.db.CHAMCONG.find(
@@ -863,7 +927,7 @@ class DatabaseService {
     // Evaluate on-time or late based on config (08:30)
     const [h, m] = this.db.SYSTEM_CONFIG.GioVaoCaChuan.split(':').map(Number);
     const standardCheckInMinutes = h * 60 + m;
-    const currentMinutes = zoned.hour * 60 + zoned.minute;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
     let trangThai: ChamCong['TrangThai'] = 'Có mặt';
     if (currentMinutes > standardCheckInMinutes) {
@@ -910,19 +974,11 @@ class DatabaseService {
 
   public checkOut(
     user: NhanVien,
-    data: {
-      anh: string;
-      gps: string;
-      ghiChu?: string;
-      deviceTime?: string;
-      deviceTimeZone?: string;
-    }
+    data: { anh: string; gps: string; ghiChu?: string }
   ): ChamCong {
-    const now = data.deviceTime ? new Date(data.deviceTime) : new Date();
-    const zone = data.deviceTimeZone || DEFAULT_APP_TIMEZONE;
-    const zoned = getZonedParts(now, zone);
-    const todayStr = zoned.date;
-    const timeStr = zoned.time;
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0];
 
     const record = this.db.CHAMCONG.find(
       (cc) => cc.NhanVienID === user.NhanVienID && cc.Ngay === todayStr
@@ -953,7 +1009,7 @@ class DatabaseService {
     // Check early leave if before 17:30
     const [stdOutH, stdOutM] = this.db.SYSTEM_CONFIG.GioTanCaChuan.split(':').map(Number);
     const stdOutMinutes = stdOutH * 60 + stdOutM;
-    const currentMinutes = zoned.hour * 60 + zoned.minute;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
     if (currentMinutes < stdOutMinutes && record.TrangThai === 'Có mặt') {
       record.TrangThai = 'Về sớm';
