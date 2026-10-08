@@ -18,11 +18,15 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
   size = 'md',
   showText = false,
   layout = 'horizontal',
+  subtitle = '',
   brandName = 'HẠNH PHẠM MANAGER',
   logoUrl,
 }) => {
   const [customLogo, setCustomLogo] = useState<string | null>(null);
 
+  // ============================================================
+  // KÍCH THƯỚC LOGO
+  // ============================================================
   const sizeMap = {
     sm: 'w-8 h-8',
     md: 'w-10 h-10',
@@ -32,21 +36,27 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
   };
 
   // ============================================================
-  // ĐỌC LOGO ĐÃ LƯU
+  // ĐỌC LOGO TÙY CHỈNH ĐÃ LƯU
   // ============================================================
   useEffect(() => {
     const loadLogo = () => {
       try {
-        const savedLogo = localStorage.getItem(LOGO_STORAGE_KEY);
+        const savedLogo = localStorage.getItem(
+          LOGO_STORAGE_KEY
+        );
+
         setCustomLogo(savedLogo);
       } catch (error) {
-        console.warn('Không thể đọc logo tùy chỉnh:', error);
+        console.warn(
+          'Không thể đọc logo tùy chỉnh:',
+          error
+        );
       }
     };
 
     loadLogo();
 
-    // Cho phép các component khác thông báo khi logo thay đổi
+    // Nhận thông báo khi logo được thay đổi
     const handleLogoChanged = () => {
       loadLogo();
     };
@@ -64,44 +74,82 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
     };
   }, []);
 
-  // Nếu truyền logoUrl thì ưu tiên logoUrl.
-  // Nếu không có thì lấy logo đã lưu trong localStorage.
+  // ============================================================
+  // ƯU TIÊN LOGO
+  // logoUrl > logo lưu trên trình duyệt > logo mặc định
+  // ============================================================
   const activeLogo = logoUrl || customLogo;
 
   return (
     <div
-      className={`inline-flex ${
-        layout === 'vertical'
-          ? 'flex-col items-center text-center'
-          : 'items-center text-left'
-      } gap-3 ${className}`}
+      className={`
+        inline-flex
+        ${
+          layout === 'vertical'
+            ? 'flex-col items-center text-center'
+            : 'items-center text-left'
+        }
+        gap-3
+        ${className}
+      `}
     >
-      {/* ========================================================
+      {/* ======================================================
           LOGO
-      ======================================================== */}
+      ====================================================== */}
       <div
-        className={`${sizeMap[size]} bg-black text-white rounded-2xl flex items-center justify-center p-2 relative flex-shrink-0 transition-transform duration-300 hover:scale-105 group overflow-hidden border border-stone-800 shadow-md`}
+        className={`
+          ${sizeMap[size]}
+          bg-black
+          text-white
+          rounded-2xl
+          flex
+          items-center
+          justify-center
+          p-2
+          relative
+          flex-shrink-0
+          transition-transform
+          duration-300
+          hover:scale-105
+          group
+          overflow-hidden
+          border
+          border-stone-800
+          shadow-md
+        `}
       >
         {activeLogo ? (
-          /* ====================================================
+          /* ==================================================
              LOGO TÙY CHỈNH
-          ==================================================== */
+          ================================================== */
           <img
             src={activeLogo}
             alt={brandName}
-            className="w-full h-full object-contain"
+            className="
+              w-full
+              h-full
+              object-contain
+            "
           />
         ) : (
-          /* ====================================================
-             LOGO MẶC ĐỊNH - HẠNH PHẠM
-          ==================================================== */
+          /* ==================================================
+             LOGO MẶC ĐỊNH HẠNH PHẠM
+          ================================================== */
           <svg
             viewBox="0 0 100 100"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            className="w-full h-full object-contain filter drop-shadow-sm"
+            className="
+              w-full
+              h-full
+              object-contain
+              filter
+              drop-shadow-sm
+            "
           >
-            {/* Octagon Diamond Crest Outline */}
+            {/* ==================================================
+                KHUNG OCTAGON
+            ================================================== */}
             <rect
               x="10"
               y="10"
@@ -113,7 +161,9 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
               strokeOpacity="0.9"
             />
 
-            {/* Corner Sparkles */}
+            {/* ==================================================
+                4 ĐIỂM TRANG TRÍ
+            ================================================== */}
             <circle
               cx="50"
               cy="13"
@@ -142,21 +192,31 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
               fill="#FFFFFF"
             />
 
-            {/* Apex Diamond Motif */}
+            {/* ==================================================
+                DIAMOND
+            ================================================== */}
             <path
               d="M 50 17 L 52.5 21 L 50 25 L 47.5 21 Z"
               fill="#FFFFFF"
             />
 
-            {/* LETTER H - Left Serif Pillar */}
+            {/* ==================================================
+                CHỮ H - CỘT TRÁI
+            ================================================== */}
             <path
-              d="M 28 32 L 36 32 M 32 32 L 32 68 M 28 68 L 36 68"
+              d="
+                M 28 32 L 36 32
+                M 32 32 L 32 68
+                M 28 68 L 36 68
+              "
               stroke="#FFFFFF"
               strokeWidth="3.2"
               strokeLinecap="round"
             />
 
-            {/* H Crossbar */}
+            {/* ==================================================
+                THANH NGANG CHỮ H
+            ================================================== */}
             <path
               d="M 32 50 L 52 50"
               stroke="#FFFFFF"
@@ -164,26 +224,44 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
               strokeLinecap="round"
             />
 
-            {/* H Right Pillar + P Spine */}
+            {/* ==================================================
+                CHỮ H - CỘT PHẢI / CHỮ P
+            ================================================== */}
             <path
-              d="M 48 32 L 56 32 M 52 32 L 52 68 M 48 68 L 56 68"
+              d="
+                M 48 32 L 56 32
+                M 52 32 L 52 68
+                M 48 68 L 56 68
+              "
               stroke="#FFFFFF"
               strokeWidth="3.2"
               strokeLinecap="round"
             />
 
-            {/* Letter P */}
+            {/* ==================================================
+                CHỮ P
+            ================================================== */}
             <path
-              d="M 52 33 C 68 33, 73 39, 73 47 C 73 55, 66 59, 52 59"
+              d="
+                M 52 33
+                C 68 33, 73 39, 73 47
+                C 73 55, 66 59, 52 59
+              "
               stroke="#FFFFFF"
               strokeWidth="3.2"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
 
-            {/* Bridal Veil Swash */}
+            {/* ==================================================
+                BRIDAL VEIL SWASH
+            ================================================== */}
             <path
-              d="M 24 72 C 34 67, 44 71, 56 65 C 66 60, 72 57, 76 53"
+              d="
+                M 24 72
+                C 34 67, 44 71, 56 65
+                C 66 60, 72 57, 76 53
+              "
               stroke="#FFFFFF"
               strokeWidth="1.6"
               strokeLinecap="round"
@@ -193,9 +271,9 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
         )}
       </div>
 
-      {/* ========================================================
-          BRAND NAME
-      ======================================================== */}
+      {/* ======================================================
+          TÊN THƯƠNG HIỆU
+      ====================================================== */}
       {showText && (
         <div
           className={
@@ -204,12 +282,37 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
               : 'text-left'
           }
         >
-          <span className="font-bridal text-xl sm:text-2xl font-bold tracking-[0.08em] text-stone-900 uppercase block leading-none">
+          <span
+            className="
+              font-bridal
+              text-xl
+              sm:text-2xl
+              font-bold
+              tracking-[0.08em]
+              text-stone-900
+              uppercase
+              block
+              leading-none
+            "
+          >
             {brandName}
           </span>
 
+          {/* ==================================================
+              SUBTITLE
+          ================================================== */}
           {subtitle && (
-            <span className="block text-[10px] sm:text-xs text-[#a97d3e] tracking-[0.18em] mt-1 uppercase">
+            <span
+              className="
+                block
+                text-[10px]
+                sm:text-xs
+                text-[#a97d3e]
+                tracking-[0.18em]
+                mt-1
+                uppercase
+              "
+            >
               {subtitle}
             </span>
           )}
