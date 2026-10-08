@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Award,
   Plus,
@@ -12,11 +12,13 @@ import {
   AlertCircle,
   X,
   Image as ImageIcon,
+  Camera,
   Clock,
   User,
 } from 'lucide-react';
 import type { HoaHong, NhanVien, LoaiKhoanThuNhap } from '../../types';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
+import { Upload } from 'lucide-react';
 import { api } from '../../api';
 
 interface CommissionManagementProps {
@@ -37,6 +39,56 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const [deleteConfirmHH, setDeleteConfirmHH] = useState<HoaHong | null>(null);
   const [approveConfirmHH, setApproveConfirmHH] = useState<{ hh: HoaHong; dongY: boolean } | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+
+  const stopCamera = () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+  };
+
+  const openCamera = async () => {
+    setCameraError(null);
+    setCameraOpen(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 1280 } },
+        audio: false,
+      });
+      cameraStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+    } catch {
+      setCameraError('Không thể mở camera. Hãy cấp quyền Camera cho trình duyệt rồi thử lại.');
+    }
+  };
+
+  const captureProofPhoto = () => {
+    const video = videoRef.current;
+    if (!video || video.readyState < 2 || video.videoWidth === 0) {
+      setCameraError('Camera chưa sẵn sàng. Vui lòng chờ 1–2 giây rồi chụp lại.');
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    const maxSize = 1280;
+    const scale = Math.min(1, maxSize / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+    setFormData((prev) => ({ ...prev, AnhChungTu: dataUrl }));
+    stopCamera();
+    setCameraOpen(false);
+  };
+
+  useEffect(() => () => stopCamera(), []);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -536,14 +588,42 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                 )}
 
                 <div className="col-span-2">
-                  <label className="block font-semibold text-stone-700 mb-1">Link Ảnh Chứng Từ (Nghiệm thu)</label>
-                  <input
-                    type="url"
-                    value={formData.AnhChungTu}
-                    onChange={(e) => setFormData({ ...formData, AnhChungTu: e.target.value })}
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f]"
-                  />
+                  <label className="block font-semibold text-stone-700 mb-1">Ảnh Chứng Từ / Nghiệm Thu</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={openCamera}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-bold text-xs"
+                    >
+                      <Camera className="w-4 h-4 text-[#dfc79f]" />
+                      Chụp ảnh trực tiếp
+                    </button>
+                    <label className="flex items-center gap-2 px-4 py-2.5 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl font-bold text-xs cursor-pointer">
+                      <Upload className="w-4 h-4 text-[#bf954f]" />
+                      Chọn ảnh từ máy
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => setFormData((prev) => ({ ...prev, AnhChungTu: String(reader.result || '') }));
+                          reader.readAsDataURL(file);
+                          e.currentTarget.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {formData.AnhChungTu && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <img src={formData.AnhChungTu} alt="Ảnh chứng từ" className="w-20 h-20 object-cover rounded-xl border border-stone-200" />
+                      <button type="button" onClick={() => setFormData((prev) => ({ ...prev, AnhChungTu: '' }))} className="text-xs text-rose-600 hover:underline">
+                        Xóa ảnh
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="col-span-2">
@@ -600,8 +680,36 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           </div>
         </div>
       )}
+      {/* Camera capture modal */}
+      {cameraOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-xl bg-white rounded-2xl overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200">
+              <h3 className="font-bold text-stone-900">CHỤP ẢNH CHỨNG TỪ</h3>
+              <button type="button" onClick={() => { stopCamera(); setCameraOpen(false); }} className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-contain" />
+                {cameraError && <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-white bg-black/60">{cameraError}</div>}
+              </div>
+              <div className="flex justify-center gap-2 mt-4">
+                <button type="button" onClick={captureProofPhoto} className="flex items-center gap-2 px-6 py-3 bg-stone-900 text-white rounded-xl font-bold text-xs">
+                  <Camera className="w-4 h-4 text-[#dfc79f]" />
+                  CHỤP ẢNH
+                </button>
+                <button type="button" onClick={() => { stopCamera(); setCameraOpen(false); }} className="px-5 py-3 bg-stone-100 text-stone-700 rounded-xl font-bold text-xs">
+                  HỦY
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Confirmation Modal for Delete */}
+      {/* Confirmation Modal for Delete */
       <ConfirmationModal
         isOpen={Boolean(deleteConfirmHH)}
         onClose={() => setDeleteConfirmHH(null)}
