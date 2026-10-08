@@ -14,8 +14,11 @@ import {
   ShieldCheck,
   X,
   FileText,
+  Plus,
+  Trash2,
+  Wallet,
 } from 'lucide-react';
-import type { Luong, NhanVien } from '../../types';
+import type { Luong, NhanVien, TamUng } from '../../types';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { api } from '../../api';
 
@@ -44,6 +47,70 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
   const [payingLuong, setPayingLuong] = useState<Luong | null>(null);
   const [previewPayslip, setPreviewPayslip] = useState<Luong | null>(null);
 
+  const [showTamUngModal, setShowTamUngModal] = useState(false);
+  const [tamUngList, setTamUngList] = useState<TamUng[]>([]);
+  const [tamUngLoading, setTamUngLoading] = useState(false);
+  const [savingTamUng, setSavingTamUng] = useState(false);
+  const [tamUngForm, setTamUngForm] = useState({
+    NhanVienID: '',
+    Ngay: new Date().toISOString().split('T')[0],
+    SoTien: 0,
+    LyDo: '',
+    GhiChu: '',
+  });
+
+  const loadTamUng = async () => {
+    setTamUngLoading(true);
+    try {
+      const data = await api.tamUng.getAll({ thang: selectedMonth || undefined });
+      setTamUngList(data);
+    } catch (err: any) {
+      alert(err.message || 'Không thể tải danh sách tạm ứng');
+    } finally {
+      setTamUngLoading(false);
+    }
+  };
+
+  const openTamUngModal = (staffId?: string) => {
+    setTamUngForm({
+      NhanVienID: staffId || (selectedStaffId !== 'ALL' ? selectedStaffId : staffList[0]?.NhanVienID || ''),
+      Ngay: new Date().toISOString().split('T')[0],
+      SoTien: 0,
+      LyDo: '',
+      GhiChu: '',
+    });
+    setShowTamUngModal(true);
+    void loadTamUng();
+  };
+
+  const handleCreateTamUng = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tamUngForm.NhanVienID) return alert('Vui lòng chọn nhân viên.');
+    if (!tamUngForm.Ngay) return alert('Vui lòng chọn ngày tạm ứng.');
+    if (Number(tamUngForm.SoTien) <= 0) return alert('Số tiền tạm ứng phải lớn hơn 0.');
+    setSavingTamUng(true);
+    try {
+      await api.tamUng.create({ ...tamUngForm, SoTien: Number(tamUngForm.SoTien) });
+      setTamUngForm((prev) => ({ ...prev, SoTien: 0, LyDo: '', GhiChu: '' }));
+      await loadTamUng();
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Không thể tạo khoản tạm ứng');
+    } finally {
+      setSavingTamUng(false);
+    }
+  };
+
+  const handleDeleteTamUng = async (item: TamUng) => {
+    if (!window.confirm('Xóa khoản tạm ứng ' + item.SoTien.toLocaleString('vi-VN') + ' đ của ' + item.HoTen + ' ngày ' + item.Ngay + '?')) return;
+    try {
+      await api.tamUng.delete(item.TamUngID);
+      await loadTamUng();
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Không thể xóa khoản tạm ứng');
+    }
+  };
   // Edit form state
   const [editForm, setEditForm] = useState({
     LuongCoBan: 0,
@@ -150,6 +217,15 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
 
           <button
             type="button"
+            onClick={() => openTamUngModal()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#a97d3e] hover:bg-[#8f682f] text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition"
+          >
+            <Wallet className="w-4 h-4" />
+            <span>TẠM ỨNG LƯƠNG</span>
+          </button>
+
+          <button
+            type="button"
             onClick={onGenerateMonthlyPayroll}
             className="flex items-center gap-2 px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg transition border border-[#c5a059]/40"
           >
@@ -233,7 +309,8 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                 <th className="px-5 py-3.5 font-semibold">Phụ Cấp</th>
                 <th className="px-5 py-3.5 font-semibold">Thưởng</th>
                 <th className="px-5 py-3.5 font-semibold">Hoa Hồng</th>
-                <th className="px-5 py-3.5 font-semibold">Khấu Trừ</th>
+                <th className="px-5 py-3.5 font-semibold">Phạt</th>
+                <th className="px-5 py-3.5 font-semibold">Tạm Ứng</th>
                 <th className="px-5 py-3.5 font-semibold">THỰC LÃNH</th>
                 <th className="px-5 py-3.5 font-semibold">Trạng Thái</th>
                 <th className="px-5 py-3.5 font-semibold text-right">Thao Tác</th>
@@ -242,7 +319,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
             <tbody className="divide-y divide-[#E7DFD5]">
               {filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-5 py-10 text-center text-stone-400">
+                  <td colSpan={12} className="px-5 py-10 text-center text-stone-400">
                     Không tìm thấy bảng lương nào trong kỳ này.
                   </td>
                 </tr>
@@ -268,7 +345,10 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                       +{l.HoaHong.toLocaleString('vi-VN')} đ
                     </td>
                     <td className="px-5 py-4 font-mono text-rose-600">
-                      -{(l.Phat + l.TamUng).toLocaleString('vi-VN')} đ
+                      -{l.Phat.toLocaleString('vi-VN')} đ
+                    </td>
+                    <td className="px-5 py-4 font-mono font-bold text-orange-600">
+                      -{l.TamUng.toLocaleString('vi-VN')} đ
                     </td>
                     <td className="px-5 py-4 font-mono font-bold text-stone-900 text-sm">
                       {l.ThucLanh.toLocaleString('vi-VN')} đ
@@ -474,6 +554,98 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
         </div>
       )}
 
+      {/* Modal: Quản lý Tạm ứng lương */}
+      {showTamUngModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-[#E7DFD5] overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7DFD5] bg-[#FAF8F5]">
+              <div>
+                <h3 className="text-base font-bold font-bridal text-stone-900 uppercase flex items-center gap-2">
+                  <Wallet className="w-5 h-5 text-[#a97d3e]" /> QUẢN LÝ TẠM ỨNG LƯƠNG
+                </h3>
+                <p className="text-xs text-stone-500 mt-1">Có thể nhập nhiều khoản tạm ứng cho cùng một nhân viên trong cùng một tháng.</p>
+              </div>
+              <button type="button" onClick={() => setShowTamUngModal(false)} className="p-1.5 text-stone-400 hover:text-stone-700 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-5">
+              <form onSubmit={handleCreateTamUng} className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-[#FAF8F5] rounded-xl border border-[#E7DFD5]">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Nhân viên</label>
+                  <select value={tamUngForm.NhanVienID} onChange={(e) => setTamUngForm({ ...tamUngForm, NhanVienID: e.target.value })} className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-white text-sm">
+                    <option value="">-- Chọn nhân viên --</option>
+                    {staffList.map((staff) => <option key={staff.NhanVienID} value={staff.NhanVienID}>{staff.HoTen} ({staff.NhanVienID})</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Ngày tạm ứng</label>
+                  <input type="date" value={tamUngForm.Ngay} onChange={(e) => setTamUngForm({ ...tamUngForm, Ngay: e.target.value })} className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-white text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Số tiền tạm ứng</label>
+                  <input type="number" min="1" step="1000" value={tamUngForm.SoTien || ''} onChange={(e) => setTamUngForm({ ...tamUngForm, SoTien: Number(e.target.value) })} placeholder="VD: 2.000.000" className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-white text-sm font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Lý do</label>
+                  <input type="text" value={tamUngForm.LyDo} onChange={(e) => setTamUngForm({ ...tamUngForm, LyDo: e.target.value })} placeholder="VD: Tạm ứng chi phí cá nhân" className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-white text-sm" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Ghi chú</label>
+                  <input type="text" value={tamUngForm.GhiChu} onChange={(e) => setTamUngForm({ ...tamUngForm, GhiChu: e.target.value })} placeholder="Ghi chú thêm nếu cần" className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-white text-sm" />
+                </div>
+                <div className="md:col-span-2 flex justify-end">
+                  <button type="submit" disabled={savingTamUng} className="flex items-center gap-2 px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider">
+                    <Plus className="w-4 h-4" /> {savingTamUng ? 'ĐANG LƯU...' : 'THÊM KHOẢN TẠM ỨNG'}
+                  </button>
+                </div>
+              </form>
+              <div className="border border-[#E7DFD5] rounded-xl overflow-hidden">
+                <div className="px-4 py-3 bg-[#FAF8F5] border-b border-[#E7DFD5] flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-stone-700">Lịch sử tạm ứng {selectedMonth ? 'tháng ' + selectedMonth : ''}</span>
+                  <span className="text-xs font-mono font-bold text-orange-700">
+                    Tổng: {tamUngList.reduce((sum, item) => sum + Number(item.SoTien || 0), 0).toLocaleString('vi-VN')} đ
+                  </span>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {tamUngLoading ? (
+                    <div className="p-8 text-center text-sm text-stone-400">Đang tải...</div>
+                  ) : tamUngList.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-stone-400">Chưa có khoản tạm ứng nào trong tháng này.</div>
+                  ) : (
+                    <table className="w-full text-xs">
+                      <thead className="bg-white sticky top-0 border-b border-stone-100">
+                        <tr>
+                          <th className="px-4 py-2 text-left">Ngày</th>
+                          <th className="px-4 py-2 text-left">Nhân viên</th>
+                          <th className="px-4 py-2 text-left">Lý do</th>
+                          <th className="px-4 py-2 text-right">Số tiền</th>
+                          <th className="px-4 py-2 text-right">Xóa</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {tamUngList.map((item) => (
+                          <tr key={item.TamUngID}>
+                            <td className="px-4 py-2.5">{item.Ngay}</td>
+                            <td className="px-4 py-2.5 font-semibold">{item.HoTen}</td>
+                            <td className="px-4 py-2.5 text-stone-500">{item.LyDo || '—'}</td>
+                            <td className="px-4 py-2.5 text-right font-mono font-bold text-orange-700">-{Number(item.SoTien).toLocaleString('vi-VN')} đ</td>
+                            <td className="px-4 py-2.5 text-right">
+                              <button type="button" onClick={() => handleDeleteTamUng(item)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg" title="Xóa khoản tạm ứng">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Modal: Detailed Luxury Payslip View & Print */}
       {previewPayslip && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
