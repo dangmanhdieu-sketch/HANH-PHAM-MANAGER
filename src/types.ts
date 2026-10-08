@@ -104,6 +104,17 @@ export interface HoaHong {
   TaoBoi?: 'Admin' | 'Nhân viên';
 }
 
+export type QuanLyModule = 'CONG_VIEC' | 'VAY_CUOI' | 'HOP_DONG' | 'THU_CHI';
+
+export interface QuanLyRecord {
+  QuanLyID: string;
+  Module: QuanLyModule;
+  DuLieu: Record<string, any>;
+  TaoLuc: string;
+  CapNhatLuc: string;
+  TaoBoi: string;
+}
+
 export interface ThongKeKPI {
   KPI_ID: string;
   TieuDe: string;
