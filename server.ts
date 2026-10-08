@@ -20,6 +20,17 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
+// Firebase/Firestore startup gate: wait until dbService has loaded the
+// persistent database from Firestore before any API route reads or writes data.
+app.use('/api', async (_req: Request, _res: Response, next: NextFunction) => {
+  try {
+    await dbService.waitUntilReady();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Helper to create a simple signed token for session
 function createToken(user: NhanVien): string {
   const payload = {
@@ -376,16 +387,7 @@ app.get('/api/chamcong', authenticateToken, (req: AuthRequest, res: Response) =>
 
 app.get('/api/chamcong/today', authenticateToken, (req: AuthRequest, res: Response) => {
   const user = req.user!;
-  // Use the studio timezone instead of Render's UTC clock.
-  const now = new Date();
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
-  const todayStr = `${get('year')}-${get('month')}-${get('day')}`;
+  const todayStr = new Date().toISOString().split('T')[0];
 
   if (user.Quyen === 'Admin') {
     const records = dbService.getChamCongList({ date: todayStr });
@@ -398,7 +400,7 @@ app.get('/api/chamcong/today', authenticateToken, (req: AuthRequest, res: Respon
 
 app.post('/api/chamcong/checkin', authenticateToken, (req: AuthRequest, res: Response) => {
   try {
-    const { anh, gps, ghiChu, deviceTime, deviceTimeZone } = req.body;
+    const { anh, gps, ghiChu } = req.body;
     if (!anh) {
       return res.status(400).json({ error: 'Yêu cầu chụp ảnh chân dung khi Check-in.' });
     }
@@ -410,8 +412,6 @@ app.post('/api/chamcong/checkin', authenticateToken, (req: AuthRequest, res: Res
       anh,
       gps,
       ghiChu,
-      deviceTime,
-      deviceTimeZone,
     });
 
     return res.json({
@@ -425,7 +425,7 @@ app.post('/api/chamcong/checkin', authenticateToken, (req: AuthRequest, res: Res
 
 app.post('/api/chamcong/checkout', authenticateToken, (req: AuthRequest, res: Response) => {
   try {
-    const { anh, gps, ghiChu, deviceTime, deviceTimeZone } = req.body;
+    const { anh, gps, ghiChu } = req.body;
     if (!anh) {
       return res.status(400).json({ error: 'Yêu cầu chụp ảnh chân dung khi Check-out.' });
     }
@@ -437,8 +437,6 @@ app.post('/api/chamcong/checkout', authenticateToken, (req: AuthRequest, res: Re
       anh,
       gps,
       ghiChu,
-      deviceTime,
-      deviceTimeZone,
     });
 
     return res.json({
