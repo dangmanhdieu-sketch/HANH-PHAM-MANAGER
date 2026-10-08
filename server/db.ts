@@ -7,6 +7,7 @@ import type {
   NhanVien,
   ChamCong,
   Luong,
+  TamUng,
   HoaHong,
   ThongKeKPI,
   AuditLog,
@@ -40,6 +41,7 @@ interface DatabaseSchema {
   NHANVIEN: NhanVien[];
   CHAMCONG: ChamCong[];
   LUONG: Luong[];
+  TAM_UNG: TamUng[];
   HOAHONG: HoaHong[];
   THONGKE: ThongKeKPI[];
   AUDIT_LOG: AuditLog[];
@@ -306,6 +308,7 @@ function getInitialData(): DatabaseSchema {
     NHANVIEN: employees,
     CHAMCONG: chamcongs,
     LUONG: luongs,
+    TAM_UNG: [],
     HOAHONG: hoahongs,
     THONGKE: thongke,
     AUDIT_LOG: auditLogs,
@@ -326,6 +329,7 @@ class DatabaseService {
     'NHANVIEN',
     'CHAMCONG',
     'LUONG',
+    'TAM_UNG',
     'HOAHONG',
     'THONGKE',
     'AUDIT_LOG',
@@ -422,6 +426,33 @@ class DatabaseService {
       });
     }
 
+    // Migration: move legacy TamUng amounts from payroll into the TAM_UNG ledger.
+    if (!Array.isArray(this.db.TAM_UNG)) {
+      this.db.TAM_UNG = [];
+      hasMigration = true;
+    }
+    if (this.db.TAM_UNG.length === 0 && Array.isArray(this.db.LUONG)) {
+      this.db.LUONG.forEach((luong) => {
+        const amount = Number(luong.TamUng || 0);
+        if (amount > 0) {
+          const parts = String(luong.Thang || '').split('/');
+          const ngay = parts.length === 2 ? `${parts[1]}-${parts[0].padStart(2, '0')}-01` : new Date().toISOString().split('T')[0];
+          this.db.TAM_UNG.push({
+            TamUngID: `TU-MIG-${luong.LuongID}`,
+            NhanVienID: luong.NhanVienID,
+            HoTen: luong.HoTen,
+            Ngay: ngay,
+            Thang: luong.Thang,
+            SoTien: amount,
+            LyDo: 'Tạm ứng cũ chuyển sang hệ thống mới',
+            TaoLuc: luong.NgayTao || new Date().toISOString(),
+            TaoBoi: 'SYSTEM-MIGRATION',
+          });
+          hasMigration = true;
+        }
+      });
+    }
+
     return hasMigration;
   }
 
@@ -495,6 +526,7 @@ class DatabaseService {
             NHANVIEN: Array.isArray(loaded.NHANVIEN) ? loaded.NHANVIEN : this.db.NHANVIEN,
             CHAMCONG: Array.isArray(loaded.CHAMCONG) ? loaded.CHAMCONG : this.db.CHAMCONG,
             LUONG: Array.isArray(loaded.LUONG) ? loaded.LUONG : this.db.LUONG,
+            TAM_UNG: Array.isArray(loaded.TAM_UNG) ? loaded.TAM_UNG : this.db.TAM_UNG,
             HOAHONG: Array.isArray(loaded.HOAHONG) ? loaded.HOAHONG : this.db.HOAHONG,
             THONGKE: Array.isArray(loaded.THONGKE) ? loaded.THONGKE : this.db.THONGKE,
             AUDIT_LOG: Array.isArray(loaded.AUDIT_LOG) ? loaded.AUDIT_LOG : this.db.AUDIT_LOG,
@@ -522,6 +554,7 @@ class DatabaseService {
         NHANVIEN: Array.isArray(legacy.NHANVIEN) ? legacy.NHANVIEN : this.db.NHANVIEN,
         CHAMCONG: Array.isArray(legacy.CHAMCONG) ? legacy.CHAMCONG : this.db.CHAMCONG,
         LUONG: Array.isArray(legacy.LUONG) ? legacy.LUONG : this.db.LUONG,
+        TAM_UNG: Array.isArray(legacy.TAM_UNG) ? legacy.TAM_UNG : this.db.TAM_UNG,
         HOAHONG: Array.isArray(legacy.HOAHONG) ? legacy.HOAHONG : this.db.HOAHONG,
         THONGKE: Array.isArray(legacy.THONGKE) ? legacy.THONGKE : this.db.THONGKE,
         AUDIT_LOG: Array.isArray(legacy.AUDIT_LOG) ? legacy.AUDIT_LOG : this.db.AUDIT_LOG,
@@ -1079,6 +1112,67 @@ class DatabaseService {
     return record;
   }
 
+  // TẠM ỨNG LƯƠNG methods
+  public getTamUngList(filter?: { thang?: string; nhanVienId?: string }): TamUng[] {
+    let result = Array.isArray(this.db.TAM_UNG) ? [...this.db.TAM_UNG] : [];
+    if (filter?.thang) result = result.filter((x) => x.Thang === filter.thang);
+    if (filter?.nhanVienId) result = result.filter((x) => x.NhanVienID === filter.nhanVienId);
+    return result.sort((a, b) => b.Ngay.localeCompare(a.Ngay) || b.TaoLuc.localeCompare(a.TaoLuc));
+  }
+
+  public getTongTamUng(nhanVienId: string, thang: string): number {
+    return this.getTamUngList({ nhanVienId, thang }).reduce((sum, item) => sum + (Number(item.SoTien) || 0), 0);
+  }
+
+  private syncTamUngToLuong(luong: Luong): void {
+    luong.TamUng = this.getTongTamUng(luong.NhanVienID, luong.Thang);
+    this.recalculateLuong(luong);
+  }
+
+  public createTamUng(data: { NhanVienID: string; Ngay: string; SoTien: number; LyDo?: string; GhiChu?: string }, adminUser: { HoTen: string; Email: string }): TamUng {
+    const nv = this.findNhanVienById(data.NhanVienID);
+    if (!nv) throw new Error('Nhân viên không tồn tại');
+    const amount = Number(data.SoTien);
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Số tiền tạm ứng phải lớn hơn 0.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data.Ngay || ''))) throw new Error('Ngày tạm ứng không hợp lệ.');
+    const [yyyy, mm] = String(data.Ngay).split('-');
+    const thang = `${mm}/${yyyy}`;
+    const luong = this.db.LUONG.find((l) => l.NhanVienID === nv.NhanVienID && l.Thang === thang);
+    if (luong?.TrangThai === 'Đã thanh toán') throw new Error('Bảng lương tháng này đã thanh toán, không thể thêm tạm ứng.');
+    const item: TamUng = {
+      TamUngID: `TU-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
+      NhanVienID: nv.NhanVienID,
+      HoTen: nv.HoTen,
+      Ngay: data.Ngay,
+      Thang: thang,
+      SoTien: Math.round(amount),
+      LyDo: String(data.LyDo || '').trim(),
+      GhiChu: String(data.GhiChu || '').trim(),
+      TaoLuc: new Date().toISOString(),
+      TaoBoi: adminUser.HoTen,
+    };
+    this.db.TAM_UNG.unshift(item);
+    if (luong) this.syncTamUngToLuong(luong);
+    this.refreshKPIs();
+    this.save();
+    this.logAudit(adminUser.HoTen, adminUser.Email, 'Thêm tạm ứng lương', `Thêm tạm ứng ${item.SoTien.toLocaleString('vi-VN')} đ cho ${nv.HoTen} ngày ${item.Ngay}`);
+    return item;
+  }
+
+  public deleteTamUng(id: string, adminUser: { HoTen: string; Email: string }): boolean {
+    const index = this.db.TAM_UNG.findIndex((x) => x.TamUngID === id);
+    if (index === -1) throw new Error('Không tìm thấy khoản tạm ứng.');
+    const item = this.db.TAM_UNG[index];
+    const luong = this.db.LUONG.find((l) => l.NhanVienID === item.NhanVienID && l.Thang === item.Thang);
+    if (luong?.TrangThai === 'Đã thanh toán') throw new Error('Bảng lương tháng này đã thanh toán, không thể xóa tạm ứng.');
+    this.db.TAM_UNG.splice(index, 1);
+    if (luong) this.syncTamUngToLuong(luong);
+    this.refreshKPIs();
+    this.save();
+    this.logAudit(adminUser.HoTen, adminUser.Email, 'Xóa tạm ứng lương', `Xóa tạm ứng ${item.SoTien.toLocaleString('vi-VN')} đ của ${item.HoTen} ngày ${item.Ngay}`);
+    return true;
+  }
+
   // LUONG methods & Anti-duplicate check
   public recalculateLuong(luong: Luong): void {
     const tong =
@@ -1176,7 +1270,7 @@ class DatabaseService {
         Thuong: 0,
         HoaHong: tongHoaHong,
         Phat: 0,
-        TamUng: 0,
+        TamUng: this.getTongTamUng(nv.NhanVienID, thang),
         TongLuong: 0,
         ThucLanh: 0,
         TrangThai: 'Chờ duyệt',
@@ -1233,10 +1327,10 @@ class DatabaseService {
     if (updates.Thuong !== undefined) luong.Thuong = Number(updates.Thuong);
     if (updates.HoaHong !== undefined) luong.HoaHong = Number(updates.HoaHong);
     if (updates.Phat !== undefined) luong.Phat = Number(updates.Phat);
-    if (updates.TamUng !== undefined) luong.TamUng = Number(updates.TamUng);
+    // TamUng is always derived from the TAM_UNG ledger.
     if (updates.GhiChu !== undefined) luong.GhiChu = updates.GhiChu;
 
-    this.recalculateLuong(luong);
+    this.syncTamUngToLuong(luong);
     this.refreshKPIs();
     this.save();
 
