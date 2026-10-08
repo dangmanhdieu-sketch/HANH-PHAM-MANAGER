@@ -15,6 +15,10 @@ import {
   ChevronDown,
   Contact,
   Palette,
+  CheckSquare,
+  Shirt,
+  FileText,
+  Wallet,
 } from 'lucide-react';
 
 import type { NhanVien, ThongBao } from '../types';
@@ -50,42 +54,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   // ADMIN TABS
   // ============================================================
   const adminTabs = [
-    {
-      id: 'dashboard',
-      label: 'Tổng quan',
-      shortLabel: 'Tổng quan',
-      icon: BarChart3,
-    },
-    {
-      id: 'nhanvien',
-      label: 'Nhân viên & Danh bạ',
-      shortLabel: 'Nhân viên',
-      icon: Users,
-    },
-    {
-      id: 'chamcong',
-      label: 'Chấm công',
-      shortLabel: 'Chấm công',
-      icon: Clock,
-    },
-    {
-      id: 'luong',
-      label: 'Lương & Hoa hồng',
-      shortLabel: 'Lương & HH',
-      icon: DollarSign,
-    },
-    {
-      id: 'automation',
-      label: 'Hệ thống',
-      shortLabel: 'Hệ thống',
-      icon: Settings,
-    },
-    {
-      id: 'thietke',
-      label: 'Thiết kế app',
-      shortLabel: 'Thiết kế',
-      icon: Palette,
-    },
+    { id: 'dashboard', label: 'Tổng quan', shortLabel: 'Tổng quan', icon: BarChart3 },
+    { id: 'nhanvien', label: 'Nhân viên', shortLabel: 'Nhân viên', icon: Users },
+    { id: 'chamcong', label: 'Chấm công', shortLabel: 'Chấm công', icon: Clock },
+    { id: 'luong', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
+    { id: 'congviec', label: 'Công việc', shortLabel: 'Công việc', icon: CheckSquare },
+    { id: 'vaycuoi', label: 'Váy cưới', shortLabel: 'Váy cưới', icon: Shirt },
+    { id: 'hopdong', label: 'Hợp đồng', shortLabel: 'Hợp đồng', icon: FileText },
+    { id: 'thuchi', label: 'Thu chi', shortLabel: 'Thu chi', icon: Wallet },
+    { id: 'thongke', label: 'Thống kê', shortLabel: 'Thống kê', icon: BarChart3 },
+    { id: 'thietlap', label: 'Thiết lập', shortLabel: 'Thiết lập', icon: Settings },
   ];
 
   // ============================================================
