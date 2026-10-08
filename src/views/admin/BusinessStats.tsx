@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BarChart3, TrendingUp, Wallet, FileText, Shirt, CheckSquare } from 'lucide-react';
+import { BarChart3, TrendingUp, Wallet, FileText, CheckSquare } from 'lucide-react';
 import type { HoaHong, Luong, NhanVien, QuanLyRecord } from '../../types';
 import { api } from '../../api';
 
@@ -88,7 +88,6 @@ export const BusinessStats: React.FC<Props> = ({
     { label: 'Nhân viên đang làm', value: stats.staff, icon: TrendingUp },
     { label: 'Công việc', value: stats.tasks, icon: CheckSquare },
     { label: 'Hợp đồng', value: stats.contracts, icon: FileText },
-    { label: 'Váy cưới', value: stats.dresses, icon: Shirt },
     { label: 'Tổng thu', value: stats.thu, money: true, icon: Wallet },
     { label: 'Tổng chi', value: stats.chi, money: true, icon: Wallet },
     { label: 'Hoa hồng đã duyệt', value: stats.approvedCommission, money: true, icon: TrendingUp },
