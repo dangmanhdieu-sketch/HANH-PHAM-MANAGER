@@ -151,16 +151,20 @@ export const api = {
     async getToday(): Promise<ChamCong | ChamCong[] | null> {
       return request('/api/chamcong/today');
     },
-    async checkIn(payload: { anh: string; gps: string; ghiChu?: string }): Promise<{ message: string; record: ChamCong }> {
+    async checkIn(payload: { anh: string; gps: string; ghiChu?: string; deviceTime?: string; deviceTimeZone?: string }): Promise<{ message: string; record: ChamCong }> {
+      const deviceTime = payload.deviceTime || new Date().toISOString();
+      const deviceTimeZone = payload.deviceTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh';
       return request('/api/chamcong/checkin', {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, deviceTime, deviceTimeZone }),
       });
     },
-    async checkOut(payload: { anh: string; gps: string; ghiChu?: string }): Promise<{ message: string; record: ChamCong }> {
+    async checkOut(payload: { anh: string; gps: string; ghiChu?: string; deviceTime?: string; deviceTimeZone?: string }): Promise<{ message: string; record: ChamCong }> {
+      const deviceTime = payload.deviceTime || new Date().toISOString();
+      const deviceTimeZone = payload.deviceTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Ho_Chi_Minh';
       return request('/api/chamcong/checkout', {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, deviceTime, deviceTimeZone }),
       });
     },
   },
