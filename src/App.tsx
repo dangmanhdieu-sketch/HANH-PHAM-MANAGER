@@ -27,7 +27,6 @@ import { AdminDashboard } from './views/admin/AdminDashboard';
 import { StaffManagement } from './views/admin/StaffManagement';
 import { AttendanceManagement } from './views/admin/AttendanceManagement';
 import { PayrollManagement } from './views/admin/PayrollManagement';
-import { CommissionManagement } from './views/admin/CommissionManagement';
 import { AuditAndAutomation } from './views/admin/AuditAndAutomation';
 
 // Employee Views
@@ -373,23 +372,17 @@ function AppContent() {
             {currentTab === 'luong' && (
               <PayrollManagement
                 payrollList={payrollList}
+                commissionList={commissionList}
                 staffList={staffList}
                 onRefresh={refreshAllData}
                 onGenerateMonthlyPayroll={() => setConfirmGeneratePayrollOpen(true)}
               />
             )}
 
-            {currentTab === 'hoahong' && (
-              <CommissionManagement
-                commissionList={commissionList}
-                staffList={staffList}
-                onRefresh={refreshAllData}
-              />
-            )}
-
             {currentTab === 'luongchoduyet' && (
               <PayrollManagement
                 payrollList={payrollList}
+                commissionList={commissionList}
                 staffList={staffList}
                 onRefresh={refreshAllData}
                 onGenerateMonthlyPayroll={() => setConfirmGeneratePayrollOpen(true)}
@@ -400,6 +393,7 @@ function AppContent() {
             {currentTab === 'dathanhtoan' && (
               <PayrollManagement
                 payrollList={payrollList}
+                commissionList={commissionList}
                 staffList={staffList}
                 onRefresh={refreshAllData}
                 onGenerateMonthlyPayroll={() => setConfirmGeneratePayrollOpen(true)}
