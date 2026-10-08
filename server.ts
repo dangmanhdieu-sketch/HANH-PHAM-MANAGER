@@ -567,7 +567,36 @@ app.post('/api/luong/:id/thanh-toan', authenticateToken, requireAdmin, (req: Aut
 });
 
 // ==========================================
-// 5. HOAHONG (COMMISSION) ROUTES
+// 5. TAM UNG LUONG ROUTES
+// ==========================================
+
+app.get('/api/tam-ung', authenticateToken, (req: AuthRequest, res: Response) => {
+  const user = req.user!;
+  const { thang, nhanVienId } = req.query as Record<string, string>;
+  const targetNhanVienId = user.Quyen === 'Admin' ? nhanVienId : user.NhanVienID;
+  return res.json(dbService.getTamUngList({ thang, nhanVienId: targetNhanVienId }));
+});
+
+app.post('/api/tam-ung', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const created = dbService.createTamUng(req.body, { HoTen: req.user!.HoTen, Email: req.user!.Email });
+    return res.status(201).json(created);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/tam-ung/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    dbService.deleteTamUng(req.params.id, { HoTen: req.user!.HoTen, Email: req.user!.Email });
+    return res.json({ message: 'Đã xóa khoản tạm ứng.' });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 6. HOAHONG (COMMISSION) ROUTES
 // ==========================================
 
 app.get('/api/hoahong', authenticateToken, (req: AuthRequest, res: Response) => {
