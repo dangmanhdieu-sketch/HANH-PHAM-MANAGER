@@ -215,8 +215,24 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       alert('Vui lòng chọn file hình ảnh.');
       return;
     }
+
     const reader = new FileReader();
-    reader.onload = () => setFormData((prev) => ({ ...prev, AnhChungTu: String(reader.result || '') }));
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSide = 1200;
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const compressed = canvas.toDataURL('image/jpeg', 0.75);
+        setFormData((prev) => ({ ...prev, AnhChungTu: compressed }));
+      };
+      img.src = String(reader.result || '');
+    };
     reader.readAsDataURL(file);
   };
 
