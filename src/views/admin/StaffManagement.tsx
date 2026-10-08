@@ -62,6 +62,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // Form states
   const [formData, setFormData] = useState({
     HoTen: '',
+    TenDangNhap: '',
     Email: '',
     SDT: '',
     ChucVu: '',
@@ -104,6 +105,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     const matchSearch =
       nv.HoTen.toLowerCase().includes(term) ||
       nv.NhanVienID.toLowerCase().includes(term) ||
+      (nv.TenDangNhap || '').toLowerCase().includes(term) ||
       nv.Email.toLowerCase().includes(term) ||
       nv.SDT.includes(term) ||
       (nv.SoTaiKhoan && nv.SoTaiKhoan.includes(term)) ||
@@ -120,11 +122,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     return `HPB@${rand}`;
   };
 
+  const generateUsername = () => {
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    return `nv${rand}`;
+  };
+
   const openCreateModal = () => {
     setEditingStaff(null);
     const initialPass = generateRandomPassword();
     setFormData({
       HoTen: '',
+      TenDangNhap: generateUsername(),
       Email: '',
       SDT: '',
       ChucVu: 'Chuyên Viên Tư Vấn & Stylist Váy Cưới',
@@ -148,6 +156,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setEditingStaff(staff);
     setFormData({
       HoTen: staff.HoTen,
+      TenDangNhap: staff.TenDangNhap || staff.NhanVienID.toLowerCase(),
       Email: staff.Email,
       SDT: staff.SDT,
       ChucVu: staff.ChucVu,
@@ -234,7 +243,8 @@ Chức vụ: ${credentialModalStaff.ChucVu}
 Mã nhân viên: ${credentialModalStaff.NhanVienID}
 
 THÔNG TIN ĐĂNG NHẬP:
-- Tài khoản (Email): ${credentialModalStaff.Email}
+- Tên đăng nhập: ${credentialModalStaff.TenDangNhap || credentialModalStaff.NhanVienID.toLowerCase()}
+- Email liên hệ: ${credentialModalStaff.Email}
 - Mật khẩu: ${credentialPassword}
 - Quyền truy cập: ${credentialModalStaff.Quyen}
 
@@ -259,6 +269,7 @@ HẠNH PHẠM MANAGER`;
     const headers = [
       'Mã NV',
       'Họ và Tên',
+      'Tên Đăng Nhập',
       'Email',
       'Số Điện Thoại',
       'Chức Vụ',
@@ -275,6 +286,7 @@ HẠNH PHẠM MANAGER`;
     const rows = filteredStaff.map((nv) => [
       nv.NhanVienID,
       `"${nv.HoTen}"`,
+      nv.TenDangNhap || nv.NhanVienID.toLowerCase(),
       nv.Email,
       `'${nv.SDT}`,
       `"${nv.ChucVu}"`,
@@ -576,7 +588,7 @@ HẠNH PHẠM MANAGER`;
                   {editingStaff ? `SỬA HỒ SƠ: ${editingStaff.HoTen}` : 'THÊM NHÂN VIÊN MỚI'}
                 </h3>
                 <p className="text-stone-500 text-[11px] mt-0.5">
-                  Admin tạo hồ sơ, thiết lập tài khoản đăng nhập và tài khoản ngân hàng cho nhân viên
+                  Admin tạo hồ sơ, thiết lập tên đăng nhập, mật khẩu và tài khoản ngân hàng cho nhân viên
                 </p>
               </div>
               <button
@@ -625,7 +637,41 @@ HẠNH PHẠM MANAGER`;
 
                   <div>
                     <label className="block font-semibold text-stone-700 mb-1">
-                      Email Đăng Nhập <span className="text-rose-500">*</span>
+                      Tên Đăng Nhập <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        required
+                        minLength={3}
+                        maxLength={50}
+                        value={formData.TenDangNhap}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            TenDangNhap: e.target.value.toLowerCase().replace(/\s+/g, ''),
+                          })
+                        }
+                        placeholder="VD: domailinh hoặc nv002"
+                        className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, TenDangNhap: generateUsername() })}
+                        className="shrink-0 px-2.5 py-2 border border-[#c5a059] text-[#8c642e] rounded-lg hover:bg-[#FAF8F5] text-[10px] font-bold"
+                        title="Tạo tên đăng nhập ngẫu nhiên"
+                      >
+                        Tạo
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-stone-400 mt-1">
+                      Dùng tên này để đăng nhập. Chỉ chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-stone-700 mb-1">
+                      Email Liên Hệ <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="email"
@@ -813,7 +859,7 @@ HẠNH PHẠM MANAGER`;
                       </button>
                     </div>
                     <p className="text-[10px] text-stone-400 mt-1">
-                      Admin sẽ gửi mật khẩu này cho nhân viên để đăng nhập vào app.
+                      Admin sẽ gửi Tên đăng nhập và mật khẩu này cho nhân viên để đăng nhập vào app.
                     </p>
                   </div>
 
@@ -888,9 +934,12 @@ HẠNH PHẠM MANAGER`;
 
               <div className="space-y-2 text-xs">
                 <div>
-                  <span className="text-stone-400 text-[10px] uppercase block">Tài khoản đăng nhập (Email)</span>
+                  <span className="text-stone-400 text-[10px] uppercase block">Tên đăng nhập</span>
                   <span className="font-mono font-bold text-white text-sm select-all">
-                    {credentialModalStaff.Email}
+                    {credentialModalStaff.TenDangNhap || credentialModalStaff.NhanVienID.toLowerCase()}
+                  </span>
+                  <span className="text-stone-500 text-[10px] block mt-1">
+                    Email liên hệ: {credentialModalStaff.Email}
                   </span>
                 </div>
 
@@ -926,7 +975,7 @@ HẠNH PHẠM MANAGER`;
                 Hướng dẫn cấp cho nhân viên:
               </p>
               <p>
-                Bấm nút <strong>"Sao chép thông tin gửi nhân viên"</strong> bên dưới rồi dán vào Zalo hoặc tin nhắn cho nhân viên. Nhân viên dùng Email và Mật khẩu trên để đăng nhập chấm công và theo dõi lương.
+                Bấm nút <strong>"Sao chép thông tin gửi nhân viên"</strong> bên dưới rồi dán vào Zalo hoặc tin nhắn cho nhân viên. Nhân viên dùng Tên đăng nhập và Mật khẩu trên để đăng nhập chấm công và theo dõi lương.
               </p>
             </div>
 
