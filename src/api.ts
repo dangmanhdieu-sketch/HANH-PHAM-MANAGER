@@ -10,6 +10,8 @@ import type {
   SystemConfig,
   AuthResponse,
   AppDesignTheme,
+  QuanLyRecord,
+  QuanLyModule,
 } from './types';
 
 const TOKEN_KEY = 'hanhpham_auth_token';
@@ -573,6 +575,32 @@ export const api = {
           method: 'DELETE',
         }
       );
+    },
+  },
+
+  // =========================================================
+  // QUẢN LÝ NGHIỆP VỤ LIÊN KẾT
+  // =========================================================
+
+  quanLy: {
+    async getAll(module?: QuanLyModule): Promise<QuanLyRecord[]> {
+      const q = module ? `?module=${encodeURIComponent(module)}` : '';
+      return request<QuanLyRecord[]>(`/api/quan-ly${q}`);
+    },
+    async create(module: QuanLyModule, data: Record<string, any>): Promise<QuanLyRecord> {
+      return request<QuanLyRecord>('/api/quan-ly', {
+        method: 'POST',
+        body: JSON.stringify({ module, data }),
+      });
+    },
+    async update(id: string, data: Record<string, any>): Promise<QuanLyRecord> {
+      return request<QuanLyRecord>(`/api/quan-ly/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ data }),
+      });
+    },
+    async delete(id: string): Promise<{ message: string }> {
+      return request(`/api/quan-ly/${id}`, { method: 'DELETE' });
     },
   },
 
