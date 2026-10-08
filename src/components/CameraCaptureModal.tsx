@@ -26,10 +26,12 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Live clock
   useEffect(() => {
     if (!isOpen) return;
+
     const updateTime = () => {
       const now = new Date();
       setCurrentTime(
@@ -40,54 +42,126 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
         })
       );
     };
+
     updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
+    const timer = window.setInterval(updateTime, 1000);
+    return () => window.clearInterval(timer);
   }, [isOpen]);
 
-  // Start Camera & Geolocation when modal opens
+  // Start/stop camera + GPS when modal opens/closes
   useEffect(() => {
-    if (isOpen) {
-      setPhotoData(null);
-      setGhiChu('');
-      startCamera();
-      acquireLocation();
-    } else {
+    if (!isOpen) {
       stopCamera();
+      return;
     }
+
+    setPhotoData(null);
+    setGhiChu('');
+    setCameraError(null);
+    setGpsData(null);
+
+    void startCamera();
+    acquireLocation();
+
     return () => {
       stopCamera();
     };
   }, [isOpen]);
 
+  // IMPORTANT:
+  // The <video> element is rendered only after stream state changes.
+  // The old code tried to assign srcObject immediately inside startCamera(),
+  // when videoRef.current could still be null. This effect attaches the
+  // stream after the video element actually exists.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !stream) return;
+
+    video.srcObject = stream;
+    video.muted = true;
+    video.playsInline = true;
+
+    const playVideo = async () => {
+      try {
+        await video.play();
+      } catch (err) {
+        console.warn('Video autoplay/play error:', err);
+      }
+    };
+
+    if (video.readyState >= 1) {
+      void playVideo();
+    } else {
+      video.addEventListener('loadedmetadata', playVideo, { once: true });
+    }
+
+    return () => {
+      video.removeEventListener('loadedmetadata', playVideo);
+      if (video.srcObject === stream) {
+        video.pause();
+        video.srcObject = null;
+      }
+    };
+  }, [stream]);
+
   const startCamera = async () => {
     setCameraError(null);
+
+    // Stop any previous stream first.
+    stopCamera();
+
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Trình duyệt không hỗ trợ trực tiếp MediaDevices API.');
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Trình duyệt không hỗ trợ camera trực tiếp.');
       }
+
+      // "ideal" is more compatible across desktop + mobile browsers than
+      // requiring an exact front-camera constraint.
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 640 },
+          facingMode: { ideal: 'user' },
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
         },
         audio: false,
       });
+
+      streamRef.current = mediaStream;
       setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
     } catch (err: any) {
       console.warn('Camera stream error:', err);
-      setCameraError('Không thể mở camera trực tiếp. Bạn có thể sử dụng nút "Chụp từ thiết bị / Tải ảnh lên".');
+
+      let message = 'Không thể mở camera trực tiếp.';
+
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        message = 'Camera chưa được cấp quyền. Hãy cho phép quyền Camera rồi bấm "Thử mở camera lại".';
+      } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+        message = 'Không tìm thấy camera trên thiết bị.';
+      } else if (err?.name === 'NotReadableError' || err?.name === 'TrackStartError') {
+        message = 'Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đang dùng camera rồi thử lại.';
+      } else if (err?.message) {
+        message = err.message;
+      }
+
+      setCameraError(message);
+      setStream(null);
+      streamRef.current = null;
     }
   };
 
   const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
+    const currentStream = streamRef.current || stream;
+
+    if (currentStream) {
+      currentStream.getTracks().forEach((track) => track.stop());
+    }
+
+    streamRef.current = null;
+    setStream(null);
+
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
     }
   };
 
@@ -104,25 +178,34 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
-        // Format GPS string
         const formatted = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
         setGpsData({
           lat: latitude,
           lng: longitude,
           accuracy: Math.round(accuracy),
           address: `${formatted} (Sai số ±${Math.round(accuracy)}m)`,
         });
+
         setLoadingGps(false);
       },
       (err) => {
         console.warn('Geolocation error:', err);
-        // Fallback default coordinates of studio if user denied browser prompt
+
+        // Keep the existing fallback behavior from the original component.
         setGpsData({
           lat: 10.7769,
           lng: 106.6953,
           accuracy: 10,
           address: '10.776900, 106.695300 (Studio Hanh Pham Bridal)',
         });
+
+        setGpsError(
+          err.code === 1
+            ? 'Bạn chưa cấp quyền GPS. Hệ thống đang dùng tọa độ dự phòng.'
+            : 'Không lấy được GPS chính xác. Hệ thống đang dùng tọa độ dự phòng.'
+        );
+
         setLoadingGps(false);
       },
       {
@@ -134,20 +217,39 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
   };
 
   const capturePhoto = () => {
-    if (!videoRef.current) return;
     const video = videoRef.current;
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
 
-    // Flip horizontally for natural mirror selfie
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
+    if (!video || !streamRef.current) {
+      alert('Camera chưa sẵn sàng. Vui lòng chờ camera hiển thị hình rồi thử lại.');
+      return;
+    }
+
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+
+    if (!videoWidth || !videoHeight || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      alert('Camera chưa có khung hình. Vui lòng chờ 1–2 giây rồi thử lại.');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      alert('Không thể tạo ảnh chụp.');
+      return;
+    }
+
+    // IMPORTANT:
+    // The live preview is mirrored with CSS for a natural selfie experience.
+    // Do NOT mirror the canvas here. This makes the saved/check-in photo
+    // normal (not reversed).
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const base64 = canvas.toDataURL('image/jpeg', 0.85);
+    const base64 = canvas.toDataURL('image/jpeg', 0.88);
+
     setPhotoData(base64);
     stopCamera();
   };
@@ -156,19 +258,35 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn một file hình ảnh.');
+      e.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
+
     reader.onload = () => {
       if (typeof reader.result === 'string') {
+        // Uploaded images are kept in their original orientation.
         setPhotoData(reader.result);
         stopCamera();
       }
     };
+
+    reader.onerror = () => {
+      alert('Không thể đọc ảnh. Vui lòng thử lại.');
+    };
+
     reader.readAsDataURL(file);
+
+    // Allow selecting the same image again later.
+    e.target.value = '';
   };
 
   const retakePhoto = () => {
     setPhotoData(null);
-    startCamera();
+    void startCamera();
   };
 
   const handleConfirm = async () => {
@@ -176,21 +294,24 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
       alert('Vui lòng chụp ảnh khuôn mặt trước khi xác nhận.');
       return;
     }
+
     if (!gpsData) {
       alert('Vui lòng chờ hệ thống lấy tọa độ GPS.');
       return;
     }
 
     setSubmitting(true);
+
     try {
       await onSubmit({
         anh: photoData,
         gps: `${gpsData.lat.toFixed(6)}, ${gpsData.lng.toFixed(6)} (${gpsData.address})`,
         ghiChu: ghiChu.trim() || undefined,
       });
+
       onClose();
     } catch (err: any) {
-      alert(err.message || 'Có lỗi xảy ra khi chấm công.');
+      alert(err?.message || 'Có lỗi xảy ra khi chấm công.');
     } finally {
       setSubmitting(false);
     }
@@ -204,9 +325,16 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7DFD5] bg-[#FAF8F5]">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-full ${title === 'CHECK-IN' ? 'bg-[#c5a059]/10 text-[#bf954f]' : 'bg-stone-800 text-white'}`}>
+            <div
+              className={`p-2 rounded-full ${
+                title === 'CHECK-IN'
+                  ? 'bg-[#c5a059]/10 text-[#bf954f]'
+                  : 'bg-stone-800 text-white'
+              }`}
+            >
               <Camera className="w-5 h-5" />
             </div>
+
             <div>
               <h3 className="text-lg font-bold tracking-wide text-stone-900 font-bridal uppercase">
                 {title} CHẤM CÔNG
@@ -214,6 +342,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
               <p className="text-xs text-stone-500">Hanh Pham Bridal Studio</p>
             </div>
           </div>
+
           <button
             onClick={onClose}
             className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-full transition-colors"
@@ -227,10 +356,11 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
           {/* Time & Security Banner */}
           <div className="flex items-center justify-between p-3 bg-[#FAF8F5] rounded-xl border border-[#E7DFD5]">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-xs font-semibold text-stone-700">Thời gian thực:</span>
               <span className="text-sm font-mono font-bold text-stone-900">{currentTime}</span>
             </div>
+
             <div className="flex items-center gap-1.5 text-xs text-stone-500">
               <ShieldCheck className="w-4 h-4 text-[#bf954f]" />
               <span>Chống giả mạo GPS & Ảnh</span>
@@ -243,7 +373,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
               <img
                 src={photoData}
                 alt="Captured"
-                className="w-full h-full object-cover transform -scale-x-100"
+                className="w-full h-full object-cover"
               />
             ) : stream ? (
               <div className="relative w-full h-full">
@@ -253,12 +383,13 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                   playsInline
                   muted
                   className="w-full h-full object-cover transform -scale-x-100"
-                  onLoadedMetadata={() => videoRef.current?.play()}
                 />
+
                 {/* Face guide overlay */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-48 h-60 border-2 border-dashed border-[#c5a059]/70 rounded-full opacity-70"></div>
+                  <div className="w-48 h-60 border-2 border-dashed border-[#c5a059]/70 rounded-full opacity-70" />
                 </div>
+
                 <div className="absolute bottom-3 left-0 right-0 text-center">
                   <span className="bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
                     Căn chỉnh khuôn mặt vào khung
@@ -268,25 +399,30 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
             ) : (
               <div className="p-6 text-center text-stone-400 space-y-3">
                 <Camera className="w-12 h-12 mx-auto text-stone-500 opacity-60" />
+
                 <p className="text-xs text-stone-300">
                   {cameraError || 'Đang khởi động camera...'}
                 </p>
+
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => void startCamera()}
                   className="text-xs bg-[#c5a059] text-stone-900 px-4 py-2 rounded-lg font-medium hover:bg-[#cfad72] transition"
                 >
-                  Chụp bằng camera điện thoại / Chọn ảnh
+                  Thử mở camera lại
                 </button>
               </div>
             )}
           </div>
 
+          {/* Hidden file input.
+              IMPORTANT: No capture="user" here.
+              Without capture, mobile browsers open the normal image picker
+              instead of forcing the camera. */}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="user"
             className="hidden"
             onChange={handleFileUpload}
           />
@@ -304,11 +440,12 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                   <Camera className="w-4 h-4" />
                   <span>Chụp ảnh chân dung</span>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="px-4 py-2.5 border border-[#E7DFD5] text-stone-700 hover:bg-stone-50 rounded-xl text-xs font-medium transition"
-                  title="Chụp trực tiếp từ camera điện thoại"
+                  title="Chọn ảnh có sẵn trên thiết bị"
                 >
                   Tùy chọn tải ảnh
                 </button>
@@ -332,6 +469,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                 <MapPin className="w-3.5 h-3.5 text-[#bf954f]" />
                 Vị trí GPS thực tế:
               </span>
+
               <button
                 type="button"
                 onClick={acquireLocation}
@@ -347,11 +485,18 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
               <p className="text-stone-400 italic">Đang định vị vệ tinh GPS...</p>
             ) : gpsData ? (
               <div className="space-y-0.5">
-                <p className="font-mono text-stone-800 text-[11px] break-all">{gpsData.address}</p>
+                <p className="font-mono text-stone-800 text-[11px] break-all">
+                  {gpsData.address}
+                </p>
+
                 <p className="text-[11px] text-emerald-600 flex items-center gap-1">
                   <CheckCircle className="w-3 h-3" />
                   Vị trí hợp lệ được ghi nhận tự động (Không thể sửa đổi)
                 </p>
+
+                {gpsError && (
+                  <p className="text-[10px] text-amber-600">{gpsError}</p>
+                )}
               </div>
             ) : (
               <p className="text-amber-600 flex items-center gap-1">
@@ -366,6 +511,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
             <label className="block text-xs font-medium text-stone-600 mb-1">
               Ghi chú công việc (nếu có):
             </label>
+
             <input
               type="text"
               value={ghiChu}
@@ -386,6 +532,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
           >
             Hủy bỏ
           </button>
+
           <button
             type="button"
             onClick={handleConfirm}
