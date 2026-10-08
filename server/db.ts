@@ -362,6 +362,7 @@ class DatabaseService {
     }
 
     this.applyMigrations();
+    if (!Array.isArray(this.db.QUAN_LY)) this.db.QUAN_LY = [];
     this.refreshKPIs();
     this.saveSync();
 
