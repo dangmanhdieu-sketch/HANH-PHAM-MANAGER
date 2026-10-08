@@ -10,7 +10,6 @@ import {
   Sparkles,
   MapPin,
   CheckCircle,
-  AlertTriangle,
   History,
   FileJson,
 } from 'lucide-react';
@@ -29,7 +28,6 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
   const [runningAuto, setRunningAuto] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [restoring, setRestoring] = useState(false);
-  const [resetting, setResetting] = useState(false);
   const [logSearch, setLogSearch] = useState('');
 
   const loadData = async () => {
@@ -122,50 +120,6 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
       }
     };
     reader.readAsText(file);
-  };
-  const handleResetDemoData = async () => {
-    const confirmed = window.confirm(
-      '⚠️ CẢNH BÁO!\n\n' +
-      'Bạn sắp XÓA TOÀN BỘ DỮ LIỆU DEMO.\n\n' +
-      'Sẽ xóa:\n' +
-      '• Nhân viên mẫu\n' +
-      '• Chấm công\n' +
-      '• Lương\n' +
-      '• Hoa hồng\n' +
-      '• Thông báo\n' +
-      '• Lịch sử dữ liệu demo\n\n' +
-      'Tài khoản ADMIN sẽ được giữ lại.\n\n' +
-      'Hệ thống sẽ tự động tạo bản backup trước khi xóa.\n\n' +
-      'Bạn có chắc chắn muốn tiếp tục?'
-    );
-
-    if (!confirmed) return;
-
-    setResetting(true);
-
-    try {
-      const result = await api.system.resetDemoData();
-
-      alert(
-        '✅ ĐÃ XÓA DỮ LIỆU DEMO THÀNH CÔNG!\n\n' +
-        `Admin được giữ lại: ${result.remainingAdmin}\n` +
-        `Nhân viên còn lại: ${result.nhanVien}\n` +
-        `Chấm công: ${result.chamCong}\n` +
-        `Lương: ${result.luong}\n` +
-        `Hoa hồng: ${result.hoaHong}\n\n` +
-        `Backup đã tạo: ${result.backupFile}`
-      );
-
-      await loadData();
-      onRefreshAll();
-    } catch (err: any) {
-      alert(
-        '❌ Không thể xóa dữ liệu demo.\n\n' +
-        (err?.message || 'Đã xảy ra lỗi không xác định.')
-      );
-    } finally {
-      setResetting(false);
-    }
   };
   const filteredLogs = auditLogs.filter((log) => {
     const term = logSearch.toLowerCase();
