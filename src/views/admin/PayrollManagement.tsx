@@ -18,12 +18,14 @@ import {
   Trash2,
   Wallet,
 } from 'lucide-react';
-import type { Luong, NhanVien, TamUng } from '../../types';
+import type { Luong, HoaHong, NhanVien, TamUng } from '../../types';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { api } from '../../api';
+import { CommissionManagement } from './CommissionManagement';
 
 interface PayrollManagementProps {
   payrollList: Luong[];
+  commissionList: HoaHong[];
   staffList: NhanVien[];
   onRefresh: () => void;
   onGenerateMonthlyPayroll: () => void;
@@ -32,6 +34,7 @@ interface PayrollManagementProps {
 
 export const PayrollManagement: React.FC<PayrollManagementProps> = ({
   payrollList,
+  commissionList,
   staffList,
   onRefresh,
   onGenerateMonthlyPayroll,
@@ -807,5 +810,14 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
         type="success"
       />
     </div>
+
+      {/* GỘP HOA HỒNG & SHOW VÀO CÙNG TAB LƯƠNG */}
+      {initialFilterStatus === 'ALL' && (
+        <CommissionManagement
+          commissionList={commissionList}
+          staffList={staffList}
+          onRefresh={onRefresh}
+        />
+      )}
   );
 };
