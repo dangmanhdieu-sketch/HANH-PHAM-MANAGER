@@ -464,13 +464,46 @@ app.post('/api/chamcong/checkout', authenticateToken, (req: AuthRequest, res: Re
 // ==========================================
 app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => {
   const module = req.query.module as any;
-  return res.json(dbService.getQuanLyRecords(module || undefined));
+  let records = dbService.getQuanLyRecords(module || undefined);
+
+  // Nhân viên chỉ được xem các phiếu thu/chi do chính mình lập.
+  if (req.user!.Quyen !== 'Admin' && module === 'THU_CHI') {
+    records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
+  }
+
+  return res.json(records);
 });
 
-app.post('/api/quan-ly', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => {
   try {
     const { module, data } = req.body || {};
-    const record = dbService.createQuanLyRecord(module, data, {
+
+    if (req.user!.Quyen !== 'Admin' && module !== 'THU_CHI') {
+      return res.status(403).json({ error: 'Bạn không có quyền tạo dữ liệu nghiệp vụ này.' });
+    }
+
+    const payload = { ...(data || {}) };
+
+    if (module === 'THU_CHI') {
+      // Nhân viên không được giả mạo người lập phiếu hoặc trạng thái duyệt.
+      if (req.user!.Quyen !== 'Admin') {
+        payload.NhanVienID = req.user!.NhanVienID;
+        payload.NhanVien = req.user!.HoTen;
+        payload.TrangThaiDuyet = 'Chờ Admin duyệt';
+      } else if (!payload.TrangThaiDuyet) {
+        payload.TrangThaiDuyet = 'Đã duyệt';
+      }
+
+      payload.Loai = String(payload.Loai || '').toUpperCase();
+      if (!['THU', 'CHI'].includes(payload.Loai)) {
+        return res.status(400).json({ error: 'Phiếu phải là THU hoặc CHI.' });
+      }
+      if (!payload.SoTien || Number(payload.SoTien) <= 0) {
+        return res.status(400).json({ error: 'Số tiền phải lớn hơn 0.' });
+      }
+    }
+
+    const record = dbService.createQuanLyRecord(module, payload, {
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
