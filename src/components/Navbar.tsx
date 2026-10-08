@@ -142,7 +142,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   // ============================================================
-  // TAB CHANGE
+  // CHUYỂN TAB
   // ============================================================
   const handleTabChange = (tab: string) => {
     onTabChange(tab);
@@ -152,7 +152,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   // ============================================================
-  // LOGOUT
+  // ĐĂNG XUẤT
   // ============================================================
   const handleLogout = () => {
     setMobileMenuOpen(false);
@@ -162,21 +162,47 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-[#E7DFD5] shadow-sm">
+    <header
+      className="
+        sticky top-0 z-50
+        bg-white/95
+        backdrop-blur-xl
+        border-b border-[#E7DFD5]
+        shadow-sm
+      "
+    >
       {/* ======================================================
           MOBILE HEADER
+          Có hỗ trợ Safe Area cho iPhone tai thỏ / Dynamic Island
       ====================================================== */}
       <div className="lg:hidden">
-        <div className="min-h-[64px] px-3 sm:px-4 flex items-center justify-between gap-3">
-          {/* --------------------------------------------------
+        <div
+          className="
+            px-3 sm:px-4
+            flex items-center justify-between gap-3
+            bg-white/95
+          "
+          style={{
+            paddingTop: 'max(12px, env(safe-area-inset-top))',
+            paddingBottom: '10px',
+            minHeight: 'calc(64px + env(safe-area-inset-top))',
+          }}
+        >
+          {/* ==================================================
               LOGO + BRAND
-          -------------------------------------------------- */}
+          ================================================== */}
           <button
             type="button"
             onClick={() =>
               handleTabChange(isAdmin ? 'dashboard' : 'home')
             }
-            className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
+            className="
+              flex items-center gap-2.5
+              min-w-0 flex-1
+              text-left
+              active:opacity-70
+              transition
+            "
             aria-label="Trang chủ"
           >
             <div className="shrink-0">
@@ -187,21 +213,41 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             <div className="min-w-0">
-              <div className="font-bridal text-[14px] sm:text-[15px] leading-tight font-bold tracking-[0.08em] text-stone-900 whitespace-nowrap">
+              <div
+                className="
+                  font-bridal
+                  text-[14px] sm:text-[15px]
+                  leading-tight
+                  font-bold
+                  tracking-[0.08em]
+                  text-stone-900
+                  whitespace-nowrap
+                "
+              >
                 HẠNH PHẠM
               </div>
 
-              <div className="text-[8px] sm:text-[9px] leading-tight tracking-[0.22em] text-[#a97d3e] font-semibold">
+              <div
+                className="
+                  text-[8px] sm:text-[9px]
+                  leading-tight
+                  tracking-[0.22em]
+                  text-[#a97d3e]
+                  font-semibold
+                "
+              >
                 MANAGER
               </div>
             </div>
           </button>
 
-          {/* --------------------------------------------------
+          {/* ==================================================
               MOBILE ACTIONS
-          -------------------------------------------------- */}
+          ================================================== */}
           <div className="flex items-center gap-1 shrink-0">
-            {/* ================= NOTIFICATION ================= */}
+            {/* =================================================
+                THÔNG BÁO
+            ================================================= */}
             <div className="relative">
               <button
                 type="button"
@@ -213,13 +259,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onMarkReadNotifications();
                   }
                 }}
-                className="relative w-10 h-10 flex items-center justify-center rounded-xl text-stone-600 hover:bg-[#FAF8F5] active:bg-[#F4EEE7] transition"
+                className="
+                  relative
+                  w-10 h-10
+                  flex items-center justify-center
+                  rounded-xl
+                  text-stone-600
+                  hover:bg-[#FAF8F5]
+                  active:bg-[#F4EEE7]
+                  transition
+                "
                 aria-label="Thông báo"
               >
                 <Bell className="w-[19px] h-[19px]" />
 
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 min-w-[17px] h-[17px] px-1 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  <span
+                    className="
+                      absolute top-1 right-1
+                      min-w-[17px] h-[17px]
+                      px-1
+                      bg-rose-500
+                      text-white
+                      text-[9px]
+                      font-bold
+                      rounded-full
+                      flex items-center justify-center
+                    "
+                  >
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
@@ -227,7 +294,20 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* Mobile Notification Dropdown */}
               {notifDropdownOpen && (
-                <div className="absolute right-0 top-12 w-[min(88vw,340px)] bg-white rounded-2xl shadow-2xl border border-[#E7DFD5] p-3 z-[120]">
+                <div
+                  className="
+                    absolute
+                    right-0
+                    top-12
+                    w-[min(88vw,340px)]
+                    bg-white
+                    rounded-2xl
+                    shadow-2xl
+                    border border-[#E7DFD5]
+                    p-3
+                    z-[120]
+                  "
+                >
                   <div className="flex items-center justify-between pb-2 border-b border-stone-100">
                     <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
                       Thông báo
@@ -262,7 +342,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                           </p>
 
                           <p className="text-[9px] text-stone-400 mt-1">
-                            {new Date(n.TaoLuc).toLocaleDateString('vi-VN')}
+                            {new Date(n.TaoLuc).toLocaleDateString(
+                              'vi-VN'
+                            )}
                           </p>
                         </div>
                       ))
@@ -272,7 +354,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* ================= MOBILE MENU ================= */}
+            {/* =================================================
+                MENU MOBILE
+            ================================================= */}
             <button
               type="button"
               onClick={() => {
@@ -280,7 +364,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 setNotifDropdownOpen(false);
                 setSwitchDropdownOpen(false);
               }}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-stone-900 text-[#dfc79f] shadow-sm hover:bg-stone-800 active:scale-95 transition"
+              className="
+                w-10 h-10
+                flex items-center justify-center
+                rounded-xl
+                bg-stone-900
+                text-[#dfc79f]
+                shadow-sm
+                hover:bg-stone-800
+                active:scale-95
+                transition
+              "
               aria-label="Mở menu"
             >
               <Menu className="w-5 h-5" />
@@ -295,9 +389,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="hidden lg:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* --------------------------------------------------
-                DESKTOP LOGO
-            -------------------------------------------------- */}
+
+            {/* ==================================================
+                LOGO DESKTOP
+            ================================================== */}
             <div className="flex items-center gap-3">
               <HanhPhamLogo
                 size="md"
@@ -305,7 +400,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               />
 
               <div className="flex items-center gap-2">
-                <span className="font-bridal text-xl font-bold tracking-wider text-stone-900 uppercase">
+                <span
+                  className="
+                    font-bridal
+                    text-xl
+                    font-bold
+                    tracking-wider
+                    text-stone-900
+                    uppercase
+                  "
+                >
                   HẠNH PHẠM MANAGER
                 </span>
 
@@ -321,15 +425,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* --------------------------------------------------
+            {/* ==================================================
                 DESKTOP ACTIONS
-            -------------------------------------------------- */}
+            ================================================== */}
             <div className="flex items-center gap-2 sm:gap-4">
-              {/* ================= DESIGN ================= */}
+
+              {/* =================================================
+                  THIẾT KẾ APP
+              ================================================= */}
               {isAdmin && (
                 <button
                   type="button"
-                  onClick={() => handleTabChange('thietke')}
+                  onClick={() =>
+                    handleTabChange('thietke')
+                  }
                   title="Tùy biến thiết kế"
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition shadow-sm ${
                     currentTab === 'thietke'
@@ -342,7 +451,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               )}
 
-              {/* ================= ACCOUNT SWITCH ================= */}
+              {/* =================================================
+                  ĐỔI TÀI KHOẢN
+              ================================================= */}
               <div className="relative">
                 <button
                   type="button"
@@ -350,7 +461,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setSwitchDropdownOpen((prev) => !prev);
                     setNotifDropdownOpen(false);
                   }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#e7dfd5] text-[11px] font-medium text-stone-700 bg-[#faf8f5] hover:bg-[#f4eee7] transition"
+                  className="
+                    flex items-center gap-1.5
+                    px-2.5 py-1.5
+                    rounded-lg
+                    border border-[#e7dfd5]
+                    text-[11px]
+                    font-medium
+                    text-stone-700
+                    bg-[#faf8f5]
+                    hover:bg-[#f4eee7]
+                    transition
+                  "
                 >
                   <ArrowRightLeft className="w-3.5 h-3.5 text-[#bf954f]" />
 
@@ -360,7 +482,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
 
                 {switchDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-[#e7dfd5] p-2 z-[120]">
+                  <div
+                    className="
+                      absolute
+                      right-0
+                      mt-2
+                      w-72
+                      bg-white
+                      rounded-xl
+                      shadow-xl
+                      border border-[#e7dfd5]
+                      p-2
+                      z-[120]
+                    "
+                  >
                     <p className="text-[10px] uppercase font-bold text-stone-400 px-2 py-1 tracking-wider">
                       Chuyển đổi tài khoản
                     </p>
@@ -400,7 +535,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
 
-              {/* ================= DESKTOP NOTIFICATION ================= */}
+              {/* =================================================
+                  THÔNG BÁO DESKTOP
+              ================================================= */}
               <div className="relative">
                 <button
                   type="button"
@@ -412,20 +549,43 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onMarkReadNotifications();
                     }
                   }}
-                  className="relative p-2 text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-full transition"
+                  className="
+                    relative
+                    p-2
+                    text-stone-600
+                    hover:text-stone-900
+                    hover:bg-stone-100
+                    rounded-full
+                    transition
+                  "
                   aria-label="Thông báo"
                 >
                   <Bell className="w-5 h-5" />
 
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
                 </button>
 
                 {notifDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-[#e7dfd5] p-3 z-[120] max-h-96 overflow-y-auto">
+                  <div
+                    className="
+                      absolute
+                      right-0
+                      mt-2
+                      w-80
+                      bg-white
+                      rounded-xl
+                      shadow-xl
+                      border border-[#e7dfd5]
+                      p-3
+                      z-[120]
+                      max-h-96
+                      overflow-y-auto
+                    "
+                  >
                     <div className="flex items-center justify-between pb-2 border-b border-stone-100">
                       <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
                         Thông Báo Hệ Thống
@@ -476,7 +636,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
 
-              {/* ================= AVATAR + LOGOUT ================= */}
+              {/* =================================================
+                  AVATAR + LOGOUT
+              ================================================= */}
               <div className="flex items-center gap-2 pl-2 border-l border-stone-200">
                 <img
                   src={
@@ -491,7 +653,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                  className="
+                    p-1.5
+                    text-stone-400
+                    hover:text-rose-600
+                    hover:bg-rose-50
+                    rounded-lg
+                    transition
+                  "
                   title="Đăng xuất"
                 >
                   <LogOut className="w-4 h-4" />
@@ -540,24 +709,46 @@ export const Navbar: React.FC<NavbarProps> = ({
       ====================================================== */}
       {mobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-[100]">
-          {/* --------------------------------------------------
+
+          {/* ==================================================
               OVERLAY
-          -------------------------------------------------- */}
+          ================================================== */}
           <button
             type="button"
             aria-label="Đóng menu"
             onClick={() => setMobileMenuOpen(false)}
-            className="absolute inset-0 bg-black/35 backdrop-blur-[2px]"
+            className="
+              absolute
+              inset-0
+              bg-black/35
+              backdrop-blur-[2px]
+            "
           />
 
-          {/* --------------------------------------------------
+          {/* ==================================================
               DRAWER
-          -------------------------------------------------- */}
-          <aside className="absolute top-0 right-0 bottom-0 w-[88vw] max-w-[390px] bg-[#FCFBF9] shadow-2xl flex flex-col">
+          ================================================== */}
+          <aside
+            className="
+              absolute
+              top-0
+              right-0
+              bottom-0
+              w-[88vw]
+              max-w-[390px]
+              bg-[#FCFBF9]
+              shadow-2xl
+              flex
+              flex-col
+            "
+            style={{
+              paddingTop: 'env(safe-area-inset-top)',
+            }}
+          >
             {/* =================================================
                 DRAWER HEADER
             ================================================= */}
-            <div className="px-5 pt-5 pb-4 border-b border-[#E7DFD5] bg-white">
+            <div className="px-5 pt-4 pb-4 border-b border-[#E7DFD5] bg-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="shrink-0">
@@ -581,7 +772,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600 hover:bg-stone-200 transition"
+                  className="
+                    w-10 h-10
+                    rounded-xl
+                    bg-stone-100
+                    flex items-center justify-center
+                    text-stone-600
+                    hover:bg-stone-200
+                    transition
+                  "
                   aria-label="Đóng menu"
                 >
                   <X className="w-5 h-5" />
@@ -589,7 +788,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
 
               {/* =================================================
-                  USER INFO
+                  USER
               ================================================= */}
               <div className="mt-4 flex items-center gap-3 p-3 rounded-2xl bg-[#F6F1E8] border border-[#E7DFD5]">
                 <img
@@ -620,7 +819,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* =================================================
-                MENU CONTENT
+                MENU
             ================================================= */}
             <div className="flex-1 overflow-y-auto px-4 py-4">
               <p className="px-2 mb-2 text-[10px] uppercase tracking-[0.18em] font-bold text-stone-400">
@@ -636,7 +835,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <button
                       key={tab.id}
                       type="button"
-                      onClick={() => handleTabChange(tab.id)}
+                      onClick={() =>
+                        handleTabChange(tab.id)
+                      }
                       className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all ${
                         isActive
                           ? 'bg-stone-900 text-white shadow-md'
@@ -680,7 +881,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
 
               {/* =================================================
-                  ACCOUNT SWITCH
+                  ĐỔI TÀI KHOẢN
               ================================================= */}
               <div className="mt-6">
                 <p className="px-2 mb-2 text-[10px] uppercase tracking-[0.18em] font-bold text-stone-400">
@@ -757,7 +958,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
 
               {/* =================================================
-                  DESIGN APP
+                  THIẾT KẾ APP
               ================================================= */}
               {isAdmin && (
                 <button
@@ -801,13 +1002,36 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* =================================================
-                LOGOUT
+                ĐĂNG XUẤT
             ================================================= */}
-            <div className="p-4 border-t border-[#E7DFD5] bg-white">
+            <div
+              className="
+                p-4
+                border-t border-[#E7DFD5]
+                bg-white
+              "
+              style={{
+                paddingBottom:
+                  'max(16px, env(safe-area-inset-bottom))',
+              }}
+            >
               <button
                 type="button"
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 font-bold text-sm hover:bg-rose-100 active:scale-[0.99] transition"
+                className="
+                  w-full
+                  flex items-center justify-center gap-2
+                  py-3.5
+                  rounded-2xl
+                  bg-rose-50
+                  text-rose-600
+                  border border-rose-100
+                  font-bold
+                  text-sm
+                  hover:bg-rose-100
+                  active:scale-[0.99]
+                  transition
+                "
               >
                 <LogOut className="w-4 h-4" />
                 Đăng xuất
