@@ -39,6 +39,49 @@ import { MyCommissions } from './views/employee/MyCommissions';
 import { MyProfile } from './views/employee/MyProfile';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; message: string }
+> {
+  state = { hasError: false, message: '' };
+
+  static getDerivedStateFromError(error: unknown) {
+    return {
+      hasError: true,
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error('[HẠNH PHẠM MANAGER] Runtime error:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-6">
+          <div className="w-full max-w-xl bg-white border border-rose-200 rounded-2xl shadow-xl p-6 text-center">
+            <div className="text-rose-600 font-bold text-lg mb-2">HẠNH PHẠM MANAGER</div>
+            <div className="text-stone-700 font-semibold mb-2">Ứng dụng gặp lỗi khi khởi động</div>
+            <div className="text-xs text-stone-500 bg-stone-50 rounded-xl p-3 text-left break-words mb-4">
+              {this.state.message || 'Lỗi không xác định'}
+            </div>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="px-5 py-2.5 rounded-xl bg-stone-900 text-white text-sm font-bold"
+            >
+              TẢI LẠI ỨNG DỤNG
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function AppContent() {
   const [currentUser, setCurrentUser] = useState<NhanVien | null>(null);
   const [initializing, setInitializing] = useState(true);
@@ -525,8 +568,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <AppErrorBoundary>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </AppErrorBoundary>
   );
 }
