@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import type { ChamCong, Luong, HoaHong, NhanVien, ThongKeKPI } from '../../types';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
-import { SalaryCommissionTrendChart } from '../../components/SalaryCommissionTrendChart';
+import { BusinessStats } from './BusinessStats';
 
 interface AdminDashboardProps {
   kpis: ThongKeKPI[];
@@ -82,8 +82,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* 4 KPIS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* BẢNG TỔNG QUAN + THỐNG KÊ ĐÃ GỘP */}
+      <BusinessStats staffList={staffList} payrollList={allPayroll} commissionList={allCommissions} />
+
+      {/* KPI chấm công và lương nhanh đã được gộp vào bảng thống kê phía trên */}
+      {false && <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* KPI 1 */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E7DFD5] shadow-sm">
           <div className="flex items-center justify-between">
@@ -153,12 +156,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* MONTHLY SALARY & COMMISSION TREND LINE CHART (RECHARTS) */}
-      <SalaryCommissionTrendChart
-        payrollList={allPayroll}
-        commissionList={allCommissions}
-        staffList={staffList}
-      />
+
+
+      </div>}
 
       {/* SECTION 1: CHẤM CÔNG HÔM NAY (Realtime Attendance Feed) */}
       <div className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm overflow-hidden">
