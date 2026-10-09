@@ -1,7 +1,7 @@
 // HANH PHAM BRIDAL - System Types & Interfaces
 
 export type TrangThaiNhanVien = 'Đang Làm' | 'Tạm nghỉ' | 'Nghỉ';
-export type QuyenNguoiDung = 'Admin' | 'Nhân viên' | 'Freelancer';
+export type QuyenNguoiDung = 'Admin' | 'Nhân viên' | 'Freelancer' | 'Sale';
 export type TrangThaiChamCong = 'Có mặt' | 'Đi trễ' | 'Về sớm' | 'Nghỉ' | 'Nghỉ phép';
 export type TrangThaiLuong = 'Chờ duyệt' | 'Đã duyệt' | 'Đã thanh toán';
 export type TrangThaiHoaHong = 'Chờ duyệt' | 'Đã duyệt' | 'Từ chối';
