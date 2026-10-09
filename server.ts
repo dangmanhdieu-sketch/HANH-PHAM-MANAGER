@@ -507,7 +507,20 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
         payload.MaHopDong = `HP-${new Date().getFullYear()}-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 900 + 100)}`;
       }
       payload.NgayTao = payload.NgayTao || new Date().toISOString();
-      payload.TongGiaTri = Number(payload.TongGiaTri);
+      const basePrice = Number(payload.GiaGoiBanDau ?? payload.TongGiaTri);
+      const directDiscount = Number(payload.GiamGiaTrucTiep || 0);
+      const discountRate = Number(payload.ChietKhauPhanTram || 0);
+      const promoDiscount = Number(payload.KhuyenMaiBoSung || 0);
+      const surcharge = Number(payload.PhuThuDichVu || 0);
+      const percentageDiscount = Math.round(basePrice * discountRate / 100);
+      if (basePrice <= 0 || directDiscount < 0 || discountRate < 0 || discountRate > 100 || promoDiscount < 0 || surcharge < 0 || directDiscount + percentageDiscount + promoDiscount > basePrice) {
+        return res.status(400).json({ error: 'Các khoản giảm trừ không hợp lệ hoặc vượt giá gói ban đầu.' });
+      }
+      payload.GiaGoiBanDau = basePrice;
+      payload.TienChietKhau = percentageDiscount;
+      payload.TongGiamTru = directDiscount + percentageDiscount + promoDiscount;
+      payload.TongGiaTri = basePrice - payload.TongGiamTru + surcharge;
+      payload.LichThanhToan = Array.isArray(payload.LichThanhToan) ? payload.LichThanhToan.map((p: any) => ({ ...p, SoTienDuKien: Math.max(0, Number(p.SoTienDuKien || 0)) })) : [];
       payload.TrangThai = req.user!.Quyen === 'Admin' ? (payload.TrangThai || 'Đã xác nhận') : 'Chờ admin duyệt';
       payload.LichSuTrangThai = [{ TrangThai: payload.TrangThai, ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen, GhiChu: 'Tạo hợp đồng' }];
       delete payload.DaThu;
@@ -552,8 +565,22 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
     if (current.Module === 'HOP_DONG') {
       delete changes.DaThu;
       delete changes.CongNo;
-      if (changes.TongGiaTri !== undefined && (!Number.isFinite(Number(changes.TongGiaTri)) || Number(changes.TongGiaTri) <= 0)) {
-        return res.status(400).json({ error: 'Giá trị hợp đồng phải lớn hơn 0.' });
+      const merged = { ...current.DuLieu, ...changes };
+      const basePrice = Number(merged.GiaGoiBanDau ?? merged.TongGiaTri);
+      const directDiscount = Number(merged.GiamGiaTrucTiep || 0);
+      const discountRate = Number(merged.ChietKhauPhanTram || 0);
+      const promoDiscount = Number(merged.KhuyenMaiBoSung || 0);
+      const surcharge = Number(merged.PhuThuDichVu || 0);
+      const percentageDiscount = Math.round(basePrice * discountRate / 100);
+      if (basePrice <= 0 || directDiscount < 0 || discountRate < 0 || discountRate > 100 || promoDiscount < 0 || surcharge < 0 || directDiscount + percentageDiscount + promoDiscount > basePrice) {
+        return res.status(400).json({ error: 'Các khoản giảm trừ không hợp lệ hoặc vượt giá gói ban đầu.' });
+      }
+      changes.GiaGoiBanDau = basePrice;
+      changes.TienChietKhau = percentageDiscount;
+      changes.TongGiamTru = directDiscount + percentageDiscount + promoDiscount;
+      changes.TongGiaTri = basePrice - changes.TongGiamTru + surcharge;
+      if (changes.LichThanhToan !== undefined && (!Array.isArray(changes.LichThanhToan) || changes.LichThanhToan.some((p: any) => Number(p.SoTienDuKien || 0) < 0))) {
+        return res.status(400).json({ error: 'Lịch thanh toán không hợp lệ.' });
       }
       if (changes.MaHopDong && changes.MaHopDong !== current.DuLieu?.MaHopDong) {
         return res.status(400).json({ error: 'Không được thay đổi mã hợp đồng sau khi tạo.' });
