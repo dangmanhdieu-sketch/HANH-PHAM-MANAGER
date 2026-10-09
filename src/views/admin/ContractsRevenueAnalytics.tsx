@@ -112,45 +112,16 @@ export const ContractsRevenueAnalytics: React.FC = () => {
     !['Đã hủy', 'Hủy'].includes(row.status)
   ), [rows, bounds]);
 
-  // Thẻ "Đã thu trong kỳ" bao gồm tiền cọc của tất cả hợp đồng (cũ và mới),
-  // cộng các phiếu thu đã duyệt trong kỳ nhưng loại phiếu tự sinh từ tiền cọc để không cộng trùng.
-  const collectedInPeriod = useMemo(() => {
-    const totalDeposits = contracts.reduce((sum, contract) => {
-      const data = contract.DuLieu || {};
-      if (['Đã hủy', 'Hủy'].includes(String(data.TrangThai || ''))) return sum;
-      const installments = Array.isArray(data.LichThanhToan) ? data.LichThanhToan : [];
-      const explicitDeposit = Math.max(0, Number(data.TienDatCoc || 0));
-      const deposit = explicitDeposit > 0
-        ? explicitDeposit
-        : Math.max(0, Number(installments[0]?.SoTienDuKien || 0));
-      const contractValue = Math.max(0, Number(data.TongGiaTri ?? data.GiaGoiBanDau ?? 0));
-      return sum + Math.min(contractValue || deposit, deposit);
-    }, 0);
-
-    const otherApprovedReceipts = receipts.reduce((sum, receipt) => {
-      const data = receipt.DuLieu || {};
-      const date = String(data.Ngay || receipt.TaoLuc || '').slice(0, 10);
-      if (String(data.Loai || '').toUpperCase() !== 'THU' ||
-          String(data.TrangThaiDuyet || '') !== 'Đã duyệt' ||
-          date < bounds.start || date >= bounds.end) return sum;
-
-      const isDepositReceipt = String(data.NguonTao || '') === 'TIEN_COC_HOP_DONG' ||
-        /tiền cọc/i.test(String(data.DanhMuc || data.NoiDungThu || data.GhiChu || ''));
-      // Phiếu thu cọc đã được tính qua tổng tiền cọc của hợp đồng.
-      if (isDepositReceipt) return sum;
-      // Phiếu thu thông thường vẫn được cộng theo ngày và trạng thái duyệt.
-      // Nếu trùng mã hợp đồng nhưng không có dấu hiệu là phiếu cọc, coi là khoản thu thêm.
-      return sum + Math.max(0, Number(data.SoTien || 0));
-    }, 0);
-
-    return totalDeposits + otherApprovedReceipts;
-  }, [contracts, receipts, bounds]);
+  // Các chỉ số Tổng doanh số, Đã thu và Còn phải thu dùng cùng nhóm hợp đồng ký trong kỳ.
+  // Tiền đã thu lũy kế của mỗi hợp đồng bao gồm tiền cọc (kể cả dữ liệu cũ) và phiếu thu đã duyệt,
+  // không cộng trùng tiền cọc với phiếu thu cọc.
+  const collectedInPeriod = periodRows.reduce((sum, row) => sum + row.collected, 0);
 
   const signedCount = periodRows.length;
   const completeCount = periodRows.filter(r => ['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).length;
   const activeCount = periodRows.filter(r => !['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).length;
   const totalSales = periodRows.reduce((sum, r) => sum + r.value, 0);
-  const totalRemaining = periodRows.reduce((sum, r) => sum + r.remaining, 0);
+  const totalRemaining = Math.max(0, totalSales - collectedInPeriod);
   const completeRatio = signedCount ? Math.round(completeCount / signedCount * 100) : 0;
 
   const chartData = useMemo(() => {
@@ -231,7 +202,7 @@ export const ContractsRevenueAnalytics: React.FC = () => {
         <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { label: 'Tổng doanh số', value: money(totalSales), sub: 'Giá trị HĐ ký trong kỳ', icon: FileCheck2, tone: 'gold' },
-            { label: 'Đã thu trong kỳ', value: money(collectedInPeriod), sub: 'Phiếu thu đã được Admin duyệt', icon: Wallet, tone: 'green' },
+            { label: 'Đã thu trong kỳ', value: money(collectedInPeriod), sub: 'Tiền đã thu lũy kế của HĐ ký trong kỳ, gồm tiền cọc', icon: Wallet, tone: 'green' },
             { label: 'Còn phải thu', value: money(totalRemaining), sub: 'Công nợ của HĐ ký trong kỳ', icon: ReceiptText, tone: 'amber' },
           ].map((item) => {
             const Icon = item.icon;
