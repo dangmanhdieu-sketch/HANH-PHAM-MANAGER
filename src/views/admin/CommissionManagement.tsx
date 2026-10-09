@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { formatMoney, formatNumber } from '../../utils/format';
 import {
   Award,
   Plus,
@@ -236,7 +237,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                 Có {pendingList.length} phiếu kê khai đang chờ Admin phê duyệt!
               </p>
               <p className="text-xs text-amber-700 mt-0.5">
-                Tổng số tiền chờ duyệt: <strong>{totalPendingMoney.toLocaleString('vi-VN')} VNĐ</strong>. Sau khi duyệt, khoản này sẽ tự động cộng vào bảng lương tháng tương ứng của nhân viên.
+                Tổng số tiền chờ duyệt: <strong>{formatNumber(totalPendingMoney)} VNĐ</strong>. Sau khi duyệt, khoản này sẽ tự động cộng vào bảng lương tháng tương ứng của nhân viên.
               </p>
             </div>
           </div>
@@ -256,7 +257,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           <div>
             <p className="text-[10px] uppercase font-bold text-stone-400">Khoản Đã Duyệt (Cộng Vào Lương)</p>
             <p className="text-2xl font-bold font-bridal text-emerald-800 mt-1">
-              +{totalApprovedMoney.toLocaleString('vi-VN')} VNĐ
+              +{formatNumber(totalApprovedMoney)} VNĐ
             </p>
           </div>
           <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -268,7 +269,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           <div>
             <p className="text-[10px] uppercase font-bold text-stone-400">Khoản Chờ Admin Duyệt</p>
             <p className="text-2xl font-bold font-bridal text-amber-800 mt-1">
-              {totalPendingMoney.toLocaleString('vi-VN')} VNĐ
+              {formatNumber(totalPendingMoney)} VNĐ
             </p>
           </div>
           <div className="p-3 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
@@ -383,7 +384,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                         </div>
                       </td>
                       <td className="px-5 py-4 font-mono font-bold text-[#a97d3e] text-sm whitespace-nowrap">
-                        +{hh.SoTienHoaHong.toLocaleString('vi-VN')} đ
+                        +{formatNumber(hh.SoTienHoaHong)} đ
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap">
                         {hh.AnhChungTu ? (
@@ -641,7 +642,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
               <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E7DFD5] flex items-center justify-between">
                 <span className="text-stone-600 font-medium">Số tiền ghi nhận:</span>
                 <span className="text-base font-bold font-mono text-[#a97d3e]">
-                  {computedAmount.toLocaleString('vi-VN')} VNĐ
+                  {formatNumber(computedAmount)} VNĐ
                 </span>
               </div>
 
@@ -715,7 +716,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
         onClose={() => setDeleteConfirmHH(null)}
         onConfirm={handleDelete}
         title="XÁC NHẬN XÓA"
-        message={`Bạn có chắc chắn muốn xóa bản ghi "${deleteConfirmHH?.NoiDung}" (${deleteConfirmHH?.SoTienHoaHong.toLocaleString('vi-VN')} đ) của ${deleteConfirmHH?.HoTen}?`}
+        message={`Bạn có chắc chắn muốn xóa bản ghi "${deleteConfirmHH?.NoiDung}" (${deleteConfirmHH?formatNumber(.SoTienHoaHong)} đ) của ${deleteConfirmHH?.HoTen}?`}
         confirmText="XÓA"
         type="danger"
       />
@@ -728,7 +729,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
         title={approveConfirmHH?.dongY ? 'PHÊ DUYỆT THU NHẬP' : 'TỪ CHỐI'}
         message={
           approveConfirmHH?.dongY
-            ? `Phê duyệt khoản thu nhập ${approveConfirmHH?.hh.SoTienHoaHong.toLocaleString('vi-VN')} VNĐ cho ${approveConfirmHH?.hh.HoTen}? Khoản này sẽ được cộng trực tiếp vào bảng lương tháng ${approveConfirmHH?.hh.Ngay.split('-')[1]}/${approveConfirmHH?.hh.Ngay.split('-')[0]}.`
+            ? `Phê duyệt khoản thu nhập ${approveConfirmHH?formatNumber(.hh.SoTienHoaHong)} VNĐ cho ${approveConfirmHH?.hh.HoTen}? Khoản này sẽ được cộng trực tiếp vào bảng lương tháng ${approveConfirmHH?.hh.Ngay.split('-')[1]}/${approveConfirmHH?.hh.Ngay.split('-')[0]}.`
             : `Từ chối khoản thu nhập "${approveConfirmHH?.hh.NoiDung}" của ${approveConfirmHH?.hh.HoTen}?`
         }
         confirmText={approveConfirmHH?.dongY ? 'DUYỆT & CỘNG LƯƠNG' : 'TỪ CHỐI'}
