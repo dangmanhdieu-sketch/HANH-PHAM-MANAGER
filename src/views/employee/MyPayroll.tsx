@@ -5,13 +5,27 @@ import type { Luong, NhanVien } from '../../types';
 interface MyPayrollProps {
   currentUser: NhanVien;
   payrollList: Luong[];
+  isFreelancer?: boolean;
+  onOpenDailyClaim?: () => void;
 }
 
-export const MyPayroll: React.FC<MyPayrollProps> = ({ currentUser, payrollList }) => {
+export const MyPayroll: React.FC<MyPayrollProps> = ({ currentUser, payrollList, isFreelancer = false, onOpenDailyClaim }) => {
   const [selectedPayslip, setSelectedPayslip] = useState<Luong | null>(payrollList[0] || null);
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {isFreelancer && (
+        <div className="bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 text-white p-5 rounded-2xl border border-[#c5a059]/50 shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-[#c5a059]/20 border border-[#c5a059]/40 text-[#dfc79f]"><Sparkles className="w-6 h-6"/></div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-[#dfc79f]">Kê khai thu nhập hằng ngày</p>
+              <p className="text-sm font-semibold mt-1">Gửi tiền show và hoa hồng để Admin duyệt</p>
+            </div>
+          </div>
+          <button type="button" onClick={onOpenDailyClaim} className="px-5 py-3 bg-[#bf954f] hover:bg-[#a97d3e] rounded-xl text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2"><Sparkles className="w-4 h-4"/> Kê khai ngay</button>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E7DFD5] shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
