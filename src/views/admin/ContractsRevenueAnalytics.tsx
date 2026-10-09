@@ -112,6 +112,7 @@ export const ContractsRevenueAnalytics: React.FC = () => {
   const completeCount = periodRows.filter(r => ['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).length;
   const activeCount = periodRows.filter(r => !['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).length;
   const totalSales = periodRows.reduce((sum, r) => sum + r.value, 0);
+  const recognizedRevenue = periodRows.filter(r => ['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).reduce((sum, r) => sum + r.value, 0);
   const totalRemaining = periodRows.reduce((sum, r) => sum + r.remaining, 0);
   const completeRatio = signedCount ? Math.round(completeCount / signedCount * 100) : 0;
 
@@ -193,7 +194,7 @@ export const ContractsRevenueAnalytics: React.FC = () => {
         <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { label: 'Tổng doanh số', value: money(totalSales), sub: 'Giá trị HĐ ký trong kỳ', icon: FileCheck2, tone: 'gold' },
-            { label: 'Doanh thu đã ghi nhận', value: money(totalSales), sub: 'Tổng giá trị HĐ hợp lệ trong kỳ', icon: TrendingUp, tone: 'green' },
+            { label: 'Doanh thu HĐ hoàn tất', value: money(recognizedRevenue), sub: 'Giá trị hợp đồng có trạng thái hoàn tất', icon: TrendingUp, tone: 'green' },
             { label: 'Đã thu trong kỳ', value: money(collectedInPeriod), sub: 'Phiếu thu đã được Admin duyệt', icon: Wallet, tone: 'green' },
             { label: 'Còn phải thu', value: money(totalRemaining), sub: 'Công nợ của HĐ ký trong kỳ', icon: ReceiptText, tone: 'amber' },
           ].map((item) => {
