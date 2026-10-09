@@ -133,7 +133,7 @@ function AppContent() {
     const token = authStorage.getToken();
     if (storedUser && token) {
       setCurrentUser(storedUser);
-      setCurrentTab(storedUser.Quyen === 'Admin' ? 'dashboard' : 'home');
+      setCurrentTab(storedUser.Quyen === 'Admin' ? 'dashboard' : storedUser.Quyen === 'Freelancer' ? 'luong_me' : 'home');
     }
     setInitializing(false);
   }, []);
@@ -255,7 +255,7 @@ function AppContent() {
   // Handle Login success
   const handleLoginSuccess = (user: NhanVien) => {
     setCurrentUser(user);
-    setCurrentTab(user.Quyen === 'Admin' ? 'dashboard' : 'home');
+    setCurrentTab(user.Quyen === 'Admin' ? 'dashboard' : user.Quyen === 'Freelancer' ? 'luong_me' : 'home');
   };
 
   // Handle Logout
@@ -270,7 +270,7 @@ function AppContent() {
       const pass = email.includes('admin') ? 'admin123' : '123456';
       const res = await api.auth.login(email, pass);
       setCurrentUser(res.user as NhanVien);
-      setCurrentTab(res.user.Quyen === 'Admin' ? 'dashboard' : 'home');
+      setCurrentTab(res.user.Quyen === 'Admin' ? 'dashboard' : res.user.Quyen === 'Freelancer' ? 'luong_me' : 'home');
     } catch (err: any) {
       alert(err.message || 'Không thể chuyển đổi tài khoản');
     }
