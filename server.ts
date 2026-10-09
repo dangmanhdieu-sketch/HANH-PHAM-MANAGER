@@ -501,16 +501,14 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       } else if (!payload.TrangThai) {
         payload.TrangThai = 'Đã xác nhận';
       }
+      const existingContracts = dbService.getQuanLyRecords('HOP_DONG');
       if (!payload.MaHopDong) {
-        const existingContracts = dbService.getQuanLyRecords('HOP_DONG');
-        const usedNumbers = existingContracts
-          .map((x) => String(x.DuLieu?.MaHopDong || '').match(/^HP(\d+)$/))
-          .filter(Boolean)
-          .map((match: RegExpMatchArray | null) => Number(match![1]));
-        const nextNumber = Math.max(0, ...usedNumbers) + 1;
+        const usedCodes = new Set(existingContracts.map((x) => String(x.DuLieu?.MaHopDong || '')));
+        let nextNumber = 1;
+        while (usedCodes.has(`HP${String(nextNumber).padStart(3, '0')}`)) nextNumber += 1;
         payload.MaHopDong = `HP${String(nextNumber).padStart(3, '0')}`;
       }
-      const duplicateContract = dbService.getQuanLyRecords('HOP_DONG').some((x) => x.DuLieu?.MaHopDong === payload.MaHopDong);
+      const duplicateContract = existingContracts.some((x) => x.DuLieu?.MaHopDong === payload.MaHopDong);
       if (duplicateContract) return res.status(409).json({ error: 'Mã hợp đồng đã tồn tại. Vui lòng thử lại.' });
       payload.NgayTao = payload.NgayTao || new Date().toISOString();
       const basePrice = Number(payload.GiaGoiBanDau ?? payload.TongGiaTri);
@@ -534,10 +532,10 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
     }
 
     if (module === 'THU_CHI') {
-      // Nhân viên không được giả mạo người lập phiếu hoặc trạng thái duyệt.
+      // Người lập phiếu luôn lấy từ tài khoản đang đăng nhập, kể cả Admin.
+      payload.NhanVienID = req.user!.NhanVienID;
+      payload.NhanVien = req.user!.HoTen || req.user!.TenDangNhap || req.user!.NhanVienID || 'Chưa xác định';
       if (req.user!.Quyen !== 'Admin') {
-        payload.NhanVienID = req.user!.NhanVienID;
-        payload.NhanVien = req.user!.HoTen;
         payload.TrangThaiDuyet = 'Chờ Admin duyệt';
       } else if (!payload.TrangThaiDuyet) {
         payload.TrangThaiDuyet = 'Đã duyệt';
