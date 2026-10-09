@@ -67,55 +67,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   // EMPLOYEE TABS
   // ============================================================
   const employeeTabs = [
-    {
-      id: 'home',
-      label: 'Chấm công',
-      shortLabel: 'Chấm công',
-      icon: Clock,
-    },
-    {
-      id: 'hoahong_me',
-      label: 'Kê khai Show & Hoa hồng',
-      shortLabel: 'Hoa hồng',
-      icon: Award,
-    },
-    {
-      id: 'luong_me',
-      label: 'Lương của tôi',
-      shortLabel: 'Lương',
-      icon: DollarSign,
-    },
-    {
-      id: 'chamcong_me',
-      label: 'Lịch sử công',
-      shortLabel: 'Lịch sử',
-      icon: BarChart3,
-    },
-    {
-      id: 'danhba_me',
-      label: 'Danh bạ studio',
-      shortLabel: 'Danh bạ',
-      icon: Contact,
-    },
-    {
-      id: 'thuchi_me',
-      label: 'Phiếu thu & chi',
-      shortLabel: 'Thu & Chi',
-      icon: Wallet,
-    },
-    {
-      id: 'profile_me',
-      label: 'Hồ sơ',
-      shortLabel: 'Hồ sơ',
-      icon: User,
-    },
-  ];
+];
 
   const freelancerTabs = [
+    { id: 'profile_me', label: 'Thông tin nhân viên', shortLabel: 'Thông tin NV', icon: User },
     { id: 'luong_me', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
     { id: 'danhba_me', label: 'Danh bạ nhân viên', shortLabel: 'Danh bạ', icon: Contact },
     { id: 'chamcong_me', label: 'Lịch làm việc', shortLabel: 'Lịch làm việc', icon: BarChart3 },
-    { id: 'profile_me', label: 'Thông tin nhân viên', shortLabel: 'Thông tin', icon: User },
   ];
 
   const activeTabs = isAdmin ? adminTabs : isFreelancer ? freelancerTabs : employeeTabs;
