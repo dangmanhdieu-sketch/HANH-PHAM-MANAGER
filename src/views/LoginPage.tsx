@@ -148,6 +148,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               variant="gold"
               layout="vertical"
               showText
+              brandName="HẠNH PHẠM LUXURY BRIDAL"
+              logoUrl="/apple-touch-icon.svg"
               subtitle={previewTheme.brandSubtitle}
             />
           </div>
