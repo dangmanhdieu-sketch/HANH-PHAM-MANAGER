@@ -16,6 +16,7 @@ import {
 import type { ChamCong, Luong, HoaHong, NhanVien, ThongKeKPI } from '../../types';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { BusinessStats } from './BusinessStats';
+import { ContractsRevenueAnalytics } from './ContractsRevenueAnalytics';
 
 interface AdminDashboardProps {
   kpis: ThongKeKPI[];
@@ -84,6 +85,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* BẢNG TỔNG QUAN + THỐNG KÊ ĐÃ GỘP */}
       <BusinessStats staffList={staffList} payrollList={allPayroll} commissionList={allCommissions} />
+
+      {/* PHÂN TÍCH DOANH THU HỢP ĐỒNG */}
+      <ContractsRevenueAnalytics />
 
       {/* SECTION 1: CHẤM CÔNG HÔM NAY (Realtime Attendance Feed) */}
       <div className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm overflow-hidden">
