@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme, THEME_PRESETS } from '../../context/ThemeContext';
 import {
   Settings,
+  AlertTriangle,
   Shield,
   Play,
   RotateCcw,
@@ -53,6 +54,7 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
   const [savingConfig, setSavingConfig] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [logSearch, setLogSearch] = useState('');
+  const [resetting, setResetting] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -145,6 +147,10 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
     };
     reader.readAsText(file);
   };
+  const handleResetDemoData = async () => {
+    alert('Chức năng xóa dữ liệu demo chưa được kết nối với API. Hãy dùng Khôi phục từ bản backup hoặc quản lý dữ liệu trong từng mục.');
+  };
+
   const filteredLogs = auditLogs.filter((log) => {
     const term = logSearch.toLowerCase();
     return (
