@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "Hạnh Phạm Luxury Bridal Manager",
+  "short_name": "Hạnh Phạm",
+  "description": "Hệ thống quản lý Hạnh Phạm Luxury Bridal",
+  "lang": "vi-VN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0c0a09",
+  "theme_color": "#0c0a09",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
