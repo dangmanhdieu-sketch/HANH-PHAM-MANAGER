@@ -1000,9 +1000,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                   <span>
 
-                    <span className="block text-sm font-semibold">
-                      Thiết lập
-                    </span>
+                    <span className="block text-sm font-semibold">Setting</span>
 
                     <span
                       className={`block text-[10px] mt-0.5 ${
