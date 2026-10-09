@@ -59,7 +59,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'congviec', label: 'Công việc', shortLabel: 'Công việc', icon: CheckSquare },
     { id: 'hopdong', label: 'Hợp đồng', shortLabel: 'Hợp đồng', icon: FileText },
     { id: 'thuchi', label: 'Thu chi', shortLabel: 'Thu chi', icon: Wallet },
-    { id: 'thongke', label: 'Thống kê', shortLabel: 'Thống kê', icon: BarChart3 },
     { id: 'thietlap', label: 'Thiết lập', shortLabel: 'Thiết lập', icon: Settings },
   ];
 
