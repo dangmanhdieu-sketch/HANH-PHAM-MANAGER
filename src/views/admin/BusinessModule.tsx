@@ -240,7 +240,35 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       if (editing) {
         await api.quanLy.update(editing.QuanLyID, payload);
       } else {
-        await api.quanLy.create(module, payload);
+        const createdRecord = await api.quanLy.create(module, payload);
+
+        // Khi nhân viên tạo hợp đồng có tiền cọc, tự sinh phiếu thu chờ Admin duyệt.
+        // Admin tạo hợp đồng thì không cần phiếu chờ duyệt.
+        if (module === 'HOP_DONG' && isEmployee) {
+          const deposit = getContractDeposit(payload);
+          if (deposit > 0) {
+            const savedContract = createdRecord?.DuLieu || payload;
+            const contractCode = String(savedContract.MaHopDong || payload.MaHopDong || createdRecord?.QuanLyID || '');
+            await api.quanLy.create('THU_CHI', {
+              Ngay: getTodayLocal(),
+              Loai: 'THU',
+              DanhMuc: `Thu tiền cọc hợp đồng ${contractCode}`,
+              NoiDungThu: `Thu tiền cọc hợp đồng ${contractCode}`,
+              SoTien: deposit,
+              HopDongID: contractCode,
+              DoiTuong: payload.KhachHang || '',
+              NhanVienID: currentUser?.NhanVienID || '',
+              NhanVien: loggedInStaffName,
+              NguoiTao: loggedInStaffName,
+              NguoiTaoID: currentUser?.NhanVienID || '',
+              PhuongThucThanhToan: payload.PhuongThucThanhToan || 'Tiền mặt',
+              TrangThaiDuyet: 'Chờ Admin duyệt',
+              GhiChu: `Phiếu thu tự tạo từ hợp đồng ${contractCode}`,
+              NguonTao: 'TIEN_COC_HOP_DONG',
+              HopDongQuanLyID: createdRecord?.QuanLyID || '',
+            });
+          }
+        }
       }
 
       closeForm();
