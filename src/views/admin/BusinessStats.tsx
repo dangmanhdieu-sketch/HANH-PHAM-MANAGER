@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { formatMoney, formatNumber } from '../../utils/format';
-import { BarChart3, TrendingUp, Wallet, FileText, CheckSquare, CalendarClock } from 'lucide-react';
+import { formatNumber } from '../../utils/format';
+import { BarChart3, TrendingUp, FileText, CheckSquare, CalendarClock } from 'lucide-react';
 import type { HoaHong, Luong, NhanVien, QuanLyRecord } from '../../types';
 import { api } from '../../api';
 
@@ -49,22 +49,6 @@ export const BusinessStats: React.FC<Props> = ({
     const count = (module: string) =>
       records.filter((record) => record.Module === module).length;
 
-    const thu = records
-      .filter(
-        (record) =>
-          record.Module === 'THU_CHI' &&
-          String(record.DuLieu.Loai || '').trim().toUpperCase() === 'THU'
-      )
-      .reduce((sum, record) => sum + Number(record.DuLieu.SoTien || 0), 0);
-
-    const chi = records
-      .filter(
-        (record) =>
-          record.Module === 'THU_CHI' &&
-          String(record.DuLieu.Loai || '').trim().toUpperCase() === 'CHI'
-      )
-      .reduce((sum, record) => sum + Number(record.DuLieu.SoTien || 0), 0);
-
     const approvedCommission = commissionList
       .filter((item) => item.TrangThai === 'Đã duyệt')
       .reduce((sum, item) => sum + Number(item.SoTienHoaHong || 0), 0);
@@ -77,11 +61,8 @@ export const BusinessStats: React.FC<Props> = ({
       staff: staffList.filter((item) => item.TrangThai === 'Đang Làm').length,
       tasks: count('CONG_VIEC'),
       contracts: count('HOP_DONG'),
-      thu,
-      chi,
       approvedCommission,
       pendingPayroll,
-      balance: thu - chi,
     };
   }, [records, staffList, payrollList, commissionList]);
 
@@ -108,8 +89,6 @@ export const BusinessStats: React.FC<Props> = ({
     { label: 'Nhân viên đang làm', value: stats.staff, icon: TrendingUp },
     { label: 'Công việc', value: stats.tasks, icon: CheckSquare },
     { label: 'Hợp đồng', value: stats.contracts, icon: FileText },
-    { label: 'Tổng thu', value: stats.thu, money: true, icon: Wallet },
-    { label: 'Tổng chi', value: stats.chi, money: true, icon: Wallet },
     { label: 'Hoa hồng đã duyệt', value: stats.approvedCommission, money: true, icon: TrendingUp },
     { label: 'Lương chờ duyệt', value: stats.pendingPayroll, money: true, icon: BarChart3 },
   ];
@@ -187,29 +166,6 @@ export const BusinessStats: React.FC<Props> = ({
             )}
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-[#E7DFD5]">
-            <h2 className="font-bold mb-3">Dòng tiền</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-              <div>
-                <span className="text-stone-500">Tổng thu</span>
-                <b className="block text-emerald-700">
-                  {formatNumber(stats.thu)} đ
-                </b>
-              </div>
-              <div>
-                <span className="text-stone-500">Tổng chi</span>
-                <b className="block text-rose-700">
-                  {formatNumber(stats.chi)} đ
-                </b>
-              </div>
-              <div>
-                <span className="text-stone-500">Chênh lệch</span>
-                <b className={stats.balance >= 0 ? 'block text-emerald-700' : 'block text-rose-700'}>
-                  {formatNumber(stats.balance)} đ
-                </b>
-              </div>
-            </div>
-          </div>
         </>
       )}
     </div>
