@@ -383,7 +383,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                       {module === 'THU_CHI' && record.DuLieu?.SoTien
                         ? (String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? '-' : '+') + Number(record.DuLieu.SoTien).toLocaleString('vi-VN') + ' đ'
                         : module === 'HOP_DONG'
-                          ? `Giá trị ${Number(record.DuLieu?.TongGiaTri || 0).toLocaleString('vi-VN')} đ · Đã thu ${getContractCollected(record).toLocaleString('vi-VN')} đ · Còn ${Math.max(0, Number(record.DuLieu?.TongGiaTri || 0) - getContractCollected(record)).toLocaleString('vi-VN')} đ`
+                          ? `Giá trị ${Number(record.DuLieu?.TongGiaTri || 0).toLocaleString('vi-VN')} đ · Cọc ${Number(record.DuLieu?.TienDatCoc || 0).toLocaleString('vi-VN')} đ · Thu thêm ${getContractCollected(record).toLocaleString('vi-VN')} đ · Còn ${Math.max(0, Number(record.DuLieu?.TongGiaTri || 0) - Number(record.DuLieu?.TienDatCoc || 0) - getContractCollected(record)).toLocaleString('vi-VN')} đ`
                           : getLink(record)}
                     </td>
                     <td className="p-3">
