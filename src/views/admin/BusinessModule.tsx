@@ -176,6 +176,14 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   };
 
   const approveCashflow = async (record: QuanLyRecord) => {
+    if (module === 'HOP_DONG') {
+      const next = window.prompt('Nhập trạng thái mới: Đã xác nhận / Đang thực hiện / Hoàn thành / Đã hủy', 'Đã xác nhận');
+      if (!next) return;
+      if (!['Đã xác nhận','Đang thực hiện','Hoàn thành','Đã hủy'].includes(next)) { alert('Trạng thái không hợp lệ.'); return; }
+      const reason = next === 'Đã hủy' ? window.prompt('Lý do hủy hợp đồng:') : '';
+      try { await api.quanLy.update(record.QuanLyID, { TrangThai: next, ...(next === 'Đã hủy' ? { LyDoHuy: reason || '', NguoiHuy: currentUser?.HoTen || '', ThoiGianHuy: new Date().toISOString() } : {}) }); await loadRecords(); onRefresh(); } catch (error:any) { alert(error?.message || 'Không thể cập nhật hợp đồng.'); }
+      return;
+    }
     if (module !== 'THU_CHI' || getStatus(record) === 'Đã duyệt') return;
     if (!window.confirm('Duyệt phiếu này?')) return;
     try {
@@ -226,7 +234,9 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     reader.readAsDataURL(file);
   };
 
-  const getStatus = (record: QuanLyRecord) => String(record.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt');
+  const getStatus = (record: QuanLyRecord) => String(record.Module === 'HOP_DONG' ? (record.DuLieu?.TrangThai || 'Nháp') : (record.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt'));
+
+  const getContractCollected = (record: QuanLyRecord) => receiptRecords.filter((receipt) => receipt.DuLieu?.Loai === 'THU' && receipt.DuLieu?.HopDongID === record.DuLieu?.MaHopDong && receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt').reduce((sum, receipt) => sum + Number(receipt.DuLieu?.SoTien || 0), 0);
 
   const getTitle = (record: QuanLyRecord) => {
     const data = record.DuLieu || {};
@@ -321,7 +331,9 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                     <td className="p-3 text-stone-700 font-semibold">
                       {module === 'THU_CHI' && record.DuLieu?.SoTien
                         ? Number(record.DuLieu.SoTien).toLocaleString('vi-VN') + ' đ'
-                        : getLink(record)}
+                        : module === 'HOP_DONG'
+                          ? `Giá trị ${Number(record.DuLieu?.TongGiaTri || 0).toLocaleString('vi-VN')} đ · Đã thu ${getContractCollected(record).toLocaleString('vi-VN')} đ · Còn ${Math.max(0, Number(record.DuLieu?.TongGiaTri || 0) - getContractCollected(record)).toLocaleString('vi-VN')} đ`
+                          : getLink(record)}
                     </td>
                     <td className="p-3">
                       {module === 'HOP_DONG' ? (
@@ -351,6 +363,12 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                     <td className="p-3 text-right whitespace-nowrap">
                       {!isEmployee && (
                         <>
+                          {module === 'HOP_DONG' && ['Chờ admin duyệt','Nháp'].includes(getStatus(record)) && (
+                            <button type="button" onClick={() => void approveCashflow(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold">DUYỆT</button>
+                          )}
+                          {module === 'HOP_DONG' && !isEmployee && (
+                            <button type="button" onClick={() => void approveCashflow(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-stone-800 text-white text-[10px] font-bold">TRẠNG THÁI</button>
+                          )}
                           {module === 'THU_CHI' && getStatus(record) !== 'Đã duyệt' && (
                             <button type="button" onClick={() => void approveCashflow(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold" title="Duyệt phiếu">
                               DUYỆT
