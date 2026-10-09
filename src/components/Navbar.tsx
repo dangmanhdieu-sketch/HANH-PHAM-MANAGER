@@ -59,7 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'congviec', label: 'Công việc', shortLabel: 'Công việc', icon: CheckSquare },
     { id: 'hopdong', label: 'Hợp đồng', shortLabel: 'Hợp đồng', icon: FileText },
     { id: 'thuchi', label: 'Thu chi', shortLabel: 'Thu chi', icon: Wallet },
-    { id: 'thietlap', label: 'Thiết lập', shortLabel: 'Thiết lập', icon: Settings },
+    { id: 'thietlap', label: 'Setting', shortLabel: 'Setting', icon: Settings },
   ];
 
   // ============================================================
@@ -483,25 +483,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* ACTIONS */}
             <div className="flex items-center gap-2 sm:gap-4">
-
-              {/* DESIGN */}
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleTabChange('thietlap')
-                  }
-                  title="Tùy biến thiết kế"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition shadow-sm ${
-                    currentTab === 'thietlap'
-                      ? 'bg-stone-900 text-[#f3dfa2] border-[#c5a059]'
-                      : 'bg-[#FAF8F5] hover:bg-[#F4EEE7] text-stone-800 border-[#E7DFD5]'
-                  }`}
-                >
-                  <Settings className="w-3.5 h-3.5 text-[#c5a059]" />
-                  <span>Thiết lập</span>
-                </button>
-              )}
 
               {/* ACCOUNT SWITCH */}
               <div className="relative">
