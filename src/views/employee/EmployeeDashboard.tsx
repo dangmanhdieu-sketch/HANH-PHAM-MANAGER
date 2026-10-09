@@ -25,6 +25,7 @@ interface EmployeeDashboardProps {
   onOpenCheckOut: () => void;
   onOpenDailyClaim: () => void;
   onNavigateTab: (tab: string) => void;
+  isFreelancer?: boolean;
 }
 
 export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
@@ -37,6 +38,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   onOpenCheckOut,
   onOpenDailyClaim,
   onNavigateTab,
+  isFreelancer = false,
 }) => {
   const isCheckedIn = Boolean(todayRecord?.CheckIn);
   const isCheckedOut = Boolean(todayRecord?.CheckOut);
@@ -98,6 +100,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         </div>
       </div>
 
+      {!isFreelancer && <>
       {/* BIG PRIMARY ACTIONS (CHECK-IN & CHECK-OUT) - REQUIREMENT XV */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* BIG CHECK-IN BUTTON */}
@@ -191,7 +194,9 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         </button>
       </div>
 
-      {/* DAILY SHOW FEE & COMMISSION SUBMISSION BANNER */}
+      </>}
+
+      {/* DAILY SHOW FEE & COMMISSION SUBMISSION BANNER - AVAILABLE TO FREELANCERS */}
       <div className="p-4 sm:p-5 bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 text-white rounded-2xl border border-[#c5a059]/40 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-[#c5a059]/20 text-[#dfc79f] border border-[#c5a059]/40">
@@ -222,6 +227,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         </button>
       </div>
 
+      {!isFreelancer && <>
       {/* TODAY'S ATTENDANCE SUMMARY DETAILS */}
       {todayRecord && todayRecord.CheckIn && (
         <div className="bg-white p-5 rounded-2xl border border-[#E7DFD5] shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -256,13 +262,16 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         </div>
       )}
 
-      {/* 4 BIG NAVIGATION CARDS - REQUIREMENT XV */}
+      </>}
+
+      {/* QUICK NAVIGATION */}
       <div>
         <h2 className="text-base font-bold font-bridal text-stone-900 mb-3 uppercase tracking-wider">
           TRUY CẬP NHANH CHỨC NĂNG
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {!isFreelancer && <>
           {/* CHẤM CÔNG CỦA TÔI */}
           <button
             type="button"
@@ -284,6 +293,8 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
               </p>
             </div>
           </button>
+
+          </>}
 
           {/* LƯƠNG CỦA TÔI */}
           <button
@@ -307,6 +318,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
             </div>
           </button>
 
+          {!isFreelancer && <>
           {/* HOA HỒNG CỦA TÔI */}
           <button
             type="button"
@@ -329,6 +341,13 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
             </div>
           </button>
 
+          </>}
+
+          {isFreelancer && <button type="button" onClick={() => onNavigateTab('danhba_me')} className="p-5 bg-white hover:bg-[#FAF8F5] rounded-2xl border border-[#E7DFD5] hover:border-[#c5a059] shadow-sm transition text-left group flex flex-col justify-between h-40"><div className="flex items-center justify-between"><div className="p-3 rounded-xl bg-stone-900 text-[#dfc79f]"><User className="w-6 h-6"/></div><ArrowRight className="w-4 h-4 text-stone-400"/></div><div><h3 className="text-sm font-bold uppercase font-bridal text-stone-900">DANH BẠ NHÂN VIÊN</h3><p className="text-xs text-stone-500 mt-0.5">Xem liên hệ trong studio</p></div></button>}
+
+          {isFreelancer && <button type="button" onClick={() => onNavigateTab('chamcong_me')} className="p-5 bg-white hover:bg-[#FAF8F5] rounded-2xl border border-[#E7DFD5] hover:border-[#c5a059] shadow-sm transition text-left group flex flex-col justify-between h-40"><div className="flex items-center justify-between"><div className="p-3 rounded-xl bg-stone-900 text-[#dfc79f]"><Calendar className="w-6 h-6"/></div><ArrowRight className="w-4 h-4 text-stone-400"/></div><div><h3 className="text-sm font-bold uppercase font-bridal text-stone-900">LỊCH LÀM VIỆC</h3><p className="text-xs text-stone-500 mt-0.5">Xem lịch làm việc của tôi</p></div></button>}
+
+          {!isFreelancer && <>
           {/* HỒ SƠ CỦA TÔI */}
           <button
             type="button"
@@ -350,6 +369,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
               </p>
             </div>
           </button>
+          </>}
         </div>
       </div>
     </div>
