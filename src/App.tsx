@@ -243,6 +243,15 @@ function AppContent() {
     }
   }, [currentUser, refreshAllData]);
 
+  // Tự làm mới dữ liệu/thông báo để Admin sớm thấy phiếu cần duyệt.
+  useEffect(() => {
+    if (!currentUser || currentUser.Quyen !== 'Admin') return;
+    const timer = window.setInterval(() => {
+      void refreshAllData();
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [currentUser, refreshAllData]);
+
   // Handle Login success
   const handleLoginSuccess = (user: NhanVien) => {
     setCurrentUser(user);
@@ -449,7 +458,7 @@ function AppContent() {
             {currentTab === 'hopdong' && <BusinessModule module="HOP_DONG" staffList={staffList} currentUser={currentUser} onRefresh={refreshAllData} />}
             {currentTab === 'thuchi' && <BusinessModule module="THU_CHI" staffList={staffList} onRefresh={refreshAllData} />}
             {currentTab === 'thietlap' && (
-              <AuditAndAutomation onRefreshAll={refreshAllData} />
+              <AuditAndAutomation onRefreshAll={refreshAllData} onNavigateToTab={setCurrentTab} />
             )}
 
           </>
