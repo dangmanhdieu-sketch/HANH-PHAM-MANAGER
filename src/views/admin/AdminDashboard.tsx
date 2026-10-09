@@ -83,11 +83,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* BẢNG TỔNG QUAN + THỐNG KÊ ĐÃ GỘP */}
-      <BusinessStats staffList={staffList} payrollList={allPayroll} commissionList={allCommissions} />
-
-      {/* PHÂN TÍCH DOANH THU HỢP ĐỒNG */}
+      {/* BÁO CÁO TÀI CHÍNH - ƯU TIÊN HIỂN THỊ ĐẦU TRANG */}
       <ContractsRevenueAnalytics />
+
+      {/* THỐNG KÊ VẬN HÀNH: NHÂN SỰ, CÔNG VIỆC, HỢP ĐỒNG */}
+      <BusinessStats staffList={staffList} payrollList={allPayroll} commissionList={allCommissions} />
 
       {/* SECTION 1: CHẤM CÔNG HÔM NAY (Realtime Attendance Feed) */}
       <div className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm overflow-hidden">
