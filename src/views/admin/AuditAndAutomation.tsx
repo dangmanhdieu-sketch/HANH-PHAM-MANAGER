@@ -22,9 +22,10 @@ import { api } from '../../api';
 
 interface AuditAndAutomationProps {
   onRefreshAll: () => void;
+  onNavigateToTab: (tab: string) => void;
 }
 
-export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefreshAll }) => {
+export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefreshAll, onNavigateToTab }) => {
   const { previewTheme, setPreviewTheme, applyPreset, saveTheme, isSaving } = useTheme();
   const [logoPreview, setLogoPreview] = useState<string>('');
 
@@ -179,6 +180,12 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
           </button>
         </div>
       </div>
+
+      <section className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <button type="button" onClick={()=>onNavigateToTab('nhanvien')} className="text-left bg-white border border-[#E7DFD5] rounded-xl p-4 hover:border-[#c5a059]"><Shield className="w-5 h-5 text-[#bf954f]"/><p className="font-bold text-sm mt-2">Phân quyền nhân viên</p><p className="text-xs text-stone-500 mt-1">Quản lý tài khoản, vai trò và trạng thái nhân viên.</p></button>
+        <button type="button" onClick={handleDownloadBackup} className="text-left bg-white border border-[#E7DFD5] rounded-xl p-4 hover:border-[#c5a059]"><Download className="w-5 h-5 text-[#bf954f]"/><p className="font-bold text-sm mt-2">Sao chép dữ liệu</p><p className="text-xs text-stone-500 mt-1">Tải bản sao lưu dữ liệu để lưu trữ an toàn.</p></button>
+        <button type="button" onClick={()=>onNavigateToTab('thuchi')} className="text-left bg-white border border-[#E7DFD5] rounded-xl p-4 hover:border-[#c5a059]"><Building2 className="w-5 h-5 text-[#bf954f]"/><p className="font-bold text-sm mt-2">Quản lý nghiệp vụ</p><p className="text-xs text-stone-500 mt-1">Đi tới khu vực quản lý phiếu thu chi và dữ liệu liên quan.</p></button>
+      </section>
 
       {/* BRAND & APP APPEARANCE SETTINGS */}
       <section className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-6 space-y-5">
