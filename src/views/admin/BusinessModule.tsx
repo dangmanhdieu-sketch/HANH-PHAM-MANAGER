@@ -29,9 +29,13 @@ const parseMoneyInput = (value: string) => { const digits = value.replace(/[^0-9
 const defaultInstallments = () => [{Dot:1,TenDot:'Đợt 1',HanThanhToan:'',SoTienDuKien:0,GhiChu:''}];
 // Hợp đồng cũ chưa có TienDatCoc: dùng số tiền đợt thanh toán đầu tiên làm tiền cọc đã nhập trước đây.
 const getContractDeposit = (data: Record<string, any> | undefined) => {
-  if (data?.TienDatCoc !== undefined && data?.TienDatCoc !== null && data?.TienDatCoc !== '') return Math.max(0, Number(data.TienDatCoc) || 0);
+  const explicitDeposit = Number(data?.TienDatCoc || 0);
+  // Form mới có trường TienDatCoc; form cũ có thể chỉ lưu cọc ở đợt thanh toán đầu.
+  // Nếu TienDatCoc đang bằng 0 nhưng đợt đầu có số tiền, dùng số đợt đầu để tương thích dữ liệu cũ.
+  if (Number.isFinite(explicitDeposit) && explicitDeposit > 0) return explicitDeposit;
   const installments = Array.isArray(data?.LichThanhToan) ? data.LichThanhToan : [];
-  return Math.max(0, Number(installments[0]?.SoTienDuKien || 0));
+  const firstInstallment = Math.max(0, Number(installments[0]?.SoTienDuKien || 0));
+  return firstInstallment > 0 ? firstInstallment : Math.max(0, explicitDeposit);
 };
 
 const CONFIG: Record<QuanLyModule, ModuleConfig> = {
