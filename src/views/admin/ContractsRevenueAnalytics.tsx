@@ -112,13 +112,49 @@ export const ContractsRevenueAnalytics: React.FC = () => {
     !['Đã hủy', 'Hủy'].includes(row.status)
   ), [rows, bounds]);
 
-  const collectedInPeriod = useMemo(() => receipts.filter(r => {
-    const d = r.DuLieu || {};
-    const date = String(d.Ngay || r.TaoLuc || '').slice(0, 10);
-    return String(d.Loai || '').toUpperCase() === 'THU' &&
-      String(d.TrangThaiDuyet || '') === 'Đã duyệt' &&
-      date >= bounds.start && date < bounds.end;
-  }).reduce((sum, r) => sum + Math.max(0, Number(r.DuLieu?.SoTien || 0)), 0), [receipts, bounds]);
+  // Thẻ "Đã thu trong kỳ" bao gồm tiền cọc của tất cả hợp đồng (cũ và mới),
+  // cộng các phiếu thu đã duyệt trong kỳ nhưng loại phiếu tự sinh từ tiền cọc để không cộng trùng.
+  const collectedInPeriod = useMemo(() => {
+    const contractByCode = new Map<string, QuanLyRecord>();
+    const contractById = new Map<string, QuanLyRecord>();
+    contracts.forEach(contract => {
+      const data = contract.DuLieu || {};
+      contractByCode.set(String(data.MaHopDong || contract.QuanLyID), contract);
+      contractById.set(String(contract.QuanLyID), contract);
+    });
+
+    const totalDeposits = contracts.reduce((sum, contract) => {
+      const data = contract.DuLieu || {};
+      if (['Đã hủy', 'Hủy'].includes(String(data.TrangThai || ''))) return sum;
+      const installments = Array.isArray(data.LichThanhToan) ? data.LichThanhToan : [];
+      const explicitDeposit = Math.max(0, Number(data.TienDatCoc || 0));
+      const deposit = explicitDeposit > 0
+        ? explicitDeposit
+        : Math.max(0, Number(installments[0]?.SoTienDuKien || 0));
+      const contractValue = Math.max(0, Number(data.TongGiaTri ?? data.GiaGoiBanDau ?? 0));
+      return sum + Math.min(contractValue || deposit, deposit);
+    }, 0);
+
+    const otherApprovedReceipts = receipts.reduce((sum, receipt) => {
+      const data = receipt.DuLieu || {};
+      const date = String(data.Ngay || receipt.TaoLuc || '').slice(0, 10);
+      if (String(data.Loai || '').toUpperCase() !== 'THU' ||
+          String(data.TrangThaiDuyet || '') !== 'Đã duyệt' ||
+          date < bounds.start || date >= bounds.end) return sum;
+
+      const linkedContract = contractById.get(String(data.HopDongQuanLyID || '')) ||
+        contractByCode.get(String(data.HopDongID || ''));
+      const isDepositReceipt = String(data.NguonTao || '') === 'TIEN_COC_HOP_DONG' ||
+        /tiền cọc/i.test(String(data.DanhMuc || data.NoiDungThu || data.GhiChu || ''));
+      // Phiếu thu cọc đã được tính qua tổng tiền cọc của hợp đồng.
+      if (isDepositReceipt) return sum;
+      // Phiếu thu thông thường vẫn được cộng theo ngày và trạng thái duyệt.
+      // Nếu trùng mã hợp đồng nhưng không có dấu hiệu là phiếu cọc, coi là khoản thu thêm.
+      return sum + Math.max(0, Number(data.SoTien || 0));
+    }, 0);
+
+    return totalDeposits + otherApprovedReceipts;
+  }, [contracts, receipts, bounds]);
 
   const signedCount = periodRows.length;
   const completeCount = periodRows.filter(r => ['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).length;
