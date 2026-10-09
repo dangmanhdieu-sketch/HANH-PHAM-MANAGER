@@ -297,6 +297,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const getStatus = (record: QuanLyRecord) => String(record.Module === 'HOP_DONG' ? (record.DuLieu?.TrangThai || 'Nháp') : (record.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt'));
 
   const getContractCollected = (record: QuanLyRecord) => receiptRecords.filter((receipt) => receipt.DuLieu?.Loai === 'THU' && receipt.DuLieu?.HopDongID === record.DuLieu?.MaHopDong && receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt').reduce((sum, receipt) => sum + Number(receipt.DuLieu?.SoTien || 0), 0);
+  const getInstallmentsTotal = (data: Record<string, any> | undefined) => (Array.isArray(data?.LichThanhToan) ? data.LichThanhToan : []).reduce((sum: number, row: any) => sum + Math.max(0, Number(row?.SoTienDuKien || 0)), 0);
 
   const getTitle = (record: QuanLyRecord) => {
     const data = record.DuLieu || {};
@@ -389,7 +390,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                       {module === 'THU_CHI' && record.DuLieu?.SoTien
                         ? (String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? '-' : '+') + Number(record.DuLieu.SoTien).toLocaleString('vi-VN') + ' đ'
                         : module === 'HOP_DONG'
-                          ? `Giá trị ${Number(record.DuLieu?.TongGiaTri || 0).toLocaleString('vi-VN')} đ · Cọc ${getContractDeposit(record.DuLieu).toLocaleString('vi-VN')} đ · Thu thêm ${getContractCollected(record).toLocaleString('vi-VN')} đ · Còn ${Math.max(0, Number(record.DuLieu?.TongGiaTri || 0) - Number(record.DuLieu?.TienDatCoc || 0) - getContractCollected(record)).toLocaleString('vi-VN')} đ`
+                          ? `Giá trị ${Number(record.DuLieu?.TongGiaTri || 0).toLocaleString('vi-VN')} đ · Cọc ${getContractDeposit(record.DuLieu).toLocaleString('vi-VN')} đ · Thu thêm ${getContractCollected(record).toLocaleString('vi-VN')} đ · Còn ${Math.max(0, Number(record.DuLieu?.TongGiaTri || 0) - getInstallmentsTotal(record.DuLieu) - getContractCollected(record)).toLocaleString('vi-VN')} đ`
                           : getLink(record)}
                     </td>
                     <td className="p-3">
@@ -473,7 +474,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                   <div className="mt-3 rounded-lg bg-stone-50 p-3 text-sm space-y-1">
                     <div className="text-base">Tổng giá trị hợp đồng: <b className="text-emerald-700">{Math.max(0,Number(formData.GiaGoiBanDau||formData.TongGiaTri||0)-Number(formData.GiamGiaTrucTiep||0)+Number(formData.PhuThuDichVu||0)).toLocaleString('vi-VN')} đ</b></div>
                     <div>Tiền cọc/đợt 1: <b>{Number(formData.TienDatCoc||0).toLocaleString('vi-VN')} đ</b></div>
-                    <div className="text-base">Còn phải thanh toán sau các đợt đã nhập: <b className="text-amber-700">{Math.max(0,Math.max(0,Number(formData.GiaGoiBanDau||formData.TongGiaTri||0)-Number(formData.GiamGiaTrucTiep||0)+Number(formData.PhuThuDichVu||0))-Number(formData.TienDatCoc||0)).toLocaleString('vi-VN')} đ</b></div>
+                    <div className="text-base">Còn phải thanh toán sau các đợt đã nhập: <b className="text-amber-700">{Math.max(0,Math.max(0,Number(formData.GiaGoiBanDau||formData.TongGiaTri||0)-Number(formData.GiamGiaTrucTiep||0)+Number(formData.PhuThuDichVu||0))-(Array.isArray(formData.LichThanhToan)?(formData.LichThanhToan as any[]).reduce((sum:number,row:any)=>sum+Math.max(0,Number(row.SoTienDuKien||0)),0):0)).toLocaleString('vi-VN')} đ</b></div>
                   </div>
                   <div className="flex justify-between items-center mt-5 mb-3"><h4 className="font-bold">Các đợt thanh toán</h4><button type="button" onClick={()=>setFormData(p=>({...p,LichThanhToan:[...(Array.isArray(p.LichThanhToan)?p.LichThanhToan as any[]:defaultInstallments()),{Dot:(Array.isArray(p.LichThanhToan)?(p.LichThanhToan as any[]).length:1)+1,TenDot:'Đợt '+((Array.isArray(p.LichThanhToan)?(p.LichThanhToan as any[]).length:1)+1),HanThanhToan:'',SoTienDuKien:0,GhiChu:''}]}))} className="text-xs bg-stone-900 text-white rounded-lg px-3 py-2">+ Thêm đợt</button></div>
                   {(Array.isArray(formData.LichThanhToan)?formData.LichThanhToan as any[]:defaultInstallments()).map((p:any,i:number)=><div key={i} className="grid sm:grid-cols-12 gap-2 border-b py-2 items-end">
@@ -485,7 +486,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                   </div>)}
                   <div className="mt-3 text-sm font-bold">Tổng các đợt dự kiến: {(Array.isArray(formData.LichThanhToan)?(formData.LichThanhToan as any[]).reduce((sum:number,row:any)=>sum+Number(row.SoTienDuKien||0),0):0).toLocaleString('vi-VN')} đ</div>
                 </section>
-                <section className="rounded-xl bg-stone-50 p-4 text-sm space-y-2"><h3 className="font-bold">Tổng hợp tài chính</h3><div>Tiền cọc đã nhận: <b>{Number(formData.TienDatCoc||0).toLocaleString('vi-VN')} đ</b></div><div>Thu thêm đã duyệt: <b>{(editing?getContractCollected(editing):0).toLocaleString('vi-VN')} đ</b></div><div>Công nợ còn lại: <b>{Math.max(0,Math.max(0,Number(formData.GiaGoiBanDau||formData.TongGiaTri||0)-Number(formData.GiamGiaTrucTiep||0)+Number(formData.PhuThuDichVu||0))-Number(formData.TienDatCoc||0)-(editing?getContractCollected(editing):0)).toLocaleString('vi-VN')} đ</b></div></section>
+                <section className="rounded-xl bg-stone-50 p-4 text-sm space-y-2"><h3 className="font-bold">Tổng hợp tài chính</h3><div>Tiền cọc đã nhận: <b>{Number(formData.TienDatCoc||0).toLocaleString('vi-VN')} đ</b></div><div>Thu thêm đã duyệt: <b>{(editing?getContractCollected(editing):0).toLocaleString('vi-VN')} đ</b></div><div>Công nợ còn lại: <b>{Math.max(0,Math.max(0,Number(formData.GiaGoiBanDau||formData.TongGiaTri||0)-Number(formData.GiamGiaTrucTiep||0)+Number(formData.PhuThuDichVu||0))-(Array.isArray(formData.LichThanhToan)?(formData.LichThanhToan as any[]).reduce((sum:number,row:any)=>sum+Math.max(0,Number(row.SoTienDuKien||0)),0):0)-(editing?getContractCollected(editing):0)).toLocaleString('vi-VN')} đ</b></div></section>
               </div>
             ) : module === 'THU_CHI' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
