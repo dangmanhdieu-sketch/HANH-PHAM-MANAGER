@@ -973,51 +973,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   )}
                 </div>
               </div>
-
-              {/* DESIGN */}
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleTabChange('thietlap')
-                  }
-                  className={`w-full mt-3 flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left ${
-                    currentTab === 'thietlap'
-                      ? 'bg-stone-900 text-white'
-                      : 'bg-white border border-[#EEE7DE]'
-                  }`}
-                >
-
-                  <span
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      currentTab === 'thietlap'
-                        ? 'bg-white/10 text-[#dfc79f]'
-                        : 'bg-[#F7F3ED] text-[#a97d3e]'
-                    }`}
-                  >
-                    <Settings className="w-5 h-5" />
-                  </span>
-
-                  <span>
-
-                    <span className="block text-sm font-semibold">Setting</span>
-
-                    <span
-                      className={`block text-[10px] mt-0.5 ${
-                        currentTab === 'thietlap'
-                          ? 'text-[#dfc79f]'
-                          : 'text-stone-400'
-                      }`}
-                    >
-                      Tùy biến giao diện
-                    </span>
-
-                  </span>
-
-                </button>
-              )}
-
-            </div>
+</div>
 
             {/* LOGOUT */}
             <div
