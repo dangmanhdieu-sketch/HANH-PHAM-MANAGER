@@ -496,7 +496,7 @@ function AppContent() {
             )}
 
             {currentTab === 'luong_me' && (
-              <MyPayroll currentUser={currentUser} payrollList={payrollList} />
+              <MyPayroll currentUser={currentUser} payrollList={payrollList} isFreelancer={currentUser.Quyen === 'Freelancer'} onOpenDailyClaim={() => setDailyClaimModalOpen(true)} />
             )}
 
             {currentTab === 'hoahong_me' && (
