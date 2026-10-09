@@ -501,11 +501,17 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       } else if (!payload.TrangThai) {
         payload.TrangThai = 'Đã xác nhận';
       }
-      payload.MaHopDong = payload.MaHopDong || `HP-${new Date().getFullYear()}-${Date.now().toString().slice(-8)}`;
-      const existingContracts = dbService.getQuanLyRecords('HOP_DONG');
-      if (existingContracts.some((x) => x.DuLieu?.MaHopDong === payload.MaHopDong)) {
-        payload.MaHopDong = `HP-${new Date().getFullYear()}-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 900 + 100)}`;
+      if (!payload.MaHopDong) {
+        const existingContracts = dbService.getQuanLyRecords('HOP_DONG');
+        const usedNumbers = existingContracts
+          .map((x) => String(x.DuLieu?.MaHopDong || '').match(/^HP(\d+)$/))
+          .filter(Boolean)
+          .map((match: RegExpMatchArray | null) => Number(match![1]));
+        const nextNumber = Math.max(0, ...usedNumbers) + 1;
+        payload.MaHopDong = `HP${String(nextNumber).padStart(3, '0')}`;
       }
+      const duplicateContract = dbService.getQuanLyRecords('HOP_DONG').some((x) => x.DuLieu?.MaHopDong === payload.MaHopDong);
+      if (duplicateContract) return res.status(409).json({ error: 'Mã hợp đồng đã tồn tại. Vui lòng thử lại.' });
       payload.NgayTao = payload.NgayTao || new Date().toISOString();
       const basePrice = Number(payload.GiaGoiBanDau ?? payload.TongGiaTri);
       const directDiscount = Number(payload.GiamGiaTrucTiep || 0);
