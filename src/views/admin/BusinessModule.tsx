@@ -447,12 +447,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                   <input type="date" value={String(formData.Ngay ?? '')} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
                 <div><label className="block text-xs font-semibold mb-1">Nhân viên {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
                   <input value={String(formData.NhanVien ?? currentUser?.HoTen ?? '')} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
-                <div><label className="block text-xs font-semibold mb-1">Khách hàng / Đối tượng</label>
-                  <input value={String(formData.KhachHang ?? '')} onChange={e=>setFormData({...formData,KhachHang:e.target.value,DoiTuong:e.target.value})} placeholder="Nhập tên khách hàng..." className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
                 <div><label className="block text-xs font-semibold mb-1">{cashflowType === 'THU' ? 'Nội dung thu' : 'Lý do chi'}</label>
-                  <select value={String(formData.NoiDungThu ?? formData.DanhMuc ?? '')} onChange={e=>setFormData({...formData,NoiDungThu:e.target.value,DanhMuc:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-                    {(cashflowType === 'THU' ? ['Tiền cọc','Thanh toán hợp đồng','Tiền thuê váy','Tiền dịch vụ','Tiền phát sinh','Khác'] : ['Mua sắm','Marketing','Lương','Vận hành','Hoàn tiền','Khác']).map(x=><option key={x} value={x}>{x}</option>)}
-                  </select></div>
+                  <input value={String(formData.NoiDungThu ?? formData.DanhMuc ?? '')} onChange={e=>setFormData({...formData,NoiDungThu:e.target.value,DanhMuc:e.target.value})} placeholder={cashflowType === 'THU' ? 'Nhập nội dung thu...' : 'Nhập lý do chi...'} className="w-full border rounded-lg px-3 py-2 text-sm" required /></div>
                 <div><label className="block text-xs font-semibold mb-1">Số tiền {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
                   <input type="number" min="0" value={String(formData.SoTien ?? '')} onChange={e=>setFormData({...formData,SoTien:Number(e.target.value)})} className="w-full border rounded-lg px-3 py-2 text-sm" required /></div>
                 <div><label className="block text-xs font-semibold mb-1">Phương thức thanh toán</label>
