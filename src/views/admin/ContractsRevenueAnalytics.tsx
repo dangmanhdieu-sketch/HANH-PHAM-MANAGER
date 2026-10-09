@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays, TrendingUp, Wallet, ReceiptText, FileCheck2, CircleCheck,
-  Clock3, Search, RefreshCw, ChevronDown, ArrowUpRight, AlertTriangle
+  TrendingUp, Wallet, ReceiptText, FileCheck2, CircleCheck,
+  Clock3, Search, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { api } from '../../api';
 import type { QuanLyRecord } from '../../types';
@@ -113,7 +113,6 @@ export const ContractsRevenueAnalytics: React.FC = () => {
   const activeCount = periodRows.filter(r => !['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).length;
   const totalSales = periodRows.reduce((sum, r) => sum + r.value, 0);
   const totalRemaining = periodRows.reduce((sum, r) => sum + r.remaining, 0);
-  const totalCollectedForContracts = periodRows.reduce((sum, r) => sum + r.collected, 0);
   const completeRatio = signedCount ? Math.round(completeCount / signedCount * 100) : 0;
 
   const chartData = useMemo(() => {
