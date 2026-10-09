@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { formatNumber } from '../../utils/format';
+import { formatMoney, formatNumber } from '../../utils/format';
 import { BarChart3, TrendingUp, FileText, CheckSquare, CalendarClock } from 'lucide-react';
 import type { HoaHong, Luong, NhanVien, QuanLyRecord } from '../../types';
 import { api } from '../../api';
