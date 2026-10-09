@@ -67,7 +67,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   // EMPLOYEE TABS
   // ============================================================
   const employeeTabs = [
-];
+    { id: 'home', label: 'Trang chủ', shortLabel: 'Trang chủ', icon: BarChart3 },
+    { id: 'profile_me', label: 'Thông tin cá nhân', shortLabel: 'Thông tin cá nhân', icon: User },
+    { id: 'chamcong_me', label: 'Chấm công', shortLabel: 'Chấm công', icon: Clock },
+    { id: 'luong_me', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
+    { id: 'hoahong_me', label: 'Hoa hồng', shortLabel: 'Hoa hồng', icon: Award },
+    { id: 'danhba_me', label: 'Danh bạ nhân viên', shortLabel: 'Danh bạ', icon: Contact },
+  ];
 
   const freelancerTabs = [
     { id: 'profile_me', label: 'Thông tin nhân viên', shortLabel: 'Thông tin NV', icon: User },
