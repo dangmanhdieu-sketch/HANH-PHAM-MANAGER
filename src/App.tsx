@@ -397,6 +397,14 @@ function AppContent() {
               />
             )}
 
+            {currentTab === 'danhba' && (
+              <StaffDirectory
+                staffList={staffList}
+                currentUser={currentUser}
+                onNavigateToStaffManagement={() => setCurrentTab('nhanvien')}
+              />
+            )}
+
             {currentTab === 'chamcong' && (
               <AttendanceManagement
                 attendanceList={attendanceList}
