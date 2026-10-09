@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="36" fill="#0c0a09"/>
+  <rect x="9" y="9" width="162" height="162" rx="29" fill="none" stroke="#c5a059" stroke-width="2"/>
+  <text x="90" y="105" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="76" letter-spacing="-7" fill="#f5ead5">HP</text>
+  <path d="M48 126 H132" stroke="#c5a059" stroke-width="2"/>
+  <text x="90" y="145" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="10" letter-spacing="2" fill="#dfc79f">LUXURY BRIDAL</text>
+</svg>
