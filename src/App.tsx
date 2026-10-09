@@ -516,6 +516,15 @@ function AppContent() {
               />
             )}
 
+            {currentTab === 'hopdong_me' && currentUser.Quyen === 'Sale' && (
+              <BusinessModule
+                module="HOP_DONG"
+                staffList={staffList}
+                currentUser={currentUser}
+                onRefresh={refreshAllData}
+              />
+            )}
+
             {currentTab === 'profile_me' && (
               <MyProfile currentUser={currentUser} onRefresh={refreshAllData} />
             )}
