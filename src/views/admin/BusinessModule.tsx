@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, Trash2, Edit3, Save, X, FileText, CheckSquare, Shirt, Wallet } from 'lucide-react';
+import { Plus, Search, Trash2, Edit3, Save, X, FileText, CheckSquare, Wallet } from 'lucide-react';
 import type { NhanVien, QuanLyModule, QuanLyRecord } from '../../types';
 import { api } from '../../api';
 
@@ -247,10 +247,6 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     if (module === 'CONG_VIEC') {
       return data.TieuDe || 'Công việc chưa đặt tên';
     }
-    if (module === 'VAY_CUOI') {
-      return [data.MaVay, data.TenVay].filter(Boolean).join(' • ') || 'Váy chưa đặt tên';
-    }
-
     return [data.DanhMuc, data.SoTien ? Number(data.SoTien).toLocaleString('vi-VN') + ' đ' : '']
       .filter(Boolean)
       .join(' • ') || 'Khoản thu chi';
