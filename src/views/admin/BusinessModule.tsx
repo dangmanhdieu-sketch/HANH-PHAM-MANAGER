@@ -77,6 +77,16 @@ const CONFIG: Record<QuanLyModule, ModuleConfig> = {
 
 export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser, onRefresh }) => {
   const isEmployee = !!currentUser && currentUser.Quyen !== 'Admin';
+  const loggedInStaff = currentUser
+    ? staffList.find((staff) => staff.NhanVienID === currentUser.NhanVienID)
+    : undefined;
+  const loggedInStaffName = String(
+    currentUser?.HoTen ||
+    loggedInStaff?.HoTen ||
+    currentUser?.TenDangNhap ||
+    currentUser?.NhanVienID ||
+    ''
+  ).trim();
   const config = CONFIG[module];
   const Icon = config.icon;
 
@@ -133,8 +143,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         Ngay: getTodayLocal(),
         Loai: loai,
         NhanVienID: currentUser?.NhanVienID || '',
-        NhanVien: currentUser?.HoTen || currentUser?.TenDangNhap || currentUser?.NhanVienID || 'Chưa xác định',
-        NguoiTao: currentUser?.HoTen || currentUser?.TenDangNhap || currentUser?.NhanVienID || 'Chưa xác định',
+        NhanVien: loggedInStaffName,
+        NguoiTao: loggedInStaffName,
         TrangThaiDuyet: isEmployee ? 'Chờ Admin duyệt' : 'Đã duyệt',
       });
     } else {
@@ -447,7 +457,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <div><label className="block text-xs font-semibold mb-1">Ngày {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
                   <input type="date" value={String(formData.Ngay ?? '')} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
                 <div><label className="block text-xs font-semibold mb-1">Nhân viên {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
-                  <input value={String(formData.NhanVien || formData.NguoiTao || currentUser?.HoTen || currentUser?.TenDangNhap || currentUser?.NhanVienID || 'Chưa xác định')} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
+                  <input value={String(formData.NhanVien || formData.NguoiTao || loggedInStaffName || 'Đang tải tên nhân viên...')} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
                 <div><label className="block text-xs font-semibold mb-1">{cashflowType === 'THU' ? 'Nội dung thu' : 'Lý do chi'}</label>
                   <input value={String(formData.NoiDungThu ?? formData.DanhMuc ?? '')} onChange={e=>setFormData({...formData,NoiDungThu:e.target.value,DanhMuc:e.target.value})} placeholder={cashflowType === 'THU' ? 'Nhập nội dung thu...' : 'Nhập lý do chi...'} className="w-full border rounded-lg px-3 py-2 text-sm" required /></div>
                 <div><label className="block text-xs font-semibold mb-1">Số tiền {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
