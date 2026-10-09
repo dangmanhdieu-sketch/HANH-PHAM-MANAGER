@@ -79,6 +79,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const Icon = config.icon;
 
   const [records, setRecords] = useState<QuanLyRecord[]>([]);
+  const [receiptRecords, setReceiptRecords] = useState<QuanLyRecord[]>([]);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<QuanLyRecord | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -92,6 +93,10 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       setLoading(true);
       const data = await api.quanLy.getAll(module);
       setRecords(data);
+      if (module === 'HOP_DONG') {
+        const receipts = await api.quanLy.getAll('THU_CHI');
+        setReceiptRecords(receipts);
+      }
     } catch (error: any) {
       alert(error?.message || 'Không thể tải dữ liệu.');
     } finally {
@@ -130,7 +135,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         TrangThaiDuyet: isEmployee ? 'Chờ Admin duyệt' : 'Đã duyệt',
       });
     } else {
-      setFormData({});
+      setFormData(module === 'HOP_DONG' ? { NgayTao: new Date().toISOString().slice(0, 10), TongGiaTri: 0, TrangThai: isEmployee ? 'Chờ admin duyệt' : 'Đã xác nhận', LoaiDichVu: 'Trọn gói cưới' } : {});
     }
     setFormOpen(true);
   };
@@ -319,7 +324,22 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                         : getLink(record)}
                     </td>
                     <td className="p-3">
-                      {module === 'THU_CHI' ? (
+                      {module === 'HOP_DONG' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label className="block text-xs font-semibold mb-1">Mã hợp đồng</label><input value={String(formData.MaHopDong || 'Tự tạo khi lưu')} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Ngày tạo</label><input value={String(formData.NgayTao || new Date().toISOString().slice(0,10)).slice(0,10)} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Họ tên cô dâu/chú rể *</label><input required value={String(formData.KhachHang || '')} onChange={e=>setFormData({...formData,KhachHang:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Số điện thoại *</label><input required value={String(formData.SDT || '')} onChange={e=>setFormData({...formData,SDT:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Địa chỉ</label><input value={String(formData.DiaChi || '')} onChange={e=>setFormData({...formData,DiaChi:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Ngày cưới</label><input type="date" value={String(formData.NgayCuoi || '')} onChange={e=>setFormData({...formData,NgayCuoi:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Loại dịch vụ</label><select value={String(formData.LoaiDichVu || 'Trọn gói cưới')} onChange={e=>setFormData({...formData,LoaiDichVu:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white">{['Chụp ảnh cưới','Quay phim cưới','Trang điểm cô dâu','Thuê váy cưới','Trọn gói cưới','Dịch vụ khác'].map(x=><option key={x}>{x}</option>)}</select></div>
+                <div><label className="block text-xs font-semibold mb-1">Tên gói dịch vụ *</label><input required value={String(formData.GoiDichVu || '')} onChange={e=>setFormData({...formData,GoiDichVu:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Tổng giá trị hợp đồng (VNĐ) *</label><input required min="1" type="number" value={String(formData.TongGiaTri ?? '')} onChange={e=>setFormData({...formData,TongGiaTri:Number(e.target.value)})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Nhân viên phụ trách</label><select value={String(formData.NhanVienID || currentUser?.NhanVienID || '')} disabled={isEmployee} onChange={e=>{const s=staffList.find(x=>x.NhanVienID===e.target.value);setFormData({...formData,NhanVienID:e.target.value,NhanVien:s?.HoTen||''})}} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option value="">-- Chọn nhân viên --</option>{staffList.map(s=><option key={s.NhanVienID} value={s.NhanVienID}>{s.HoTen}</option>)}</select></div>
+                <div><label className="block text-xs font-semibold mb-1">Phương thức thanh toán</label><select value={String(formData.PhuongThucThanhToan || 'Tiền mặt')} onChange={e=>setFormData({...formData,PhuongThucThanhToan:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option>Tiền mặt</option><option>Chuyển khoản</option><option>Kết hợp</option></select></div>
+                <div className="sm:col-span-2"><label className="block text-xs font-semibold mb-1">Yêu cầu đặc biệt / Ghi chú</label><textarea rows={3} value={String(formData.GhiChu || '')} onChange={e=>setFormData({...formData,GhiChu:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              </div>
+            ) : module === 'THU_CHI' ? (
                         <span className={getStatus(record) === 'Đã duyệt' ? 'px-2 py-1 rounded-full bg-emerald-50 text-emerald-700' : 'px-2 py-1 rounded-full bg-amber-50 text-amber-700'}>
                           {getStatus(record)}
                         </span>
