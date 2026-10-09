@@ -501,9 +501,15 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       } else if (!payload.TrangThai) {
         payload.TrangThai = 'Đã xác nhận';
       }
-      payload.MaHopDong = payload.MaHopDong || `HP-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
+      payload.MaHopDong = payload.MaHopDong || `HP-${new Date().getFullYear()}-${Date.now().toString().slice(-8)}`;
+      const existingContracts = dbService.getQuanLyRecords('HOP_DONG');
+      if (existingContracts.some((x) => x.DuLieu?.MaHopDong === payload.MaHopDong)) {
+        payload.MaHopDong = `HP-${new Date().getFullYear()}-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 900 + 100)}`;
+      }
       payload.NgayTao = payload.NgayTao || new Date().toISOString();
       payload.TongGiaTri = Number(payload.TongGiaTri);
+      payload.TrangThai = req.user!.Quyen === 'Admin' ? (payload.TrangThai || 'Đã xác nhận') : 'Chờ admin duyệt';
+      payload.LichSuTrangThai = [{ TrangThai: payload.TrangThai, ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen, GhiChu: 'Tạo hợp đồng' }];
       delete payload.DaThu;
       delete payload.CongNo;
     }
