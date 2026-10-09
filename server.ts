@@ -466,9 +466,13 @@ app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => 
   const module = req.query.module as any;
   let records = dbService.getQuanLyRecords(module || undefined);
 
-  // Nhân viên chỉ được xem các phiếu thu/chi do chính mình lập.
-  if (req.user!.Quyen !== 'Admin' && module === 'THU_CHI') {
-    records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
+  // Nhân viên chỉ xem phiếu thu/chi do mình lập và hợp đồng mình phụ trách.
+  if (req.user!.Quyen !== 'Admin') {
+    if (module === 'THU_CHI') {
+      records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
+    } else if (module === 'HOP_DONG') {
+      records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
+    }
   }
 
   return res.json(records);
@@ -478,11 +482,31 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
   try {
     const { module, data } = req.body || {};
 
-    if (req.user!.Quyen !== 'Admin' && module !== 'THU_CHI') {
+    if (req.user!.Quyen !== 'Admin' && !['THU_CHI', 'HOP_DONG'].includes(module)) {
       return res.status(403).json({ error: 'Bạn không có quyền tạo dữ liệu nghiệp vụ này.' });
     }
 
     const payload = { ...(data || {}) };
+
+    if (module === 'HOP_DONG') {
+      if (!String(payload.KhachHang || '').trim() || !String(payload.SDT || '').trim() ||
+          !String(payload.GoiDichVu || '').trim() || !Number.isFinite(Number(payload.TongGiaTri)) ||
+          Number(payload.TongGiaTri) <= 0) {
+        return res.status(400).json({ error: 'Vui lòng nhập khách hàng, số điện thoại, gói dịch vụ và giá trị hợp đồng hợp lệ.' });
+      }
+      if (req.user!.Quyen !== 'Admin') {
+        payload.NhanVienID = req.user!.NhanVienID;
+        payload.NhanVien = req.user!.HoTen;
+        payload.TrangThai = 'Chờ admin duyệt';
+      } else if (!payload.TrangThai) {
+        payload.TrangThai = 'Đã xác nhận';
+      }
+      payload.MaHopDong = payload.MaHopDong || `HP-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
+      payload.NgayTao = payload.NgayTao || new Date().toISOString();
+      payload.TongGiaTri = Number(payload.TongGiaTri);
+      delete payload.DaThu;
+      delete payload.CongNo;
+    }
 
     if (module === 'THU_CHI') {
       // Nhân viên không được giả mạo người lập phiếu hoặc trạng thái duyệt.
