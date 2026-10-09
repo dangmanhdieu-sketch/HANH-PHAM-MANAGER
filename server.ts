@@ -385,6 +385,19 @@ app.get('/api/chamcong', authenticateToken, (req: AuthRequest, res: Response) =>
   return res.json(records);
 });
 
+app.delete('/api/chamcong/:id', authenticateToken, (req: AuthRequest, res: Response) => {
+  if (req.user!.Quyen !== 'Admin') {
+    return res.status(403).json({ error: 'Chỉ Admin mới có quyền xóa chấm công.' });
+  }
+  try {
+    const deleted = dbService.deleteChamCong(req.params.id);
+    if (!deleted) return res.status(404).json({ error: 'Không tìm thấy bản ghi chấm công.' });
+    return res.json({ message: 'Đã xóa bản ghi chấm công.' });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Không thể xóa bản ghi chấm công.' });
+  }
+});
+
 app.get('/api/chamcong/today', authenticateToken, (req: AuthRequest, res: Response) => {
   const user = req.user!;
   const parts = new Intl.DateTimeFormat('en-CA', {
