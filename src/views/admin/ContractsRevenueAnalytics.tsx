@@ -84,9 +84,17 @@ export const ContractsRevenueAnalytics: React.FC = () => {
       const signedDate = String(data.NgayKy || data.NgayTao || record.TaoLuc || '').slice(0, 10);
       const value = Math.max(0, Number(data.TongGiaTri ?? data.GiaGoiBanDau ?? 0) || 0);
       const code = String(data.MaHopDong || record.QuanLyID);
-      const deposit = Math.max(0, Number(data.TienDatCoc || 0));
+      // Hợp đồng cũ có thể lưu tiền cọc ở đợt thanh toán đầu thay vì TienDatCoc.
+      const installments = Array.isArray(data.LichThanhToan) ? data.LichThanhToan : [];
+      const explicitDeposit = Math.max(0, Number(data.TienDatCoc || 0));
+      const legacyFirstInstallment = Math.max(0, Number(installments[0]?.SoTienDuKien || 0));
+      const deposit = explicitDeposit > 0 ? explicitDeposit : legacyFirstInstallment;
+      // Nhận diện phiếu thu theo cả mã hợp đồng và ID bản ghi để khớp dữ liệu cũ.
       const approvedReceiptTotal = approvedReceipts
-        .filter(receipt => String(receipt.DuLieu?.HopDongID || '') === code)
+        .filter(receipt =>
+          String(receipt.DuLieu?.HopDongID || '') === code ||
+          String(receipt.DuLieu?.HopDongQuanLyID || '') === String(record.QuanLyID)
+        )
         .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
       // Tiền cọc đã ghi nhận trên hợp đồng là tiền khách đã giao; không đợi duyệt phiếu
       // mới trừ công nợ. Nếu phiếu cọc đã duyệt, max() tránh cộng cọc hai lần.
