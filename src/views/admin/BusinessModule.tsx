@@ -24,6 +24,8 @@ interface Props {
   onRefresh: () => void;
 }
 
+const formatMoneyInput = (value: unknown) => { const digits = String(value ?? '').replace(/[^0-9]/g, ''); return digits ? Number(digits).toLocaleString('vi-VN') : ''; };
+const parseMoneyInput = (value: string) => { const digits = value.replace(/[^0-9]/g, ''); return digits ? Number(digits) : 0; };
 const defaultInstallments = () => [{Dot:1,TenDot:'Đặt cọc lần 1',HanThanhToan:'',SoTienDuKien:0,GhiChu:''},{Dot:2,TenDot:'Đặt cọc lần 2',HanThanhToan:'',SoTienDuKien:0,GhiChu:''},{Dot:3,TenDot:'Thanh toán lần 3',HanThanhToan:'',SoTienDuKien:0,GhiChu:''},{Dot:4,TenDot:'Thanh toán lần 4',HanThanhToan:'',SoTienDuKien:0,GhiChu:''},{Dot:5,TenDot:'Thanh toán lần 5',HanThanhToan:'',SoTienDuKien:0,GhiChu:''},{Dot:6,TenDot:'Thanh toán cuối cùng',HanThanhToan:'',SoTienDuKien:0,GhiChu:''}];
 
 const CONFIG: Record<QuanLyModule, ModuleConfig> = {
@@ -119,6 +121,9 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   useEffect(() => {
     void loadRecords();
   }, [module]);
+
+  const totalThu = records.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'THU' && r.DuLieu?.TrangThaiDuyet === 'Đã duyệt').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
+  const totalChi = records.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'CHI' && r.DuLieu?.TrangThaiDuyet === 'Đã duyệt').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
 
   const filteredRecords = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -319,6 +324,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         </div>
       </div>
 
+      {module === 'THU_CHI' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><div className="text-xs font-bold text-emerald-800">TỔNG PHIẾU THU ĐÃ DUYỆT</div><div className="mt-2 text-2xl font-bold text-emerald-700">+{totalThu.toLocaleString('vi-VN')} đ</div></div><div className="rounded-2xl border border-rose-200 bg-rose-50 p-5"><div className="text-xs font-bold text-rose-800">TỔNG PHIẾU CHI ĐÃ DUYỆT</div><div className="mt-2 text-2xl font-bold text-rose-700">-{totalChi.toLocaleString('vi-VN')} đ</div></div></div>}
       <div className="bg-white p-3 rounded-xl border border-[#E7DFD5] flex items-center gap-2">
         <Search className="w-4 h-4 text-stone-400" />
         <input
@@ -356,7 +362,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                     <td className="p-3 font-semibold">{getTitle(record)}</td>
                     <td className="p-3 text-stone-700 font-semibold">
                       {module === 'THU_CHI' && record.DuLieu?.SoTien
-                        ? Number(record.DuLieu.SoTien).toLocaleString('vi-VN') + ' đ'
+                        ? (String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? '-' : '+') + Number(record.DuLieu.SoTien).toLocaleString('vi-VN') + ' đ'
                         : module === 'HOP_DONG'
                           ? `Giá trị ${Number(record.DuLieu?.TongGiaTri || 0).toLocaleString('vi-VN')} đ · Đã thu ${getContractCollected(record).toLocaleString('vi-VN')} đ · Còn ${Math.max(0, Number(record.DuLieu?.TongGiaTri || 0) - getContractCollected(record)).toLocaleString('vi-VN')} đ`
                           : getLink(record)}
