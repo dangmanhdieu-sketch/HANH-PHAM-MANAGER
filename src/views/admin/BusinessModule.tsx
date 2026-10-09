@@ -125,13 +125,25 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const totalThu = records.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'THU' && r.DuLieu?.TrangThaiDuyet === 'Đã duyệt').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
   const totalChi = records.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'CHI' && r.DuLieu?.TrangThaiDuyet === 'Đã duyệt').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
 
+  const visibleRecords = useMemo(() => {
+    if (module !== 'THU_CHI' || !isEmployee) return records;
+    const employeeId = String(currentUser?.NhanVienID || '');
+    const employeeName = loggedInStaffName.toLowerCase();
+    return records.filter((record) => {
+      const data = record.DuLieu || {};
+      const creatorId = String(data.NhanVienID || data.NguoiTaoID || data.NguoiLapID || '');
+      const creatorName = String(data.NguoiTao || data.NguoiLap || data.NhanVien || '').trim().toLowerCase();
+      return (employeeId && creatorId === employeeId) || (employeeName && creatorName === employeeName);
+    });
+  }, [records, module, isEmployee, currentUser?.NhanVienID, loggedInStaffName]);
+
   const filteredRecords = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-    if (!keyword) return records;
-    return records.filter((record) =>
+    if (!keyword) return visibleRecords;
+    return visibleRecords.filter((record) =>
       JSON.stringify(record.DuLieu).toLowerCase().includes(keyword)
     );
-  }, [records, search]);
+  }, [visibleRecords, search]);
 
   const getTodayLocal = () => {
     const now = new Date();
@@ -178,6 +190,13 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
 
     try {
       const payload: Record<string, any> = { ...formData };
+      if (module === 'THU_CHI' && isEmployee && !editing) {
+        payload.NhanVienID = currentUser?.NhanVienID || '';
+        payload.NhanVien = loggedInStaffName;
+        payload.NguoiTao = loggedInStaffName;
+        payload.NguoiTaoID = currentUser?.NhanVienID || '';
+        payload.TrangThaiDuyet = 'Chờ Admin duyệt';
+      }
       if (module === 'HOP_DONG') {
         const base = Number(payload.GiaGoiBanDau ?? payload.TongGiaTri ?? 0);
         const direct = Number(payload.GiamGiaTrucTiep || 0);
@@ -324,7 +343,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         </div>
       </div>
 
-      {module === 'THU_CHI' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><div className="text-xs font-bold text-emerald-800">TỔNG PHIẾU THU ĐÃ DUYỆT</div><div className="mt-2 text-2xl font-bold text-emerald-700">+{totalThu.toLocaleString('vi-VN')} đ</div></div><div className="rounded-2xl border border-rose-200 bg-rose-50 p-5"><div className="text-xs font-bold text-rose-800">TỔNG PHIẾU CHI ĐÃ DUYỆT</div><div className="mt-2 text-2xl font-bold text-rose-700">-{totalChi.toLocaleString('vi-VN')} đ</div></div></div>}
+      {module === 'THU_CHI' && !isEmployee && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><div className="text-xs font-bold text-emerald-800">TỔNG PHIẾU THU ĐÃ DUYỆT</div><div className="mt-2 text-2xl font-bold text-emerald-700">+{totalThu.toLocaleString('vi-VN')} đ</div></div><div className="rounded-2xl border border-rose-200 bg-rose-50 p-5"><div className="text-xs font-bold text-rose-800">TỔNG PHIẾU CHI ĐÃ DUYỆT</div><div className="mt-2 text-2xl font-bold text-rose-700">-{totalChi.toLocaleString('vi-VN')} đ</div></div></div>}
       <div className="bg-white p-3 rounded-xl border border-[#E7DFD5] flex items-center gap-2">
         <Search className="w-4 h-4 text-stone-400" />
         <input
