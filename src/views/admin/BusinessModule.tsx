@@ -179,7 +179,25 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const openEdit = (record: QuanLyRecord) => {
     if (module === 'THU_CHI' && isEmployee) return;
     setEditing(record);
-    setFormData(module === 'HOP_DONG' ? { ...record.DuLieu, TienDatCoc: getContractDeposit(record.DuLieu) } : { ...record.DuLieu });
+    if (module === 'HOP_DONG') {
+      const data = record.DuLieu || {};
+      const legacyTotal = Math.max(0, Number(data.GiaGoiBanDau ?? data.TongGiaTri ?? 0));
+      const installments = Array.isArray(data.LichThanhToan)
+        ? data.LichThanhToan
+        : [{ Dot: 1, TenDot: 'Đợt 1', HanThanhToan: '', SoTienDuKien: getContractDeposit(data), GhiChu: '' }];
+      setFormData({
+        ...data,
+        GiaGoiBanDau: data.GiaGoiBanDau ?? legacyTotal,
+        GiamGiaTrucTiep: data.GiamGiaTrucTiep ?? 0,
+        ChietKhauPhanTram: data.ChietKhauPhanTram ?? 0,
+        KhuyenMaiBoSung: data.KhuyenMaiBoSung ?? 0,
+        PhuThuDichVu: data.PhuThuDichVu ?? 0,
+        TienDatCoc: getContractDeposit(data),
+        LichThanhToan: installments,
+      });
+    } else {
+      setFormData({ ...record.DuLieu });
+    }
     setFormOpen(true);
   };
 
@@ -390,7 +408,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                       {module === 'THU_CHI' && record.DuLieu?.SoTien
                         ? (String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? '-' : '+') + Number(record.DuLieu.SoTien).toLocaleString('vi-VN') + ' đ'
                         : module === 'HOP_DONG'
-                          ? `Giá trị ${Number(record.DuLieu?.TongGiaTri || 0).toLocaleString('vi-VN')} đ · Cọc ${getContractDeposit(record.DuLieu).toLocaleString('vi-VN')} đ · Thu thêm ${getContractCollected(record).toLocaleString('vi-VN')} đ · Còn ${Math.max(0, Number(record.DuLieu?.TongGiaTri || 0) - getInstallmentsTotal(record.DuLieu) - getContractCollected(record)).toLocaleString('vi-VN')} đ`
+                          ? `Giá trị ${Math.max(0, Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) - Number(record.DuLieu?.GiamGiaTrucTiep || 0) - Math.round(Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) * Number(record.DuLieu?.ChietKhauPhanTram || 0) / 100) - Number(record.DuLieu?.KhuyenMaiBoSung || 0) + Number(record.DuLieu?.PhuThuDichVu || 0)).toLocaleString('vi-VN')} đ · Cọc ${getContractDeposit(record.DuLieu).toLocaleString('vi-VN')} đ · Thu thêm ${getContractCollected(record).toLocaleString('vi-VN')} đ · Còn ${Math.max(0, Math.max(0, Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) - Number(record.DuLieu?.GiamGiaTrucTiep || 0) - Math.round(Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) * Number(record.DuLieu?.ChietKhauPhanTram || 0) / 100) - Number(record.DuLieu?.KhuyenMaiBoSung || 0) + Number(record.DuLieu?.PhuThuDichVu || 0)) - getInstallmentsTotal(record.DuLieu) - getContractCollected(record)).toLocaleString('vi-VN')} đ`
                           : getLink(record)}
                     </td>
                     <td className="p-3">
