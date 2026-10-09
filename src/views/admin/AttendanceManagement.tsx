@@ -9,6 +9,7 @@ import {
   CheckCircle,
   AlertCircle,
   Users,
+  Trash2,
 } from 'lucide-react';
 import type { ChamCong, NhanVien } from '../../types';
 import { api } from '../../api';
@@ -22,6 +23,7 @@ interface AttendanceManagementProps {
 export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
   attendanceList,
   staffList,
+  onRefresh,
 }) => {
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -29,6 +31,17 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
   const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [viewPhoto, setViewPhoto] = useState<{ url: string; title: string } | null>(null);
+
+  const handleDeleteAttendance = async (record: ChamCong) => {
+    const dateLabel = new Date(record.Ngay).toLocaleDateString('vi-VN');
+    if (!window.confirm(`Bạn có chắc muốn xóa chấm công của ${record.HoTen} ngày ${dateLabel}? Thao tác này không thể hoàn tác.`)) return;
+    try {
+      await api.attendance.delete(record.ChamCongID);
+      onRefresh();
+    } catch (error: any) {
+      alert(error?.message || 'Không thể xóa bản ghi chấm công.');
+    }
+  };
 
   // Filter attendance records
   const filteredList = attendanceList.filter((cc) => {
@@ -192,12 +205,13 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                 <th className="px-5 py-3.5 font-semibold">Tọa độ GPS</th>
                 <th className="px-5 py-3.5 font-semibold">Trạng Thái</th>
                 <th className="px-5 py-3.5 font-semibold">Ghi Chú</th>
+                <th className="px-5 py-3.5 font-semibold text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7DFD5]">
               {filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-5 py-10 text-center text-stone-400">
+                  <td colSpan={11} className="px-5 py-10 text-center text-stone-400">
                     Không có bản ghi chấm công nào phù hợp.
                   </td>
                 </tr>
@@ -285,6 +299,11 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                     </td>
                     <td className="px-5 py-3.5 text-stone-500 italic max-w-[150px] truncate" title={cc.GhiChu}>
                       {cc.GhiChu || '--'}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <button type="button" onClick={() => void handleDeleteAttendance(cc)} className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-rose-700 hover:bg-rose-100 font-semibold" title="Xóa bản ghi chấm công">
+                        <Trash2 className="w-3.5 h-3.5" /> Xóa
+                      </button>
                     </td>
                   </tr>
                 ))
