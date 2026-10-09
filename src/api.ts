@@ -287,6 +287,10 @@ export const api = {
       );
     },
 
+    async delete(id: string): Promise<{ message: string }> {
+      return request<{ message: string }>(`/api/chamcong/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
+
     async getToday(): Promise<
       ChamCong | ChamCong[] | null
     > {
