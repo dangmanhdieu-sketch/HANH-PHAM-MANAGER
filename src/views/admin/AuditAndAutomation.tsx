@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme, THEME_PRESETS } from '../../context/ThemeContext';
 import {
   Settings,
   Shield,
@@ -12,6 +13,9 @@ import {
   CheckCircle,
   History,
   FileJson,
+  Palette,
+  ImagePlus,
+  Building2,
 } from 'lucide-react';
 import type { AuditLog, SystemConfig } from '../../types';
 import { api } from '../../api';
@@ -21,6 +25,25 @@ interface AuditAndAutomationProps {
 }
 
 export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefreshAll }) => {
+  const { previewTheme, setPreviewTheme, applyPreset, saveTheme, isSaving } = useTheme();
+  const [logoPreview, setLogoPreview] = useState<string>('');
+
+  const handleLogoFile = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Vui lòng chọn tệp ảnh logo.'); return; }
+    if (file.size > 2 * 1024 * 1024) { alert('Logo nên nhỏ hơn 2 MB để tải nhanh.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result || '');
+      setLogoPreview(value);
+      setPreviewTheme((prev) => ({ ...prev, customLogoUrl: value, logoType: 'custom_url' }));
+      try {
+        localStorage.setItem('hanhpham_custom_logo', value);
+        window.dispatchEvent(new Event('hanhpham-logo-changed'));
+      } catch { alert('Không thể lưu ảnh logo trên trình duyệt này.'); }
+    };
+    reader.readAsDataURL(file);
+  };
   const [automationStatus, setAutomationStatus] = useState<any>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [config, setConfig] = useState<SystemConfig | null>(null);
@@ -138,10 +161,10 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
         <div>
           <h1 className="text-2xl font-bold font-bridal text-stone-900 flex items-center gap-2">
             <Settings className="w-6 h-6 text-[#bf954f]" />
-            TỰ ĐỘNG HÓA, AUDIT LOG & HỆ THỐNG
+            SETTING
           </h1>
           <p className="text-xs text-stone-500 mt-1">
-            Quản trị Scheduled Job tạo lương, nhật ký kiểm toán bảo mật, sao lưu dự phòng và cấu hình studio.
+            Chỉnh giao diện, thương hiệu, sao lưu dữ liệu, phân quyền nhân viên và vận hành hệ thống.
           </p>
         </div>
 
@@ -156,6 +179,29 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
           </button>
         </div>
       </div>
+
+      {/* BRAND & APP APPEARANCE SETTINGS */}
+      <section className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-6 space-y-5">
+        <div className="flex items-center gap-3 border-b border-stone-100 pb-4">
+          <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#E7DFD5]"><Palette className="w-5 h-5 text-[#bf954f]" /></div>
+          <div><h2 className="font-bold text-stone-900">Giao diện ứng dụng & thương hiệu</h2><p className="text-xs text-stone-500 mt-1">Tùy chỉnh màu sắc, tên thương hiệu và logo hiển thị trên ứng dụng.</p></div>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div><label className="block text-xs font-semibold mb-1">Tên thương hiệu hiển thị</label><input value={previewTheme.brandName} onChange={e=>setPreviewTheme(p=>({...p,brandName:e.target.value}))} className="w-full border rounded-lg p-2.5 text-sm"/></div>
+          <div><label className="block text-xs font-semibold mb-1">Dòng mô tả thương hiệu</label><input value={previewTheme.brandSubtitle} onChange={e=>setPreviewTheme(p=>({...p,brandSubtitle:e.target.value}))} className="w-full border rounded-lg p-2.5 text-sm" placeholder="Ví dụ: Luxury Bridal Studio"/></div>
+          <div><label className="block text-xs font-semibold mb-1">Slogan</label><input value={previewTheme.tagline} onChange={e=>setPreviewTheme(p=>({...p,tagline:e.target.value}))} className="w-full border rounded-lg p-2.5 text-sm" placeholder="Slogan thương hiệu"/></div>
+          <div><label className="block text-xs font-semibold mb-1">Mẫu giao diện</label><select onChange={e=>applyPreset(e.target.value)} defaultValue="" className="w-full border rounded-lg p-2.5 text-sm"><option value="" disabled>Chọn giao diện có sẵn</option>{THEME_PRESETS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+          <div><label className="block text-xs font-semibold mb-1">Màu chủ đạo</label><div className="flex gap-2"><input type="color" value={previewTheme.primaryColor} onChange={e=>setPreviewTheme(p=>({...p,primaryColor:e.target.value}))} className="h-10 w-14 border rounded"/><input value={previewTheme.primaryColor} onChange={e=>setPreviewTheme(p=>({...p,primaryColor:e.target.value}))} className="flex-1 border rounded-lg p-2 text-sm"/></div></div>
+          <div><label className="block text-xs font-semibold mb-1">Màu nền ứng dụng</label><div className="flex gap-2"><input type="color" value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="h-10 w-14 border rounded"/><input value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="flex-1 border rounded-lg p-2 text-sm"/></div></div>
+        </div>
+        <div className="rounded-xl border border-dashed border-stone-300 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="w-20 h-20 rounded-xl bg-stone-900 flex items-center justify-center overflow-hidden shrink-0">
+            {(logoPreview || previewTheme.customLogoUrl) ? <img src={logoPreview || previewTheme.customLogoUrl} alt="Logo thương hiệu" className="w-full h-full object-contain"/> : <ImagePlus className="w-8 h-8 text-[#dfc79f]"/>}
+          </div>
+          <div className="flex-1"><p className="font-semibold text-sm">Logo thương hiệu</p><p className="text-xs text-stone-500 mt-1">Chọn ảnh PNG, JPG hoặc WebP, tối đa 2 MB. Logo được áp dụng trên trình duyệt hiện tại.</p><label className="inline-flex mt-3 items-center gap-2 rounded-lg bg-stone-900 text-white px-4 py-2 text-xs font-bold cursor-pointer"><ImagePlus className="w-4 h-4"/> Thay ảnh logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={e=>{handleLogoFile(e.target.files?.[0]);e.currentTarget.value='';}}/></label></div>
+        </div>
+        <div className="flex justify-end"><button type="button" disabled={isSaving} onClick={()=>void saveTheme()} className="px-5 py-2.5 rounded-xl bg-stone-900 text-[#dfc79f] text-xs font-bold disabled:opacity-50">{isSaving?'Đang lưu...':'LƯU GIAO DIỆN & THƯƠNG HIỆU'}</button></div>
+      </section>
 
       {/* AUTOMATION ENGINE CARD */}
       <div className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-6 space-y-4">
