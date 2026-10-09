@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatMoney, formatNumber } from '../../utils/format';
 import {
   Users,
   Clock,
@@ -129,7 +130,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
           <div className="mt-2 sm:mt-3">
             <h3 className="text-xl sm:text-2xl font-bold font-bridal text-stone-900 truncate">
-              {luongChoDuyet.toLocaleString('vi-VN')} <span className="text-xs font-sans font-normal text-stone-400">đ</span>
+              {formatNumber(luongChoDuyet)} <span className="text-xs font-sans font-normal text-stone-400">đ</span>
             </h3>
           </div>
         </div>
@@ -146,7 +147,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
           <div className="mt-2 sm:mt-3">
             <h3 className="text-xl sm:text-2xl font-bold font-bridal text-stone-900 truncate">
-              {daThanhToan.toLocaleString('vi-VN')} <span className="text-xs font-sans font-normal text-stone-400">đ</span>
+              {formatNumber(daThanhToan)} <span className="text-xs font-sans font-normal text-stone-400">đ</span>
             </h3>
           </div>
         </div>
@@ -325,22 +326,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </td>
                     <td className="px-5 py-3.5 font-semibold text-stone-700">{l.Thang}</td>
                     <td className="px-5 py-3.5 font-mono">
-                      {l.LuongCoBan.toLocaleString('vi-VN')} đ
+                      {formatNumber(l.LuongCoBan)} đ
                     </td>
                     <td className="px-5 py-3.5 font-mono text-emerald-600">
-                      +{l.PhuCap.toLocaleString('vi-VN')} đ
+                      +{formatNumber(l.PhuCap)} đ
                     </td>
                     <td className="px-5 py-3.5 font-mono text-emerald-600">
-                      +{l.Thuong.toLocaleString('vi-VN')} đ
+                      +{formatNumber(l.Thuong)} đ
                     </td>
                     <td className="px-5 py-3.5 font-mono text-[#a97d3e] font-semibold">
-                      +{l.HoaHong.toLocaleString('vi-VN')} đ
+                      +{formatNumber(l.HoaHong)} đ
                     </td>
                     <td className="px-5 py-3.5 font-mono text-rose-600">
-                      -{(l.Phat + l.TamUng).toLocaleString('vi-VN')} đ
+                      -{(l.Phat + formatNumber(l.TamUng))} đ
                     </td>
                     <td className="px-5 py-3.5 font-mono font-bold text-stone-900 text-sm">
-                      {l.ThucLanh.toLocaleString('vi-VN')} đ
+                      {formatNumber(l.ThucLanh)} đ
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <button
@@ -402,7 +403,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <td className="px-5 py-3 font-bold text-stone-900">{l.HoTen}</td>
                     <td className="px-5 py-3 text-stone-600">{l.Thang}</td>
                     <td className="px-5 py-3 font-mono font-bold text-emerald-700">
-                      {l.ThucLanh.toLocaleString('vi-VN')} đ
+                      {formatNumber(l.ThucLanh)} đ
                     </td>
                     <td className="px-5 py-3 text-stone-500">
                       {l.NgayThanhToan ? new Date(l.NgayThanhToan).toLocaleDateString('vi-VN') : '--'}
