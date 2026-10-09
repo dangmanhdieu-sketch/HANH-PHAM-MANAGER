@@ -48,6 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const unreadCount = notifications.filter((n) => !n.DaDoc).length;
   const isAdmin = currentUser.Quyen === 'Admin';
   const isFreelancer = currentUser.Quyen === 'Freelancer';
+  const isSale = currentUser.Quyen === 'Sale';
 
   // ============================================================
   // ADMIN TABS
@@ -75,6 +76,11 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'danhba_me', label: 'Danh bạ nhân viên', shortLabel: 'Danh bạ', icon: Contact },
   ];
 
+  const saleTabs = [
+    ...employeeTabs,
+    { id: 'hopdong_me', label: 'Hợp đồng', shortLabel: 'Hợp đồng', icon: FileText },
+  ];
+
   const freelancerTabs = [
     { id: 'profile_me', label: 'Thông tin nhân viên', shortLabel: 'Thông tin NV', icon: User },
     { id: 'luong_me', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
@@ -82,7 +88,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'chamcong_me', label: 'Lịch làm việc', shortLabel: 'Lịch làm việc', icon: BarChart3 },
   ];
 
-  const activeTabs = isAdmin ? adminTabs : isFreelancer ? freelancerTabs : employeeTabs;
+  const activeTabs = isAdmin ? adminTabs : isFreelancer ? freelancerTabs : isSale ? saleTabs : employeeTabs;
 
   // ============================================================
   // QUICK USERS

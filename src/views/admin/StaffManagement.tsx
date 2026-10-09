@@ -389,6 +389,7 @@ HẠNH PHẠM MANAGER`;
             <option value="ALL">Tất cả phân quyền</option>
             <option value="Admin">Admin</option>
             <option value="Nhân viên">Nhân viên</option>
+            <option value="Sale">Sale</option>
             <option value="Freelancer">Freelancer</option>
           </select>
         </div>
@@ -758,7 +759,8 @@ HẠNH PHẠM MANAGER`;
                       onChange={(e) => setFormData({ ...formData, Quyen: e.target.value as QuyenNguoiDung })}
                       className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] bg-white"
                     >
-                      <option value="Nhân viên">Nhân viên (Chỉ xem dữ liệu cá nhân & chấm công)</option>
+                      <option value="Nhân viên">Nhân viên (Quyền nhân viên thông thường)</option>
+                      <option value="Sale">Sale (Giống Nhân viên + quản lý hợp đồng của mình)</option>
                       <option value="Freelancer">Freelancer (Lương & thu nhập, danh bạ, lịch làm việc)</option>
                       <option value="Admin">Admin (Toàn quyền quản trị & duyệt lương)</option>
                     </select>
