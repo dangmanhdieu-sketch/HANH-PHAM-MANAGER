@@ -161,10 +161,27 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     setSaving(true);
 
     try {
+      const payload: Record<string, any> = { ...formData };
+      if (module === 'HOP_DONG') {
+        const base = Number(payload.GiaGoiBanDau ?? payload.TongGiaTri ?? 0);
+        const direct = Number(payload.GiamGiaTrucTiep || 0);
+        const rate = Number(payload.ChietKhauPhanTram || 0);
+        const promo = Number(payload.KhuyenMaiBoSung || 0);
+        const surcharge = Number(payload.PhuThuDichVu || 0);
+        const discount = Math.round(base * rate / 100);
+        if (base <= 0 || direct < 0 || rate < 0 || rate > 100 || promo < 0 || surcharge < 0 || direct + discount + promo > base) {
+          throw new Error('Giá gói phải lớn hơn 0; các khoản giảm trừ không được âm hoặc vượt giá gói.');
+        }
+        payload.TongGiaTri = base - direct - discount - promo + surcharge;
+        payload.NgayTao = payload.NgayTao || new Date().toISOString();
+        payload.LichThanhToan = Array.isArray(payload.LichThanhToan) ? payload.LichThanhToan : defaultInstallments();
+        delete payload.DaThu;
+        delete payload.CongNo;
+      }
       if (editing) {
-        await api.quanLy.update(editing.QuanLyID, formData as Record<string, any>);
+        await api.quanLy.update(editing.QuanLyID, payload);
       } else {
-        await api.quanLy.create(module, formData as Record<string, any>);
+        await api.quanLy.create(module, payload);
       }
 
       closeForm();
@@ -244,7 +261,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     const data = record.DuLieu || {};
 
     if (module === 'HOP_DONG') {
-      return [data.MaHopDong, data.KhachHang].filter(Boolean).join(' • ') || 'Hợp đồng chưa đặt tên';
+      return [data.MaHopDong, data.KhachHang, data.NgayCuoiNhaTrai ? 'Nhà trai: ' + data.NgayCuoiNhaTrai : '', data.NgayCuoiNhaGai ? 'Nhà gái: ' + data.NgayCuoiNhaGai : ''].filter(Boolean).join(' • ') || 'Hợp đồng chưa đặt tên';
     }
     if (module === 'CONG_VIEC') {
       return data.TieuDe || 'Công việc chưa đặt tên';
