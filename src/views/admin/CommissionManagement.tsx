@@ -716,7 +716,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
         onClose={() => setDeleteConfirmHH(null)}
         onConfirm={handleDelete}
         title="XÁC NHẬN XÓA"
-        message={`Bạn có chắc chắn muốn xóa bản ghi "${deleteConfirmHH?.NoiDung}" (${deleteConfirmHH?formatNumber(.SoTienHoaHong)} đ) của ${deleteConfirmHH?.HoTen}?`}
+        message={`Bạn có chắc chắn muốn xóa bản ghi "${deleteConfirmHH?.NoiDung}" (${deleteConfirmHH ? formatNumber(deleteConfirmHH.SoTienHoaHong) : "0"} đ) của ${deleteConfirmHH?.HoTen}?`}
         confirmText="XÓA"
         type="danger"
       />
@@ -729,7 +729,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
         title={approveConfirmHH?.dongY ? 'PHÊ DUYỆT THU NHẬP' : 'TỪ CHỐI'}
         message={
           approveConfirmHH?.dongY
-            ? `Phê duyệt khoản thu nhập ${approveConfirmHH?formatNumber(.hh.SoTienHoaHong)} VNĐ cho ${approveConfirmHH?.hh.HoTen}? Khoản này sẽ được cộng trực tiếp vào bảng lương tháng ${approveConfirmHH?.hh.Ngay.split('-')[1]}/${approveConfirmHH?.hh.Ngay.split('-')[0]}.`
+            ? `Phê duyệt khoản thu nhập ${approveConfirmHH ? formatNumber(approveConfirmHH.hh.SoTienHoaHong) : "0"} VNĐ cho ${approveConfirmHH?.hh.HoTen}? Khoản này sẽ được cộng trực tiếp vào bảng lương tháng ${approveConfirmHH?.hh.Ngay.split('-')[1]}/${approveConfirmHH?.hh.Ngay.split('-')[0]}.`
             : `Từ chối khoản thu nhập "${approveConfirmHH?.hh.NoiDung}" của ${approveConfirmHH?.hh.HoTen}?`
         }
         confirmText={approveConfirmHH?.dongY ? 'DUYỆT & CỘNG LƯƠNG' : 'TỪ CHỐI'}
