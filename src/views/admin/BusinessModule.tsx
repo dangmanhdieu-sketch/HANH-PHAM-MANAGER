@@ -467,7 +467,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <div><label className="block text-xs font-semibold mb-1">{cashflowType === 'THU' ? 'Nội dung thu' : 'Lý do chi'}</label>
                   <input value={String(formData.NoiDungThu ?? formData.DanhMuc ?? '')} onChange={e=>setFormData({...formData,NoiDungThu:e.target.value,DanhMuc:e.target.value})} placeholder={cashflowType === 'THU' ? 'Nhập nội dung thu...' : 'Nhập lý do chi...'} className="w-full border rounded-lg px-3 py-2 text-sm" required /></div>
                 <div><label className="block text-xs font-semibold mb-1">Số tiền {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
-                  <input type="number" min="0" value={String(formData.SoTien ?? '')} onChange={e=>setFormData({...formData,SoTien:Number(e.target.value)})} className="w-full border rounded-lg px-3 py-2 text-sm" required /></div>
+                  <input inputMode="numeric" value={formatMoneyInput(formData.SoTien ?? '')} onChange={e=>setFormData({...formData,SoTien:parseMoneyInput(e.target.value)})} className="w-full border rounded-lg px-3 py-2 text-sm" required /></div>
                 <div><label className="block text-xs font-semibold mb-1">Phương thức thanh toán</label>
                   <select value={String(formData.PhuongThucThanhToan ?? 'Tiền mặt')} onChange={e=>setFormData({...formData,PhuongThucThanhToan:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option>Tiền mặt</option><option>Chuyển khoản</option></select></div>
                 <div><label className="block text-xs font-semibold mb-1">Mã hợp đồng liên quan</label>
