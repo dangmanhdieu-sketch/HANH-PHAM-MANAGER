@@ -385,7 +385,26 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               </button>
             </div>
 
-            {module === 'THU_CHI' ? (
+            {module === 'HOP_DONG' ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold mb-1">Mã hợp đồng</label><input value={String(formData.MaHopDong || 'Tự tạo khi lưu')} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
+                  <div><label className="block text-xs font-semibold mb-1">Ngày tạo</label><input value={String(formData.NgayTao || getTodayLocal()).slice(0,10)} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
+                  <div><label className="block text-xs font-semibold mb-1">Họ tên cô dâu/chú rể *</label><input required value={String(formData.KhachHang || '')} onChange={e=>setFormData({...formData,KhachHang:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs font-semibold mb-1">Số điện thoại *</label><input required value={String(formData.SDT || '')} onChange={e=>setFormData({...formData,SDT:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs font-semibold mb-1">Địa chỉ</label><input value={String(formData.DiaChi || '')} onChange={e=>setFormData({...formData,DiaChi:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs font-semibold mb-1">Ngày cưới</label><input type="date" value={String(formData.NgayCuoi || '')} onChange={e=>setFormData({...formData,NgayCuoi:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs font-semibold mb-1">Loại dịch vụ</label><select value={String(formData.LoaiDichVu || 'Trọn gói cưới')} onChange={e=>setFormData({...formData,LoaiDichVu:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white">{['Chụp ảnh cưới','Quay phim cưới','Trang điểm cô dâu','Thuê váy cưới','Trọn gói cưới','Dịch vụ khác'].map(x=><option key={x} value={x}>{x}</option>)}</select></div>
+                  <div><label className="block text-xs font-semibold mb-1">Tên gói dịch vụ *</label><input required value={String(formData.GoiDichVu || '')} onChange={e=>setFormData({...formData,GoiDichVu:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs font-semibold mb-1">Tổng giá trị hợp đồng (VNĐ) *</label><input required min="1" type="number" value={String(formData.TongGiaTri ?? '')} onChange={e=>setFormData({...formData,TongGiaTri:Number(e.target.value)})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs font-semibold mb-1">Nhân viên phụ trách</label><select value={String(formData.NhanVienID || currentUser?.NhanVienID || '')} disabled={isEmployee} onChange={e=>{const s=staffList.find(x=>x.NhanVienID===e.target.value);setFormData({...formData,NhanVienID:e.target.value,NhanVien:s?.HoTen||''})}} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option value="">-- Chọn nhân viên --</option>{staffList.map(s=><option key={s.NhanVienID} value={s.NhanVienID}>{s.HoTen} ({s.NhanVienID})</option>)}</select></div>
+                  <div><label className="block text-xs font-semibold mb-1">Phương thức thanh toán</label><select value={String(formData.PhuongThucThanhToan || 'Tiền mặt')} onChange={e=>setFormData({...formData,PhuongThucThanhToan:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option>Tiền mặt</option><option>Chuyển khoản</option><option>Kết hợp</option></select></div>
+                  <div className="sm:col-span-2"><label className="block text-xs font-semibold mb-1">Yêu cầu đặc biệt / Ghi chú</label><textarea rows={3} value={String(formData.GhiChu || '')} onChange={e=>setFormData({...formData,GhiChu:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                  {editing && <div className="sm:col-span-2 rounded-xl bg-stone-50 p-3 text-sm"><div>Đã thu (phiếu đã duyệt): <b>{getContractCollected(editing).toLocaleString('vi-VN')} VNĐ</b></div><div>Công nợ còn lại: <b>{Math.max(0,Number(formData.TongGiaTri||0)-getContractCollected(editing)).toLocaleString('vi-VN')} VNĐ</b></div></div>}
+                </div>
+                <p className="text-xs text-stone-500">Tiền đã thu và công nợ được tính từ phiếu thu đã duyệt, không nhập thủ công.</p>
+              </div>
+            ) : module === 'THU_CHI' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="block text-xs font-semibold mb-1">Ngày {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
                   <input type="date" value={String(formData.Ngay ?? '')} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
