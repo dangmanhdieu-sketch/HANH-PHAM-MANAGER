@@ -960,7 +960,7 @@ class DatabaseService {
     const deleted = this.db.CHAMCONG.splice(index, 1)[0];
     this.refreshKPIs();
     this.save();
-    this.logAudit('Xóa chấm công', 'Xóa bản ghi chấm công ' + deleted.HoTen + ' (' + deleted.NhanVienID + ') ngày ' + deleted.Ngay);
+    this.logAudit('Admin', '', 'Xóa chấm công', 'Xóa bản ghi chấm công ' + deleted.HoTen + ' (' + deleted.NhanVienID + ') ngày ' + deleted.Ngay);
     return true;
   }
 
