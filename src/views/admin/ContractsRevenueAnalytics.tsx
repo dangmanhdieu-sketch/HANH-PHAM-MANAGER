@@ -115,14 +115,6 @@ export const ContractsRevenueAnalytics: React.FC = () => {
   // Thẻ "Đã thu trong kỳ" bao gồm tiền cọc của tất cả hợp đồng (cũ và mới),
   // cộng các phiếu thu đã duyệt trong kỳ nhưng loại phiếu tự sinh từ tiền cọc để không cộng trùng.
   const collectedInPeriod = useMemo(() => {
-    const contractByCode = new Map<string, QuanLyRecord>();
-    const contractById = new Map<string, QuanLyRecord>();
-    contracts.forEach(contract => {
-      const data = contract.DuLieu || {};
-      contractByCode.set(String(data.MaHopDong || contract.QuanLyID), contract);
-      contractById.set(String(contract.QuanLyID), contract);
-    });
-
     const totalDeposits = contracts.reduce((sum, contract) => {
       const data = contract.DuLieu || {};
       if (['Đã hủy', 'Hủy'].includes(String(data.TrangThai || ''))) return sum;
@@ -142,8 +134,6 @@ export const ContractsRevenueAnalytics: React.FC = () => {
           String(data.TrangThaiDuyet || '') !== 'Đã duyệt' ||
           date < bounds.start || date >= bounds.end) return sum;
 
-      const linkedContract = contractById.get(String(data.HopDongQuanLyID || '')) ||
-        contractByCode.get(String(data.HopDongID || ''));
       const isDepositReceipt = String(data.NguonTao || '') === 'TIEN_COC_HOP_DONG' ||
         /tiền cọc/i.test(String(data.DanhMuc || data.NoiDungThu || data.GhiChu || ''));
       // Phiếu thu cọc đã được tính qua tổng tiền cọc của hợp đồng.
