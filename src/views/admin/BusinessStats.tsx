@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { formatMoney, formatNumber } from '../../utils/format';
 import { BarChart3, TrendingUp, Wallet, FileText, CheckSquare } from 'lucide-react';
 import type { HoaHong, Luong, NhanVien, QuanLyRecord } from '../../types';
 import { api } from '../../api';
@@ -124,8 +125,8 @@ export const BusinessStats: React.FC<Props> = ({
                   <p className="text-[11px] text-stone-500 mt-3">{card.label}</p>
                   <p className="text-xl font-bold mt-1">
                     {card.money
-                      ? card.value.toLocaleString('vi-VN') + ' đ'
-                      : card.value.toLocaleString('vi-VN')}
+                      ?formatMoney( card.value)
+                      : formatNumber(card.value)}
                   </p>
                 </div>
               );
@@ -138,19 +139,19 @@ export const BusinessStats: React.FC<Props> = ({
               <div>
                 <span className="text-stone-500">Tổng thu</span>
                 <b className="block text-emerald-700">
-                  {stats.thu.toLocaleString('vi-VN')} đ
+                  {formatNumber(stats.thu)} đ
                 </b>
               </div>
               <div>
                 <span className="text-stone-500">Tổng chi</span>
                 <b className="block text-rose-700">
-                  {stats.chi.toLocaleString('vi-VN')} đ
+                  {formatNumber(stats.chi)} đ
                 </b>
               </div>
               <div>
                 <span className="text-stone-500">Chênh lệch</span>
                 <b className={stats.balance >= 0 ? 'block text-emerald-700' : 'block text-rose-700'}>
-                  {stats.balance.toLocaleString('vi-VN')} đ
+                  {formatNumber(stats.balance)} đ
                 </b>
               </div>
             </div>
