@@ -480,6 +480,7 @@ function AppContent() {
                 onOpenCheckOut={() => setCameraModal({ open: true, title: 'CHECK-OUT' })}
                 onOpenDailyClaim={() => setDailyClaimModalOpen(true)}
                 onNavigateTab={setCurrentTab}
+                isFreelancer={currentUser.Quyen === 'Freelancer'}
               />
             )}
 
