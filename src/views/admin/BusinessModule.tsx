@@ -397,7 +397,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
           >
             <div className="flex justify-between items-center">
               <h2 className="font-bold text-lg">
-                {editing ? 'CẬP NHẬT' : 'THÊM'} {config.title.toUpperCase()}
+                {module === 'THU_CHI' ? (editing ? (cashflowType === 'THU' ? 'CẬP NHẬT PHIẾU THU' : 'CẬP NHẬT PHIẾU CHI') : (cashflowType === 'THU' ? 'PHIẾU THU' : 'PHIẾU CHI')) : `${editing ? 'CẬP NHẬT' : 'THÊM'} ${config.title.toUpperCase()}`}
               </h2>
               <button type="button" onClick={closeForm} disabled={saving}>
                 <X />
@@ -455,9 +455,21 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                   <select value={String(formData.PhuongThucThanhToan ?? 'Tiền mặt')} onChange={e=>setFormData({...formData,PhuongThucThanhToan:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option>Tiền mặt</option><option>Chuyển khoản</option></select></div>
                 <div><label className="block text-xs font-semibold mb-1">Mã hợp đồng liên quan</label>
                   <input value={String(formData.HopDongID ?? '')} onChange={e=>setFormData({...formData,HopDongID:e.target.value})} placeholder="Có thể bỏ trống" className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
-                <div><label className="block text-xs font-semibold mb-1">Ảnh chứng từ</label>
-                  <input type="file" accept="image/*" capture="environment" onChange={e=>handleProofImage(e.target.files?.[0])} className="w-full text-xs" />
-                  {formData.AnhChungTu && <img src={String(formData.AnhChungTu)} className="mt-2 h-24 rounded-lg object-cover border" />}</div>
+                <div>
+                  <label className="block text-xs font-semibold mb-2">Ảnh chứng từ</label>
+                  <div className="flex flex-wrap gap-2">
+                    <label className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-sm font-semibold cursor-pointer">
+                      <Upload className="w-4 h-4" /> Chọn ảnh từ máy
+                      <input type="file" accept="image/*" className="hidden" onChange={e=>{handleProofImage(e.target.files?.[0]);e.currentTarget.value='';}} />
+                    </label>
+                    <label className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-sm font-semibold cursor-pointer">
+                      <Camera className="w-4 h-4" /> Chụp ảnh
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e=>{handleProofImage(e.target.files?.[0]);e.currentTarget.value='';}} />
+                    </label>
+                  </div>
+                  <p className="mt-2 text-xs text-stone-500">Chọn ảnh có sẵn trong thiết bị hoặc chụp trực tiếp bằng camera điện thoại.</p>
+                  {formData.AnhChungTu && <div className="mt-3 flex items-start gap-3"><img src={String(formData.AnhChungTu)} alt="Ảnh chứng từ" className="h-24 w-24 rounded-lg object-cover border" /><button type="button" onClick={()=>setFormData({...formData,AnhChungTu:''})} className="text-xs text-rose-600 font-semibold">Xóa ảnh</button></div>}
+                </div>
                 <div className="sm:col-span-2"><label className="block text-xs font-semibold mb-1">Ghi chú</label>
                   <textarea value={String(formData.GhiChu ?? '')} onChange={e=>setFormData({...formData,GhiChu:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" rows={3} /></div>
               </div>
