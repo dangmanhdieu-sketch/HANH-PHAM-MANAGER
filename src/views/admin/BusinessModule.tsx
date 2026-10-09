@@ -346,7 +346,14 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
 
   const getStatus = (record: QuanLyRecord) => String(record.Module === 'HOP_DONG' ? (record.DuLieu?.TrangThai || 'Nháp') : (record.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt'));
 
-  const getContractCollected = (record: QuanLyRecord) => receiptRecords.filter((receipt) => receipt.DuLieu?.Loai === 'THU' && receipt.DuLieu?.HopDongID === record.DuLieu?.MaHopDong && receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt').reduce((sum, receipt) => sum + Number(receipt.DuLieu?.SoTien || 0), 0);
+  const getContractCollected = (record: QuanLyRecord) => {
+    const deposit = getContractDeposit(record.DuLieu);
+    const approvedReceipts = receiptRecords
+      .filter((receipt) => String(receipt.DuLieu?.Loai || '').toUpperCase() === 'THU' && String(receipt.DuLieu?.HopDongID || '') === String(record.DuLieu?.MaHopDong || '') && receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt')
+      .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
+    const contractValue = Math.max(0, Number(record.DuLieu?.TongGiaTri ?? record.DuLieu?.GiaGoiBanDau ?? 0));
+    return Math.min(contractValue, Math.max(deposit, approvedReceipts));
+  };
   const getInstallmentsTotal = (data: Record<string, any> | undefined) => (Array.isArray(data?.LichThanhToan) ? data.LichThanhToan : []).reduce((sum: number, row: any) => sum + Math.max(0, Number(row?.SoTienDuKien || 0)), 0);
 
   const getTitle = (record: QuanLyRecord) => {
@@ -440,7 +447,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                       {module === 'THU_CHI' && record.DuLieu?.SoTien
                         ? (String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? '-' : '+') + Number(record.DuLieu.SoTien).toLocaleString('vi-VN') + ' đ'
                         : module === 'HOP_DONG'
-                          ? `Giá trị ${Math.max(0, Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) - Number(record.DuLieu?.GiamGiaTrucTiep || 0) - Math.round(Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) * Number(record.DuLieu?.ChietKhauPhanTram || 0) / 100) - Number(record.DuLieu?.KhuyenMaiBoSung || 0) + Number(record.DuLieu?.PhuThuDichVu || 0)).toLocaleString('vi-VN')} đ · Cọc ${getContractDeposit(record.DuLieu).toLocaleString('vi-VN')} đ · Thu thêm ${getContractCollected(record).toLocaleString('vi-VN')} đ · Còn ${Math.max(0, Math.max(0, Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) - Number(record.DuLieu?.GiamGiaTrucTiep || 0) - Math.round(Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) * Number(record.DuLieu?.ChietKhauPhanTram || 0) / 100) - Number(record.DuLieu?.KhuyenMaiBoSung || 0) + Number(record.DuLieu?.PhuThuDichVu || 0)) - getInstallmentsTotal(record.DuLieu) - getContractCollected(record)).toLocaleString('vi-VN')} đ`
+                          ? `Giá trị ${Math.max(0, Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) - Number(record.DuLieu?.GiamGiaTrucTiep || 0) - Math.round(Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) * Number(record.DuLieu?.ChietKhauPhanTram || 0) / 100) - Number(record.DuLieu?.KhuyenMaiBoSung || 0) + Number(record.DuLieu?.PhuThuDichVu || 0)).toLocaleString('vi-VN')} đ · Cọc ${getContractDeposit(record.DuLieu).toLocaleString('vi-VN')} đ · Đã thu ${getContractCollected(record).toLocaleString('vi-VN')} đ · Còn ${Math.max(0, Math.max(0, Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) - Number(record.DuLieu?.GiamGiaTrucTiep || 0) - Math.round(Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) * Number(record.DuLieu?.ChietKhauPhanTram || 0) / 100) - Number(record.DuLieu?.KhuyenMaiBoSung || 0) + Number(record.DuLieu?.PhuThuDichVu || 0)) - getContractCollected(record)).toLocaleString('vi-VN')} đ`
                           : getLink(record)}
                     </td>
                     <td className="p-3">
