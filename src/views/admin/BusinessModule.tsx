@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, Trash2, Edit3, Save, X, FileText, CheckSquare, Wallet } from 'lucide-react';
+import { Plus, Search, Trash2, Edit3, Save, X, FileText, CheckSquare, Wallet, Upload, Camera } from 'lucide-react';
 import type { NhanVien, QuanLyModule, QuanLyRecord } from '../../types';
 import { api } from '../../api';
 
