@@ -26,7 +26,7 @@ interface Props {
 
 const formatMoneyInput = (value: unknown) => { const digits = String(value ?? '').replace(/[^0-9]/g, ''); return digits ? Number(digits).toLocaleString('vi-VN') : ''; };
 const parseMoneyInput = (value: string) => { const digits = value.replace(/[^0-9]/g, ''); return digits ? Number(digits) : 0; };
-const defaultInstallments = () => [{Dot:1,TenDot:'Đặt cọc lần 1',HanThanhToan:'',SoTienDuKien:0,GhiChu:''},{Dot:2,TenDot:'Đặt cọc lần 2',HanThanhToan:'',SoTienDuKien:0,GhiChu:''},{Dot:3,TenDot:'Thanh toán lần 3',HanThanhToan:'',SoTienDuKien:0,GhiChu:''},{Dot:4,TenDot:'Thanh toán lần 4',HanThanhToan:'',SoTienDuKien:0,GhiChu:''},{Dot:5,TenDot:'Thanh toán lần 5',HanThanhToan:'',SoTienDuKien:0,GhiChu:''},{Dot:6,TenDot:'Thanh toán cuối cùng',HanThanhToan:'',SoTienDuKien:0,GhiChu:''}];
+const defaultInstallments = () => [{Dot:1,TenDot:'Đợt 1',HanThanhToan:'',SoTienDuKien:0,GhiChu:''}];
 
 const CONFIG: Record<QuanLyModule, ModuleConfig> = {
   CONG_VIEC: {
