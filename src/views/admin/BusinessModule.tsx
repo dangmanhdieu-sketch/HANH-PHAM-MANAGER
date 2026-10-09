@@ -348,10 +348,19 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
 
   const getContractCollected = (record: QuanLyRecord) => {
     const deposit = getContractDeposit(record.DuLieu);
+    const contractCode = String(record.DuLieu?.MaHopDong || record.QuanLyID);
     const approvedReceipts = receiptRecords
-      .filter((receipt) => String(receipt.DuLieu?.Loai || '').toUpperCase() === 'THU' && String(receipt.DuLieu?.HopDongID || '') === String(record.DuLieu?.MaHopDong || '') && receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt')
+      .filter((receipt) =>
+        String(receipt.DuLieu?.Loai || '').toUpperCase() === 'THU' &&
+        receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt' &&
+        (
+          String(receipt.DuLieu?.HopDongID || '') === contractCode ||
+          String(receipt.DuLieu?.HopDongQuanLyID || '') === String(record.QuanLyID)
+        )
+      )
       .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
     const contractValue = Math.max(0, Number(record.DuLieu?.TongGiaTri ?? record.DuLieu?.GiaGoiBanDau ?? 0));
+    // Cọc đã ghi trên hợp đồng và phiếu thu là cùng một khoản; dùng max để tránh cộng trùng.
     return Math.min(contractValue, Math.max(deposit, approvedReceipts));
   };
   const getInstallmentsTotal = (data: Record<string, any> | undefined) => (Array.isArray(data?.LichThanhToan) ? data.LichThanhToan : []).reduce((sum: number, row: any) => sum + Math.max(0, Number(row?.SoTienDuKien || 0)), 0);
