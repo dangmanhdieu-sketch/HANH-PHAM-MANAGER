@@ -99,6 +99,40 @@ export const MyProfile: React.FC<MyProfileProps> = ({ currentUser, onRefresh }) 
         </p>
       </div>
 
+      <section className="bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 text-white p-6 sm:p-8 rounded-3xl border border-[#c5a059]/50 shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+          <img src={avatar || currentUser.AnhNhanVien || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'} alt={currentUser.HoTen} className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl object-cover border-2 border-[#dfc79f] shadow-md" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-[#dfc79f] font-bold">Hồ sơ nhân sự • Hạnh Phạm Manager</p>
+            <h2 className="text-2xl sm:text-3xl font-bold font-bridal mt-2">{currentUser.HoTen}</h2>
+            <p className="text-sm text-stone-300 mt-1">{currentUser.ChucVu || 'Nhân viên'}</p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <span className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs">Mã NV: {currentUser.NhanVienID}</span>
+              <span className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs">{currentUser.Quyen}</span>
+              <span className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs">{currentUser.TrangThai || 'Chưa cập nhật trạng thái'}</span>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
+          {[
+            ['Email đăng nhập', currentUser.Email],
+            ['Số điện thoại', currentUser.SDT],
+            ['Ngày vào làm', currentUser.NgayVaoLam],
+            ['Lương cơ bản', `${Number(currentUser.LuongCoBan || 0).toLocaleString('vi-VN')} đ`],
+            ['Ngân hàng nhận tiền', currentUser.NganHang],
+            ['Số tài khoản', currentUser.SoTaiKhoan],
+            ['Tên chủ tài khoản', currentUser.TenChuTaiKhoan],
+            ['Chi nhánh ngân hàng', currentUser.ChiNhanhNganHang],
+            ['Ghi chú nhân sự', currentUser.GhiChu],
+          ].filter((item) => item[1]).map(([label, value]) => (
+            <div key={label} className="rounded-xl bg-white/5 border border-white/10 p-3">
+              <p className="text-[10px] text-stone-400">{label}</p>
+              <p className="text-sm font-semibold mt-1 break-words">{value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Profile Card & Bank Info */}
         <div className="bg-white p-6 rounded-2xl border border-[#E7DFD5] shadow-sm space-y-4 text-xs">
