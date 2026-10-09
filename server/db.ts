@@ -954,6 +954,16 @@ class DatabaseService {
   }
 
   // CHAMCONG methods
+  public deleteChamCong(id: string): boolean {
+    const index = this.db.CHAMCONG.findIndex((cc) => cc.ChamCongID === id);
+    if (index < 0) return false;
+    const deleted = this.db.CHAMCONG.splice(index, 1)[0];
+    this.refreshKPIs();
+    this.save();
+    this.logAudit('Xóa chấm công', 'Xóa bản ghi chấm công ' + deleted.HoTen + ' (' + deleted.NhanVienID + ') ngày ' + deleted.Ngay);
+    return true;
+  }
+
   public getChamCongList(filter?: { date?: string; month?: string; nhanVienId?: string; trangThai?: string }): ChamCong[] {
     let result = [...this.db.CHAMCONG];
     if (filter?.date) {
