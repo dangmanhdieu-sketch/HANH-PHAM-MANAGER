@@ -545,7 +545,39 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
 
 app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   try {
-    const record = dbService.updateQuanLyRecord(req.params.id, req.body?.data || {}, {
+    const current = dbService.getQuanLyRecords().find((x) => x.QuanLyID === req.params.id);
+    if (!current) return res.status(404).json({ error: 'Không tìm thấy dữ liệu.' });
+    const changes = { ...(req.body?.data || {}) };
+
+    if (current.Module === 'HOP_DONG') {
+      delete changes.DaThu;
+      delete changes.CongNo;
+      if (changes.TongGiaTri !== undefined && (!Number.isFinite(Number(changes.TongGiaTri)) || Number(changes.TongGiaTri) <= 0)) {
+        return res.status(400).json({ error: 'Giá trị hợp đồng phải lớn hơn 0.' });
+      }
+      if (changes.MaHopDong && changes.MaHopDong !== current.DuLieu?.MaHopDong) {
+        return res.status(400).json({ error: 'Không được thay đổi mã hợp đồng sau khi tạo.' });
+      }
+      const nextStatus = changes.TrangThai;
+      if (nextStatus && nextStatus !== current.DuLieu?.TrangThai) {
+        const allowed = ['Nháp', 'Chờ admin duyệt', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'];
+        if (!allowed.includes(nextStatus)) return res.status(400).json({ error: 'Trạng thái hợp đồng không hợp lệ.' });
+        if (nextStatus === 'Đã hủy' && !String(changes.LyDoHuy || current.DuLieu?.LyDoHuy || '').trim()) {
+          return res.status(400).json({ error: 'Cần ghi lý do hủy hợp đồng.' });
+        }
+        changes.LichSuTrangThai = [
+          ...(Array.isArray(current.DuLieu?.LichSuTrangThai) ? current.DuLieu.LichSuTrangThai : []),
+          { TrangThai: nextStatus, ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen, GhiChu: changes.LyDoTuChoi || changes.LyDoHuy || '' },
+        ];
+      }
+    }
+
+    if (current.Module === 'THU_CHI' && changes.TrangThaiDuyet === 'Đã duyệt' && current.DuLieu?.TrangThaiDuyet !== 'Đã duyệt') {
+      changes.NgayDuyet = new Date().toISOString();
+      changes.NguoiDuyet = req.user!.HoTen;
+    }
+
+    const record = dbService.updateQuanLyRecord(req.params.id, changes, {
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
