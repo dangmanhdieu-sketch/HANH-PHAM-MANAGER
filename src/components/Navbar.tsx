@@ -115,6 +115,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'luong_me', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
     { id: 'danhba_me', label: 'Danh bạ nhân viên', shortLabel: 'Danh bạ', icon: Contact },
     { id: 'chamcong_me', label: 'Lịch làm việc', shortLabel: 'Lịch làm việc', icon: BarChart3 },
+    { id: 'profile_me', label: 'Thông tin nhân viên', shortLabel: 'Thông tin', icon: User },
   ];
 
   const activeTabs = isAdmin ? adminTabs : isFreelancer ? freelancerTabs : employeeTabs;
