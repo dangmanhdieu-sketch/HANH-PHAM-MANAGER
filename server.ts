@@ -524,6 +524,10 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       payload.TienChietKhau = percentageDiscount;
       payload.TongGiamTru = directDiscount + percentageDiscount + promoDiscount;
       payload.TongGiaTri = basePrice - payload.TongGiamTru + surcharge;
+      payload.TienDatCoc = Number(payload.TienDatCoc || 0);
+      if (!Number.isFinite(payload.TienDatCoc) || payload.TienDatCoc < 0 || payload.TienDatCoc > payload.TongGiaTri) {
+        return res.status(400).json({ error: 'Tiền cọc phải từ 0 đến tổng giá trị hợp đồng.' });
+      }
       payload.LichThanhToan = Array.isArray(payload.LichThanhToan) ? payload.LichThanhToan.map((p: any) => ({ ...p, SoTienDuKien: Math.max(0, Number(p.SoTienDuKien || 0)) })) : [];
       payload.TrangThai = req.user!.Quyen === 'Admin' ? (payload.TrangThai || 'Đã xác nhận') : 'Chờ admin duyệt';
       payload.LichSuTrangThai = [{ TrangThai: payload.TrangThai, ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen, GhiChu: 'Tạo hợp đồng' }];
@@ -583,6 +587,11 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       changes.TienChietKhau = percentageDiscount;
       changes.TongGiamTru = directDiscount + percentageDiscount + promoDiscount;
       changes.TongGiaTri = basePrice - changes.TongGiamTru + surcharge;
+      const deposit = Number(merged.TienDatCoc || 0);
+      if (!Number.isFinite(deposit) || deposit < 0 || deposit > changes.TongGiaTri) {
+        return res.status(400).json({ error: 'Tiền cọc phải từ 0 đến tổng giá trị hợp đồng.' });
+      }
+      changes.TienDatCoc = deposit;
       if (changes.LichThanhToan !== undefined && (!Array.isArray(changes.LichThanhToan) || changes.LichThanhToan.some((p: any) => Number(p.SoTienDuKien || 0) < 0))) {
         return res.status(400).json({ error: 'Lịch thanh toán không hợp lệ.' });
       }
