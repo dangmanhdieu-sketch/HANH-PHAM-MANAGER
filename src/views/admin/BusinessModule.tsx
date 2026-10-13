@@ -212,7 +212,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       (['THU_TU_HOP_DONG', 'TIEN_COC_HOP_DONG'].includes(String(data.NguonTao || '')) ||
        !!data.HopDongQuanLyID || !!data.HopDongID || !!data.MaHopDong);
   };
-  const approvedRecords = records.filter(r => r.DuLieu?.TrangThaiDuyet === 'Đã duyệt');
+  const approvedRecords = records.filter(r => ['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(r.DuLieu?.TrangThaiDuyet || '')));
   const totalThu = approvedRecords.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'THU').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
   const totalChi = approvedRecords.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'CHI').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
   const totalContractRevenue = approvedRecords.filter(r => isContractReceipt(r)).reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
@@ -693,11 +693,11 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
             <tbody className="divide-y divide-[#E7DFD5]">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-stone-400">Đang tải dữ liệu...</td>
+                  <td colSpan={module === "THU_CHI" ? 6 : 5} className="p-10 text-center text-stone-400">Đang tải dữ liệu...</td>
                 </tr>
               ) : filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-stone-400">Chưa có dữ liệu.</td>
+                  <td colSpan={module === "THU_CHI" ? 6 : 5} className="p-10 text-center text-stone-400">Chưa có dữ liệu.</td>
                 </tr>
               ) : (
                 filteredRecords.map((record) => (
