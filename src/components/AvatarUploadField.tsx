@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Camera, Upload, X, User, Check } from 'lucide-react';
+import { Upload, X, User } from 'lucide-react';
 
 interface AvatarUploadFieldProps {
   value: string;
@@ -91,7 +91,6 @@ export const AvatarUploadField: React.FC<AvatarUploadFieldProps> = ({
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="user"
         onChange={handleFileChange}
         className="hidden"
       />
@@ -125,8 +124,8 @@ export const AvatarUploadField: React.FC<AvatarUploadFieldProps> = ({
               disabled={processing}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-black text-[#f3dfa2] text-xs font-semibold shadow-sm transition active:scale-95"
             >
-              <Camera className="w-3.5 h-3.5 text-[#c5a059]" />
-              <span>{value ? 'Đổi ảnh từ điện thoại' : 'Tải ảnh từ điện thoại'}</span>
+              <Upload className="w-3.5 h-3.5 text-[#c5a059]" />
+              <span>{value ? 'Đổi ảnh đại diện' : 'Chọn ảnh đại diện'}</span>
             </button>
 
             {value && (
@@ -143,7 +142,7 @@ export const AvatarUploadField: React.FC<AvatarUploadFieldProps> = ({
           </div>
 
           <p className="text-[11px] text-stone-400 leading-tight">
-            Chụp trực tiếp bằng camera hoặc chọn ảnh từ thư viện điện thoại.
+            Chọn ảnh có sẵn từ thư viện điện thoại hoặc máy tính.
           </p>
         </div>
       </div>
