@@ -467,36 +467,60 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const downloadContractJpeg = async () => {
     const article = contractPrintRef.current;
     if (!article || downloadingJpeg) return;
+    let exportNode: HTMLElement | null = null;
     try {
       setDownloadingJpeg(true);
-      const canvas = await html2canvas(article, {
+      // Bản in bị ẩn trên màn hình; chụp một bản sao hiển thị ngoài vùng nhìn thấy.
+      exportNode = article.cloneNode(true) as HTMLElement;
+      Object.assign(exportNode.style, {
+        display: 'block',
+        position: 'fixed',
+        left: '-10000px',
+        top: '0',
+        width: '794px',
+        minWidth: '794px',
+        maxWidth: '794px',
+        height: 'auto',
+        maxHeight: 'none',
+        overflow: 'visible',
+        boxSizing: 'border-box',
+        padding: '28px',
+        background: '#ffffff',
+        color: '#202020',
+        fontSize: '12px',
+        lineHeight: '1.35',
+      });
+      exportNode.style.setProperty('display', 'block', 'important');
+      document.body.appendChild(exportNode);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const canvas = await html2canvas(exportNode, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false,
-        onclone: (clonedDocument) => {
-          const cloned = clonedDocument.querySelector('.contract-print-sheet') as HTMLElement | null;
-          if (cloned) {
-            cloned.style.setProperty('display', 'block', 'important');
-            cloned.style.setProperty('position', 'static', 'important');
-            cloned.style.setProperty('width', '794px', 'important');
-            cloned.style.setProperty('max-width', '794px', 'important');
-            cloned.style.setProperty('padding', '28px', 'important');
-            cloned.style.setProperty('font-size', '12px', 'important');
-            cloned.style.setProperty('line-height', '1.35', 'important');
-            cloned.style.setProperty('box-sizing', 'border-box', 'important');
-          }
-        },
+        width: 794,
+        windowWidth: 794,
+        scrollX: 0,
+        scrollY: 0,
       });
+      if (!canvas.width || !canvas.height) throw new Error('Không tạo được ảnh hợp đồng.');
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Không thể tạo tệp JPEG.')), 'image/jpeg', 0.95);
+      });
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       const contractData = selectedContract?.DuLieu || {};
       link.download = `Hop-dong-${String(contractData.MaHopDong || selectedContract?.QuanLyID || 'cuoi').replace(/[^a-zA-Z0-9_-]/g, '-')}.jpg`;
-      link.href = canvas.toDataURL('image/jpeg', 0.95);
+      link.href = url;
+      document.body.appendChild(link);
       link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
     } catch (error) {
-      alert('Chưa thể tải JPEG. Vui lòng thử lại hoặc dùng In / Tải PDF.');
-      console.error(error);
+      alert('Chưa thể tạo ảnh JPEG. Hãy thử lại; nếu vẫn lỗi, vui lòng báo Admin kiểm tra.');
+      console.error('Lỗi xuất JPEG hợp đồng:', error);
     } finally {
+      exportNode?.remove();
       setDownloadingJpeg(false);
     }
   };
@@ -695,13 +719,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         const field = (label: string, value: unknown) => <div className="rounded-xl bg-stone-900/70 p-3"><div className="text-[11px] uppercase tracking-wide text-stone-500">{label}</div><div className="mt-1 text-sm font-semibold text-stone-100 break-words">{String(value || '—')}</div></div>;
         return <div className="fixed inset-0 z-[90] bg-[#111110] text-stone-100 overflow-y-auto">
           <div className="max-w-6xl mx-auto p-4 sm:p-8 space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center justify-start">
               <button type="button" onClick={() => setSelectedContract(null)} className="inline-flex items-center gap-2 text-sm text-stone-400 hover:text-white"><X className="w-4 h-4"/> Quay lại danh sách hợp đồng</button>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500"><FileText className="w-4 h-4"/> In / Tải PDF</button>
-                <button type="button" disabled={downloadingJpeg} onClick={() => void downloadContractJpeg()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-60">{downloadingJpeg ? 'Đang tạo JPEG...' : 'Tải JPEG'}</button>
-                <button type="button" onClick={() => { const r = selectedContract; setSelectedContract(null); openEdit(r); }} className="inline-flex items-center gap-2 rounded-xl border border-stone-700 px-4 py-2 text-sm hover:bg-stone-800"><Edit3 className="w-4 h-4"/> Sửa hợp đồng</button>
-              </div>
             </div>
             <style>{`@media print {
               @page { size: A4 portrait; margin: 5mm; }
@@ -836,6 +855,11 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 finally { setSaving(false); }
               }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"><CheckSquare className="w-4 h-4"/> Hoàn thành hợp đồng</button>}
             </section>
+            <div className="flex flex-wrap justify-end gap-3 border-t border-stone-800 pt-5 pb-2">
+              <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-3 text-sm font-bold text-white hover:bg-amber-500"><FileText className="w-4 h-4"/> In / Tải PDF</button>
+              <button type="button" disabled={downloadingJpeg} onClick={() => void downloadContractJpeg()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-60">{downloadingJpeg ? 'Đang tạo JPEG...' : 'Tải JPEG'}</button>
+              <button type="button" onClick={() => { const r = selectedContract; setSelectedContract(null); openEdit(r); }} className="inline-flex items-center gap-2 rounded-xl border border-stone-700 px-5 py-3 text-sm hover:bg-stone-800"><Edit3 className="w-4 h-4"/> Sửa hợp đồng</button>
+            </div>
           </div>
         </div>;
       })()}
