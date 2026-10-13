@@ -666,15 +666,34 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               </div>
             </div>
             <style>{`@media print {
-              @page { size: A4; margin: 14mm; }
+              @page { size: A4 portrait; margin: 6mm; }
+              html, body { width: 100% !important; height: auto !important; margin: 0 !important; padding: 0 !important; }
               body * { visibility: hidden !important; }
               .contract-print-sheet, .contract-print-sheet * { visibility: visible !important; }
-              .contract-print-sheet { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: #fff !important; color: #202020 !important; font-family: Arial, sans-serif !important; font-size: 10pt !important; }
-              .contract-print-sheet h1, .contract-print-sheet h2, .contract-print-sheet h3, .contract-print-sheet p { color: #202020 !important; }
-              .contract-print-sheet table { width: 100%; border-collapse: collapse; }
-              .contract-print-sheet th, .contract-print-sheet td { border: 1px solid #c9c2b8; padding: 7px; text-align: left; }
+              .contract-print-sheet {
+                display: block !important; position: absolute !important; left: 0 !important; top: 0 !important;
+                width: 100% !important; max-width: 100% !important; box-sizing: border-box !important;
+                margin: 0 !important; padding: 0 !important; overflow: visible !important;
+                background: #fff !important; color: #202020 !important; font-family: Arial, sans-serif !important;
+                font-size: 7pt !important; line-height: 1.18 !important;
+                -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+              }
+              .contract-print-sheet header { gap: 8px !important; padding-bottom: 5px !important; margin-bottom: 5px !important; border-bottom-width: 2px !important; }
+              .contract-print-sheet header > div:first-child { width: 38px !important; height: 38px !important; font-size: 15px !important; }
+              .contract-print-sheet h1 { font-size: 11pt !important; margin: 4px 0 1px !important; line-height: 1.15 !important; }
+              .contract-print-sheet h2 { font-size: 7.5pt !important; margin: 5px 0 3px !important; padding-bottom: 2px !important; line-height: 1.1 !important; }
+              .contract-print-sheet p { font-size: 7pt !important; line-height: 1.2 !important; margin-top: 2px !important; margin-bottom: 3px !important; }
+              .contract-print-sheet section { margin-top: 5px !important; }
+              .contract-print-sheet table { width: 100% !important; border-collapse: collapse !important; margin-top: 3px !important; font-size: 6.5pt !important; break-inside: avoid !important; }
+              .contract-print-sheet th, .contract-print-sheet td { border: 1px solid #c9c2b8 !important; padding: 2px 3px !important; text-align: left !important; line-height: 1.15 !important; }
               .contract-print-sheet th { background: #f4efe7 !important; }
-              .contract-print-sheet .print-no-break { break-inside: avoid; }
+              .contract-print-sheet ol { margin: 2px 0 !important; padding-left: 14px !important; line-height: 1.15 !important; }
+              .contract-print-sheet li { margin: 0 0 1px !important; }
+              .contract-print-sheet .print-no-break { break-inside: avoid !important; }
+              .contract-print-sheet section:last-of-type { margin-top: 8px !important; gap: 14px !important; }
+              .contract-print-sheet section:last-of-type p { font-size: 6.5pt !important; }
+              .contract-print-sheet section:last-of-type div[style*="height"] { height: 32px !important; }
+              .contract-print-sheet footer { display: none !important; }
             }
             @media screen { .contract-print-sheet { display: none; } }`}</style>
             <article className="contract-print-sheet">
@@ -725,13 +744,11 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                   <li>Việc thay đổi lịch, hủy dịch vụ, hoàn/không hoàn tiền và xử lý phát sinh thực hiện theo thỏa thuận bằng văn bản được hai bên xác nhận và quy định pháp luật hiện hành.</li>
                   <li>Hợp đồng có hiệu lực khi hai bên ký xác nhận; hợp đồng được lập thành hai bản có giá trị như nhau, mỗi bên giữ một bản.</li>
                 </ol>
-                <p style={{marginTop:'8px',fontSize:'9px',fontStyle:'italic'}}>Lưu ý: Các điều khoản cần được hai bên rà soát và bổ sung thông tin địa chỉ, chính sách đổi lịch/hủy dịch vụ cụ thể trước khi ký chính thức.</p>
               </section>
               <section className="print-no-break" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'28px',marginTop:'30px',textAlign:'center'}}>
                 <div><b>ĐẠI DIỆN BÊN A</b><p style={{fontSize:'9px',marginTop:'4px'}}>(Ký, ghi rõ họ tên)</p><div style={{height:'76px'}}></div><b>HẠNH PHẠM Luxury Bridal</b></div>
                 <div><b>ĐẠI DIỆN BÊN B – KHÁCH HÀNG</b><p style={{fontSize:'9px',marginTop:'4px'}}>(Ký, ghi rõ họ tên)</p><div style={{height:'76px'}}></div><b>{customer}</b></div>
               </section>
-              <footer style={{borderTop:'1px solid #b08a45',marginTop:'18px',paddingTop:'8px',textAlign:'center',fontSize:'8px',color:'#666'}}>HẠNH PHẠM Luxury Bridal · Hợp đồng {code}</footer>
             </article>
             <div className="rounded-2xl border border-stone-800 bg-gradient-to-br from-stone-900 to-stone-950 p-6 sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-4">
