@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import html2canvas from 'html2canvas';
 import { Plus, Search, Trash2, Edit3, Save, X, FileText, CheckSquare, Wallet, Upload, Camera } from 'lucide-react';
 import type { NhanVien, QuanLyModule, QuanLyRecord } from '../../types';
 import { api } from '../../api';
@@ -113,6 +114,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const [loading, setLoading] = useState(true);
   const [cashflowType, setCashflowType] = useState<'THU' | 'CHI'>('THU');
   const [selectedContract, setSelectedContract] = useState<QuanLyRecord | null>(null);
+  const contractPrintRef = useRef<HTMLElement | null>(null);
+  const [downloadingJpeg, setDownloadingJpeg] = useState(false);
 
   const loadRecords = async () => {
     try {
@@ -461,6 +464,43 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     reader.readAsDataURL(file);
   };
 
+  const downloadContractJpeg = async () => {
+    const article = contractPrintRef.current;
+    if (!article || downloadingJpeg) return;
+    try {
+      setDownloadingJpeg(true);
+      const canvas = await html2canvas(article, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+        onclone: (clonedDocument) => {
+          const cloned = clonedDocument.querySelector('.contract-print-sheet') as HTMLElement | null;
+          if (cloned) {
+            cloned.style.setProperty('display', 'block', 'important');
+            cloned.style.setProperty('position', 'static', 'important');
+            cloned.style.setProperty('width', '794px', 'important');
+            cloned.style.setProperty('max-width', '794px', 'important');
+            cloned.style.setProperty('padding', '28px', 'important');
+            cloned.style.setProperty('font-size', '12px', 'important');
+            cloned.style.setProperty('line-height', '1.35', 'important');
+            cloned.style.setProperty('box-sizing', 'border-box', 'important');
+          }
+        },
+      });
+      const link = document.createElement('a');
+      const contractData = selectedContract?.DuLieu || {};
+      link.download = `Hop-dong-${String(contractData.MaHopDong || selectedContract?.QuanLyID || 'cuoi').replace(/[^a-zA-Z0-9_-]/g, '-')}.jpg`;
+      link.href = canvas.toDataURL('image/jpeg', 0.95);
+      link.click();
+    } catch (error) {
+      alert('Chưa thể tải JPEG. Vui lòng thử lại hoặc dùng In / Tải PDF.');
+      console.error(error);
+    } finally {
+      setDownloadingJpeg(false);
+    }
+  };
+
   const getStatus = (record: QuanLyRecord) => String(record.Module === 'HOP_DONG' ? (record.DuLieu?.TrangThai || 'Nháp') : (record.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt'));
 
   const getContractCollected = (record: QuanLyRecord) => {
@@ -578,17 +618,14 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 </tr>
               ) : (
                 filteredRecords.map((record) => (
-                  <tr key={record.QuanLyID} className={module === 'HOP_DONG' ? 'border-b border-stone-800 hover:bg-stone-900/70 transition-colors' : 'hover:bg-[#FAF8F5]'}>
+                  <tr key={record.QuanLyID} onClick={module === 'HOP_DONG' ? () => setSelectedContract(record) : undefined} className={module === 'HOP_DONG' ? 'border-b border-stone-200 bg-white hover:bg-amber-50 transition-colors cursor-pointer' : 'hover:bg-[#FAF8F5]'}>
                     {module === 'HOP_DONG' ? (
                       <>
-                        <td className="p-4">
-                          <button type="button" onClick={() => setSelectedContract(record)} className="font-bold text-amber-500 hover:text-amber-300">{String(record.DuLieu?.MaHopDong || record.QuanLyID)}</button>
-                          <p className="text-[11px] text-stone-500 mt-1">Nhấn để xem chi tiết</p>
-                        </td>
-                        <td className="p-4"><button type="button" onClick={() => setSelectedContract(record)} className="text-left font-semibold text-stone-100 hover:text-amber-400">{String(record.DuLieu?.KhachHang || 'Chưa có tên khách hàng')}</button></td>
-                        <td className="p-4 text-stone-400">{String(record.DuLieu?.NgayTao || record.CapNhatLuc || '').slice(0,10) || '—'}</td>
+                        <td className="p-4 text-stone-900 font-bold">{String(record.DuLieu?.MaHopDong || record.QuanLyID)}</td>
+                        <td className="p-4 text-stone-900 font-semibold">{String(record.DuLieu?.KhachHang || 'Chưa có tên khách hàng')}</td>
+                        <td className="p-4 text-stone-700">{String(record.DuLieu?.NgayTao || record.CapNhatLuc || '').slice(0,10) || '—'}</td>
                         <td className="p-4"><span className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold bg-emerald-950 text-emerald-400">{getStatus(record)}</span></td>
-                        <td className="p-4 text-right whitespace-nowrap">
+                        <td className="p-4 text-right whitespace-nowrap" onClick={(event) => event.stopPropagation()}>
                           <button type="button" onClick={() => openEdit(record)} className="p-2 text-stone-400 hover:text-amber-400" title="Sửa hợp đồng"><Edit3 className="w-4 h-4"/></button>
                           <button type="button" onClick={() => void handleDelete(record)} className="p-2 text-stone-400 hover:text-rose-400" title="Xóa hợp đồng"><Trash2 className="w-4 h-4"/></button>
                         </td>
@@ -661,12 +698,13 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
             <div className="flex flex-wrap items-center justify-between gap-3">
               <button type="button" onClick={() => setSelectedContract(null)} className="inline-flex items-center gap-2 text-sm text-stone-400 hover:text-white"><X className="w-4 h-4"/> Quay lại danh sách hợp đồng</button>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500"><FileText className="w-4 h-4"/> In / Tải PDF cho khách</button>
+                <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500"><FileText className="w-4 h-4"/> In / Tải PDF</button>
+                <button type="button" disabled={downloadingJpeg} onClick={() => void downloadContractJpeg()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-60">{downloadingJpeg ? 'Đang tạo JPEG...' : 'Tải JPEG'}</button>
                 <button type="button" onClick={() => { const r = selectedContract; setSelectedContract(null); openEdit(r); }} className="inline-flex items-center gap-2 rounded-xl border border-stone-700 px-4 py-2 text-sm hover:bg-stone-800"><Edit3 className="w-4 h-4"/> Sửa hợp đồng</button>
               </div>
             </div>
             <style>{`@media print {
-              @page { size: A4 portrait; margin: 7mm; }
+              @page { size: A4 portrait; margin: 5mm; }
               html, body { width: 100% !important; height: auto !important; margin: 0 !important; padding: 0 !important; }
               body * { visibility: hidden !important; }
               .contract-print-sheet, .contract-print-sheet * { visibility: visible !important; }
@@ -675,28 +713,28 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 width: 100% !important; max-width: 100% !important; box-sizing: border-box !important;
                 margin: 0 !important; padding: 0 !important; overflow: visible !important;
                 background: #fff !important; color: #202020 !important; font-family: Arial, sans-serif !important;
-                font-size: 8pt !important; line-height: 1.25 !important;
+                font-size: 9pt !important; line-height: 1.32 !important;
                 -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
               }
               .contract-print-sheet header { gap: 10px !important; padding-bottom: 7px !important; margin-bottom: 7px !important; border-bottom-width: 2px !important; }
               .contract-print-sheet header > div:first-child { width: 42px !important; height: 42px !important; font-size: 16px !important; }
-              .contract-print-sheet h1 { font-size: 12pt !important; margin: 6px 0 2px !important; line-height: 1.2 !important; }
-              .contract-print-sheet h2 { font-size: 8.5pt !important; margin: 7px 0 4px !important; padding-bottom: 3px !important; line-height: 1.2 !important; }
-              .contract-print-sheet p { font-size: 8pt !important; line-height: 1.3 !important; margin-top: 3px !important; margin-bottom: 4px !important; }
-              .contract-print-sheet section { margin-top: 7px !important; }
-              .contract-print-sheet table { width: 100% !important; border-collapse: collapse !important; margin-top: 4px !important; font-size: 7.5pt !important; break-inside: avoid !important; }
-              .contract-print-sheet th, .contract-print-sheet td { border: 1px solid #c9c2b8 !important; padding: 3px 4px !important; text-align: left !important; line-height: 1.2 !important; }
+              .contract-print-sheet h1 { font-size: 14pt !important; margin: 8px 0 3px !important; line-height: 1.2 !important; }
+              .contract-print-sheet h2 { font-size: 9.5pt !important; margin: 9px 0 5px !important; padding-bottom: 4px !important; line-height: 1.2 !important; }
+              .contract-print-sheet p { font-size: 9pt !important; line-height: 1.38 !important; margin-top: 4px !important; margin-bottom: 5px !important; }
+              .contract-print-sheet section { margin-top: 9px !important; }
+              .contract-print-sheet table { width: 100% !important; border-collapse: collapse !important; margin-top: 5px !important; font-size: 8pt !important; break-inside: avoid !important; }
+              .contract-print-sheet th, .contract-print-sheet td { border: 1px solid #c9c2b8 !important; padding: 4px 5px !important; text-align: left !important; line-height: 1.25 !important; }
               .contract-print-sheet th { background: #f4efe7 !important; }
-              .contract-print-sheet ol { margin: 3px 0 !important; padding-left: 16px !important; line-height: 1.25 !important; }
-              .contract-print-sheet li { margin: 0 0 2px !important; }
+              .contract-print-sheet ol { margin: 4px 0 !important; padding-left: 18px !important; line-height: 1.3 !important; }
+              .contract-print-sheet li { margin: 0 0 3px !important; }
               .contract-print-sheet .print-no-break { break-inside: avoid !important; }
-              .contract-print-sheet section:last-of-type { margin-top: 12px !important; gap: 18px !important; }
-              .contract-print-sheet section:last-of-type p { font-size: 7.5pt !important; }
-              .contract-print-sheet section:last-of-type div[style*="height"] { height: 40px !important; }
+              .contract-print-sheet section:last-of-type { margin-top: 15px !important; gap: 20px !important; }
+              .contract-print-sheet section:last-of-type p { font-size: 8pt !important; }
+              .contract-print-sheet section:last-of-type div[style*="height"] { height: 48px !important; }
               .contract-print-sheet footer { display: none !important; }
             }
             @media screen { .contract-print-sheet { display: none; } }`}</style>
-            <article className="contract-print-sheet">
+            <article ref={contractPrintRef} className="contract-print-sheet">
               <header style={{display:'flex',alignItems:'center',gap:'16px',borderBottom:'3px solid #b08a45',paddingBottom:'14px',marginBottom:'18px'}}>
                 <div style={{width:'66px',height:'66px',border:'2px solid #b08a45',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px',fontWeight:700,color:'#9a763b',flexShrink:0}}>HP</div>
                 <div style={{flex:1}}>
