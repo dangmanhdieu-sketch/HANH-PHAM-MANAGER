@@ -732,24 +732,24 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 width: 100% !important; max-width: 100% !important; box-sizing: border-box !important;
                 margin: 0 !important; padding: 0 !important; overflow: visible !important;
                 background: #fff !important; color: #202020 !important; font-family: Arial, sans-serif !important;
-                font-size: 9pt !important; line-height: 1.32 !important;
+                font-size: 10pt !important; line-height: 1.3 !important;
                 -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
               }
-              .contract-print-sheet header { gap: 10px !important; padding-bottom: 7px !important; margin-bottom: 7px !important; border-bottom-width: 2px !important; }
-              .contract-print-sheet header > div:first-child { width: 42px !important; height: 42px !important; font-size: 16px !important; }
-              .contract-print-sheet h1 { font-size: 14pt !important; margin: 8px 0 3px !important; line-height: 1.2 !important; }
-              .contract-print-sheet h2 { font-size: 9.5pt !important; margin: 9px 0 5px !important; padding-bottom: 4px !important; line-height: 1.2 !important; }
-              .contract-print-sheet p { font-size: 9pt !important; line-height: 1.38 !important; margin-top: 4px !important; margin-bottom: 5px !important; }
-              .contract-print-sheet section { margin-top: 9px !important; }
-              .contract-print-sheet table { width: 100% !important; border-collapse: collapse !important; margin-top: 5px !important; font-size: 8pt !important; break-inside: avoid !important; }
-              .contract-print-sheet th, .contract-print-sheet td { border: 1px solid #c9c2b8 !important; padding: 4px 5px !important; text-align: left !important; line-height: 1.25 !important; }
+              .contract-print-sheet header { gap: 8px !important; padding-bottom: 5px !important; margin-bottom: 5px !important; border-bottom-width: 2px !important; }
+              .contract-print-sheet header > div:first-child { width: 40px !important; height: 40px !important; font-size: 15px !important; }
+              .contract-print-sheet h1 { font-size: 15pt !important; margin: 6px 0 3px !important; line-height: 1.15 !important; }
+              .contract-print-sheet h2 { font-size: 10.5pt !important; margin: 7px 0 4px !important; padding-bottom: 3px !important; line-height: 1.15 !important; }
+              .contract-print-sheet p { font-size: 10pt !important; line-height: 1.3 !important; margin-top: 3px !important; margin-bottom: 4px !important; }
+              .contract-print-sheet section { margin-top: 7px !important; }
+              .contract-print-sheet table { width: 100% !important; border-collapse: collapse !important; margin-top: 4px !important; font-size: 9pt !important; break-inside: avoid !important; }
+              .contract-print-sheet th, .contract-print-sheet td { border: 1px solid #c9c2b8 !important; padding: 3px 4px !important; text-align: left !important; line-height: 1.18 !important; }
               .contract-print-sheet th { background: #f4efe7 !important; }
               .contract-print-sheet ol { margin: 4px 0 !important; padding-left: 18px !important; line-height: 1.3 !important; }
               .contract-print-sheet li { margin: 0 0 3px !important; }
               .contract-print-sheet .print-no-break { break-inside: avoid !important; }
-              .contract-print-sheet section:last-of-type { margin-top: 15px !important; gap: 20px !important; }
-              .contract-print-sheet section:last-of-type p { font-size: 8pt !important; }
-              .contract-print-sheet section:last-of-type div[style*="height"] { height: 48px !important; }
+              .contract-print-sheet section:last-of-type { margin-top: 10px !important; gap: 16px !important; }
+              .contract-print-sheet section:last-of-type p { font-size: 9pt !important; }
+              .contract-print-sheet section:last-of-type div[style*="height"] { height: 40px !important; }
               .contract-print-sheet footer { display: none !important; }
             }
             @media screen { .contract-print-sheet { display: none; } }`}</style>
