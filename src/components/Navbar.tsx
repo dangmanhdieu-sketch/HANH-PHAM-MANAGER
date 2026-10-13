@@ -74,6 +74,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'luong_me', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
     { id: 'hoahong_me', label: 'Hoa hồng', shortLabel: 'Hoa hồng', icon: Award },
     { id: 'danhba_me', label: 'Danh bạ nhân viên', shortLabel: 'Danh bạ', icon: Contact },
+    { id: 'thuchi_me', label: 'Thu chi của tôi', shortLabel: 'Thu chi', icon: Wallet },
   ];
 
   const saleTabs = [
