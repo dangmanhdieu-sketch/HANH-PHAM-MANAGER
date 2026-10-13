@@ -180,7 +180,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         TrangThaiDuyet: isEmployee ? 'Chờ Admin duyệt' : 'Đã duyệt',
       });
     } else {
-      setFormData(module === 'HOP_DONG' ? { NgayTao: getTodayLocal(), TongGiaTri: 0, GiaGoiBanDau: 0, GiamGiaTrucTiep: 0, ChietKhauPhanTram: 0, KhuyenMaiBoSung: 0, PhuThuDichVu: 0, TienDatCoc: 0, LichThanhToan: defaultInstallments(), TrangThai: isEmployee ? 'Chờ admin duyệt' : 'Đã xác nhận', LoaiDichVu: 'Trọn gói cưới' } : {});
+      setFormData(module === 'HOP_DONG' ? { NgayTao: getTodayLocal(), TongGiaTri: 0, GiaGoiBanDau: 0, GiamGiaTrucTiep: 0, ChietKhauPhanTram: 0, KhuyenMaiBoSung: 0, PhuThuDichVu: 0, TienDatCoc: 0, LichThanhToan: defaultInstallments(), TrangThai: 'Đã xác nhận', LoaiDichVu: 'Trọn gói cưới' } : {});
     }
     setFormOpen(true);
   };
@@ -663,7 +663,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 className="px-5 py-2 rounded-lg bg-stone-900 text-white font-bold flex gap-2 items-center"
               >
                 <Save className="w-4 h-4" />
-                {saving ? 'Đang lưu...' : module === 'THU_CHI' && isEmployee ? 'GỬI PHIẾU' : module === 'HOP_DONG' && isEmployee && !editing ? 'GỬI DUYỆT HỢP ĐỒNG' : 'Lưu dữ liệu'}
+                {saving ? 'Đang lưu...' : module === 'THU_CHI' && isEmployee ? 'GỬI PHIẾU' : module === 'HOP_DONG' && !editing ? 'TẠO HỢP ĐỒNG' : 'Lưu dữ liệu'}
               </button>
             </div>
           </form>
