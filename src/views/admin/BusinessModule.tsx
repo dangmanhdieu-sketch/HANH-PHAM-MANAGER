@@ -461,7 +461,6 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const getStatus = (record: QuanLyRecord) => String(record.Module === 'HOP_DONG' ? (record.DuLieu?.TrangThai || 'Nháp') : (record.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt'));
 
   const getContractCollected = (record: QuanLyRecord) => {
-    const deposit = getContractDeposit(record.DuLieu);
     const contractCode = String(record.DuLieu?.MaHopDong || record.QuanLyID);
     const approvedReceipts = receiptRecords
       .filter((receipt) =>
@@ -474,8 +473,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       )
       .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
     const contractValue = Math.max(0, Number(record.DuLieu?.TongGiaTri ?? record.DuLieu?.GiaGoiBanDau ?? 0));
-    // Cọc đã ghi trên hợp đồng và phiếu thu là cùng một khoản; dùng max để tránh cộng trùng.
-    return Math.min(contractValue, Math.max(deposit, approvedReceipts));
+    // Chỉ tiền có phiếu thu được Admin duyệt mới được tính là đã thu.
+    return Math.min(contractValue, approvedReceipts);
   };
   const getInstallmentsTotal = (data: Record<string, any> | undefined) => (Array.isArray(data?.LichThanhToan) ? data.LichThanhToan : []).reduce((sum: number, row: any) => sum + Math.max(0, Number(row?.SoTienDuKien || 0)), 0);
 
@@ -660,8 +659,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               <button type="button" onClick={() => setSelectedContract(null)} className="inline-flex items-center gap-2 text-sm text-stone-400 hover:text-white"><X className="w-4 h-4"/> Quay lại danh sách hợp đồng</button>
               <div className="flex gap-2">
                 <button type="button" onClick={() => { const r = selectedContract; setSelectedContract(null); openEdit(r); }} className="inline-flex items-center gap-2 rounded-xl border border-stone-700 px-4 py-2 text-sm hover:bg-stone-800"><Edit3 className="w-4 h-4"/> Sửa hợp đồng</button>
-                <button type="button" disabled={saving} onClick={() => void createContractPaymentReceipt(selectedContract)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold hover:bg-emerald-600"><Plus className="w-4 h-4"/> Tạo phiếu thu</button>
-              </div>
+                </div>
             </div>
             <div className="rounded-2xl border border-stone-800 bg-gradient-to-br from-stone-900 to-stone-950 p-6 sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -683,13 +681,33 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
             <section className="rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
               <h2 className="mb-4 text-base font-bold">Giá trị & lịch thanh toán</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {field('Giá gói ban đầu', money(d.GiaGoiBanDau ?? d.TongGiaTri))}{field('Giảm giá trực tiếp', money(d.GiamGiaTrucTiep))}{field('Chiết khấu (%)', d.ChietKhauPhanTram ? String(d.ChietKhauPhanTram)+'%' : '0%')}{field('Khuyến mãi bổ sung', money(d.KhuyenMaiBoSung))}{field('Phụ thu dịch vụ', money(d.PhuThuDichVu))}{field('Tiền cọc dự kiến', money(getContractDeposit(d)))}
+                {field('Giá gói ban đầu', money(d.GiaGoiBanDau ?? d.TongGiaTri))}{field('Giảm giá trực tiếp', money(d.GiamGiaTrucTiep))}{field('Chiết khấu (%)', d.ChietKhauPhanTram ? String(d.ChietKhauPhanTram)+'%' : '0%')}{field('Phụ thu dịch vụ', money(d.PhuThuDichVu))}
               </div>
               <div className="mt-5 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-stone-800 text-left text-stone-500"><th className="p-3">Đợt thanh toán</th><th className="p-3">Hạn thanh toán</th><th className="p-3 text-right">Số tiền dự kiến</th><th className="p-3">Ghi chú</th></tr></thead><tbody>{(Array.isArray(d.LichThanhToan)?d.LichThanhToan:[]).map((p:any,i:number)=><tr key={i} className="border-b border-stone-900"><td className="p-3">{p.TenDot || 'Đợt '+(i+1)}</td><td className="p-3">{p.HanThanhToan || '—'}</td><td className="p-3 text-right">{money(p.SoTienDuKien)}</td><td className="p-3 text-stone-400">{p.GhiChu || '—'}</td></tr>)}</tbody></table></div>
             </section>
             <section className="rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
-              <div className="flex items-center justify-between gap-3 mb-4"><h2 className="text-base font-bold">Lịch sử phiếu thu</h2><span className="text-xs text-stone-500">{receipts.length} phiếu</span></div>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div><h2 className="text-base font-bold">Lịch sử phiếu thu</h2><p className="mt-1 text-xs text-stone-500">Thêm khoản khách vừa thanh toán tại đây; phiếu sẽ chờ Admin duyệt.</p></div>
+                <button type="button" disabled={saving || collected >= value} onClick={() => void createContractPaymentReceipt(selectedContract)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold hover:bg-emerald-600 disabled:opacity-40"><Plus className="w-4 h-4"/> Thêm cọc / thanh toán</button>
+                <span className="text-xs text-stone-500">{receipts.length} phiếu</span>
+              </div>
               {receipts.length ? <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-stone-800 text-left text-stone-500"><th className="p-3">Ngày thu</th><th className="p-3">Nội dung</th><th className="p-3 text-right">Số tiền</th><th className="p-3">Trạng thái</th></tr></thead><tbody>{receipts.map(receipt=><tr key={receipt.QuanLyID} className="border-b border-stone-900"><td className="p-3">{String(receipt.DuLieu?.Ngay || '').slice(0,10) || '—'}</td><td className="p-3">{String(receipt.DuLieu?.NoiDungThu || receipt.DuLieu?.DanhMuc || 'Phiếu thu')}</td><td className="p-3 text-right font-semibold">{money(receipt.DuLieu?.SoTien)}</td><td className="p-3"><span className={receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt' ? 'text-emerald-400' : 'text-amber-400'}>{String(receipt.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt')}</span></td></tr>)}</tbody></table></div> : <p className="text-sm text-stone-500">Chưa có phiếu thu liên kết với hợp đồng này.</p>}
+            </section>
+            <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
+              <div><h2 className="font-bold">Hoàn thành hợp đồng</h2><p className="mt-1 text-sm text-stone-500">Chỉ hoàn thành khi tổng phiếu thu đã được Admin duyệt đủ giá trị hợp đồng.</p></div>
+              {getStatus(selectedContract) === 'Hoàn thành' ? <span className="rounded-full bg-emerald-950 px-3 py-2 text-sm font-semibold text-emerald-400">Hợp đồng đã hoàn thành</span> : <button type="button" disabled={saving || collected < value} onClick={async () => {
+                if (collected < value) { alert('Chưa thể hoàn thành: số tiền đã được Admin duyệt chưa đủ giá trị hợp đồng.'); return; }
+                if (!window.confirm('Xác nhận hoàn thành hợp đồng này?')) return;
+                try {
+                  setSaving(true);
+                  await api.quanLy.update(selectedContract.QuanLyID, { TrangThai: 'Hoàn thành' });
+                  await loadRecords();
+                  onRefresh();
+                  setSelectedContract((prev) => prev ? { ...prev, DuLieu: { ...prev.DuLieu, TrangThai: 'Hoàn thành' } } : prev);
+                  alert('Đã cập nhật trạng thái hợp đồng: Hoàn thành.');
+                } catch (error: any) { alert(error?.message || 'Không thể hoàn thành hợp đồng.'); }
+                finally { setSaving(false); }
+              }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"><CheckSquare className="w-4 h-4"/> Hoàn thành hợp đồng</button>}
             </section>
           </div>
         </div>;
