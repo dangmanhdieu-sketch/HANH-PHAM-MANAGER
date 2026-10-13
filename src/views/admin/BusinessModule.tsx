@@ -112,6 +112,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [cashflowType, setCashflowType] = useState<'THU' | 'CHI'>('THU');
+  const [selectedContract, setSelectedContract] = useState<QuanLyRecord | null>(null);
 
   const loadRecords = async () => {
     try {
@@ -545,11 +546,23 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
           <table className="w-full text-xs">
             <thead className="bg-[#FAF8F5]">
               <tr>
-                <th className="p-3 text-left">Nội dung chính</th>
-                <th className="p-3 text-left">Số tiền</th>
-                <th className="p-3 text-left">Trạng thái</th>
-                <th className="p-3 text-left">Cập nhật</th>
-                <th className="p-3 text-right">Thao tác</th>
+                {module === 'HOP_DONG' ? (
+                  <>
+                    <th className="p-4 text-left">MÃ HỢP ĐỒNG</th>
+                    <th className="p-4 text-left">TÊN KHÁCH HÀNG</th>
+                    <th className="p-4 text-left">NGÀY TẠO</th>
+                    <th className="p-4 text-left">TRẠNG THÁI</th>
+                    <th className="p-4 text-right">THAO TÁC</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="p-3 text-left">Nội dung chính</th>
+                    <th className="p-3 text-left">Số tiền</th>
+                    <th className="p-3 text-left">Trạng thái</th>
+                    <th className="p-3 text-left">Cập nhật</th>
+                    <th className="p-3 text-right">Thao tác</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7DFD5]">
@@ -563,7 +576,23 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 </tr>
               ) : (
                 filteredRecords.map((record) => (
-                  <tr key={record.QuanLyID} className="hover:bg-[#FAF8F5]">
+                  <tr key={record.QuanLyID} className={module === 'HOP_DONG' ? 'border-b border-stone-800 hover:bg-stone-900/70 transition-colors' : 'hover:bg-[#FAF8F5]'}>
+                    {module === 'HOP_DONG' ? (
+                      <>
+                        <td className="p-4">
+                          <button type="button" onClick={() => setSelectedContract(record)} className="font-bold text-amber-500 hover:text-amber-300">{String(record.DuLieu?.MaHopDong || record.QuanLyID)}</button>
+                          <p className="text-[11px] text-stone-500 mt-1">Nhấn để xem chi tiết</p>
+                        </td>
+                        <td className="p-4"><button type="button" onClick={() => setSelectedContract(record)} className="text-left font-semibold text-stone-100 hover:text-amber-400">{String(record.DuLieu?.KhachHang || 'Chưa có tên khách hàng')}</button></td>
+                        <td className="p-4 text-stone-400">{String(record.DuLieu?.NgayTao || record.CapNhatLuc || '').slice(0,10) || '—'}</td>
+                        <td className="p-4"><span className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold bg-emerald-950 text-emerald-400">{getStatus(record)}</span></td>
+                        <td className="p-4 text-right whitespace-nowrap">
+                          <button type="button" onClick={() => openEdit(record)} className="p-2 text-stone-400 hover:text-amber-400" title="Sửa hợp đồng"><Edit3 className="w-4 h-4"/></button>
+                          <button type="button" onClick={() => void handleDelete(record)} className="p-2 text-stone-400 hover:text-rose-400" title="Xóa hợp đồng"><Trash2 className="w-4 h-4"/></button>
+                        </td>
+                      </>
+                    ) : (
+                    <>
                     <td className="p-3 font-semibold">{getTitle(record)}</td>
                     <td className="p-3 text-stone-700 font-semibold">
                       {module === 'THU_CHI' && record.DuLieu?.SoTien
@@ -606,6 +635,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                         </>
                       )}
                     </td>
+                    </>
+                    )}
                   </tr>
                 ))
               )}
@@ -613,6 +644,56 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
           </table>
         </div>
       </div>
+
+      {module === 'HOP_DONG' && selectedContract && (() => {
+        const d = selectedContract.DuLieu || {};
+        const code = String(d.MaHopDong || selectedContract.QuanLyID);
+        const customer = String(d.KhachHang || 'Chưa có tên');
+        const value = Math.max(0, Number(d.TongGiaTri ?? d.GiaGoiBanDau ?? 0) - Number(d.GiamGiaTrucTiep || 0) - Math.round(Number(d.GiaGoiBanDau ?? d.TongGiaTri ?? 0) * Number(d.ChietKhauPhanTram || 0) / 100) - Number(d.KhuyenMaiBoSung || 0) + Number(d.PhuThuDichVu || 0));
+        const collected = getContractCollected(selectedContract);
+        const receipts = receiptRecords.filter((receipt) => String(receipt.DuLieu?.Loai || '').toUpperCase() === 'THU' && (String(receipt.DuLieu?.HopDongQuanLyID || '') === String(selectedContract.QuanLyID) || String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === code));
+        const money = (n: unknown) => Number(n || 0).toLocaleString('vi-VN') + ' đ';
+        const field = (label: string, value: unknown) => <div className="rounded-xl bg-stone-900/70 p-3"><div className="text-[11px] uppercase tracking-wide text-stone-500">{label}</div><div className="mt-1 text-sm font-semibold text-stone-100 break-words">{String(value || '—')}</div></div>;
+        return <div className="fixed inset-0 z-[90] bg-[#111110] text-stone-100 overflow-y-auto">
+          <div className="max-w-6xl mx-auto p-4 sm:p-8 space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <button type="button" onClick={() => setSelectedContract(null)} className="inline-flex items-center gap-2 text-sm text-stone-400 hover:text-white"><X className="w-4 h-4"/> Quay lại danh sách hợp đồng</button>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { const r = selectedContract; setSelectedContract(null); openEdit(r); }} className="inline-flex items-center gap-2 rounded-xl border border-stone-700 px-4 py-2 text-sm hover:bg-stone-800"><Edit3 className="w-4 h-4"/> Sửa hợp đồng</button>
+                <button type="button" disabled={saving} onClick={() => void createContractPaymentReceipt(selectedContract)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold hover:bg-emerald-600"><Plus className="w-4 h-4"/> Tạo phiếu thu</button>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-stone-800 bg-gradient-to-br from-stone-900 to-stone-950 p-6 sm:p-8">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-500">Chi tiết hợp đồng</p><h1 className="mt-2 text-3xl font-bold">{code}</h1><p className="mt-2 text-lg text-stone-300">{customer}</p><p className="mt-1 text-sm text-stone-500">Ngày tạo: {String(d.NgayTao || selectedContract.CapNhatLuc || '').slice(0,10) || '—'}</p></div>
+                <span className="rounded-full bg-emerald-950 px-3 py-1.5 text-sm font-semibold text-emerald-400">{getStatus(selectedContract)}</span>
+              </div>
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl bg-black/25 p-4"><p className="text-xs text-stone-400">Giá trị hợp đồng</p><p className="mt-2 text-xl font-bold">{money(value)}</p></div>
+                <div className="rounded-xl bg-black/25 p-4"><p className="text-xs text-stone-400">Đã thu được Admin duyệt</p><p className="mt-2 text-xl font-bold text-emerald-400">{money(collected)}</p></div>
+                <div className="rounded-xl bg-black/25 p-4"><p className="text-xs text-stone-400">Còn phải thu</p><p className="mt-2 text-xl font-bold text-amber-400">{money(Math.max(0,value-collected))}</p></div>
+              </div>
+            </div>
+            <section className="rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
+              <h2 className="mb-4 text-base font-bold">Thông tin khách hàng</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {field('Tên khách hàng / cô dâu chú rể', customer)}{field('Số điện thoại', d.SDT)}{field('Địa chỉ', d.DiaChi)}{field('Ngày cưới nhà trai', d.NgayCuoiNhaTrai)}{field('Ngày cưới nhà gái', d.NgayCuoiNhaGai)}{field('Nhân viên phụ trách', d.NhanVien || staffList.find(s=>s.NhanVienID===d.NhanVienID)?.HoTen)}{field('Loại dịch vụ', d.LoaiDichVu)}{field('Gói dịch vụ', d.GoiDichVu)}{field('Ghi chú', d.GhiChu)}
+              </div>
+            </section>
+            <section className="rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
+              <h2 className="mb-4 text-base font-bold">Giá trị & lịch thanh toán</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {field('Giá gói ban đầu', money(d.GiaGoiBanDau ?? d.TongGiaTri))}{field('Giảm giá trực tiếp', money(d.GiamGiaTrucTiep))}{field('Chiết khấu (%)', d.ChietKhauPhanTram ? String(d.ChietKhauPhanTram)+'%' : '0%')}{field('Khuyến mãi bổ sung', money(d.KhuyenMaiBoSung))}{field('Phụ thu dịch vụ', money(d.PhuThuDichVu))}{field('Tiền cọc dự kiến', money(getContractDeposit(d)))}
+              </div>
+              <div className="mt-5 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-stone-800 text-left text-stone-500"><th className="p-3">Đợt thanh toán</th><th className="p-3">Hạn thanh toán</th><th className="p-3 text-right">Số tiền dự kiến</th><th className="p-3">Ghi chú</th></tr></thead><tbody>{(Array.isArray(d.LichThanhToan)?d.LichThanhToan:[]).map((p:any,i:number)=><tr key={i} className="border-b border-stone-900"><td className="p-3">{p.TenDot || 'Đợt '+(i+1)}</td><td className="p-3">{p.HanThanhToan || '—'}</td><td className="p-3 text-right">{money(p.SoTienDuKien)}</td><td className="p-3 text-stone-400">{p.GhiChu || '—'}</td></tr>)}</tbody></table></div>
+            </section>
+            <section className="rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
+              <div className="flex items-center justify-between gap-3 mb-4"><h2 className="text-base font-bold">Lịch sử phiếu thu</h2><span className="text-xs text-stone-500">{receipts.length} phiếu</span></div>
+              {receipts.length ? <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-stone-800 text-left text-stone-500"><th className="p-3">Ngày thu</th><th className="p-3">Nội dung</th><th className="p-3 text-right">Số tiền</th><th className="p-3">Trạng thái</th></tr></thead><tbody>{receipts.map(receipt=><tr key={receipt.QuanLyID} className="border-b border-stone-900"><td className="p-3">{String(receipt.DuLieu?.Ngay || '').slice(0,10) || '—'}</td><td className="p-3">{String(receipt.DuLieu?.NoiDungThu || receipt.DuLieu?.DanhMuc || 'Phiếu thu')}</td><td className="p-3 text-right font-semibold">{money(receipt.DuLieu?.SoTien)}</td><td className="p-3"><span className={receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt' ? 'text-emerald-400' : 'text-amber-400'}>{String(receipt.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt')}</span></td></tr>)}</tbody></table></div> : <p className="text-sm text-stone-500">Chưa có phiếu thu liên kết với hợp đồng này.</p>}
+            </section>
+          </div>
+        </div>;
+      })()}
 
       {formOpen && (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
