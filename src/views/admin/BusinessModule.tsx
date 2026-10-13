@@ -210,7 +210,10 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     const employeeName = loggedInStaffName.toLowerCase();
     return records.filter((record) => {
       const data = record.DuLieu || {};
-      const creatorId = String(data.NhanVienID || data.NguoiTaoID || data.NguoiLapID || '');
+      const status = String(data.TrangThaiDuyet || 'Chờ Admin duyệt').trim().toLowerCase();
+      // Nhân viên chỉ xem phiếu do mình lập khi phiếu vẫn đang chờ duyệt.
+      if (status === 'đã duyệt' || status === 'da duyet' || status === 'approved') return false;
+      const creatorId = String(data.NguoiTaoID || data.NguoiLapID || data.NhanVienID || '');
       const creatorName = String(data.NguoiTao || data.NguoiLap || data.NhanVien || '').trim().toLowerCase();
       return (employeeId && creatorId === employeeId) || (employeeName && creatorName === employeeName);
     });
@@ -658,7 +661,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
             <div className="flex flex-wrap items-center justify-between gap-3">
               <button type="button" onClick={() => setSelectedContract(null)} className="inline-flex items-center gap-2 text-sm text-stone-400 hover:text-white"><X className="w-4 h-4"/> Quay lại danh sách hợp đồng</button>
               <div className="flex flex-wrap gap-2">
-                
+                <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500"><FileText className="w-4 h-4"/> In / Tải PDF cho khách</button>
                 <button type="button" onClick={() => { const r = selectedContract; setSelectedContract(null); openEdit(r); }} className="inline-flex items-center gap-2 rounded-xl border border-stone-700 px-4 py-2 text-sm hover:bg-stone-800"><Edit3 className="w-4 h-4"/> Sửa hợp đồng</button>
               </div>
             </div>
