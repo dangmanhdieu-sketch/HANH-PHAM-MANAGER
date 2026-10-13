@@ -153,7 +153,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               const description = String(d.NoiDungThu || d.DanhMuc || d.GhiChu || '').toLowerCase();
               const linkedToContract = linkedId === String(contract.QuanLyID) || (!!contractCode && linkedCode === contractCode);
               const clearlyDeposit = source === 'TIEN_COC_HOP_DONG' || (description.includes('cọc') && linkedToContract);
-              return clearlyDeposit && (linkedToContract || source === 'TIEN_COC_HOP_DONG');
+              return linkedToContract && clearlyDeposit;
             });
             if (hasDepositReceipt) continue;
             await api.quanLy.create('THU_CHI', {
