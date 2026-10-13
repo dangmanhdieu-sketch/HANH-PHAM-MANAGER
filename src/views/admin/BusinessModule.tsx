@@ -666,7 +666,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               </div>
             </div>
             <style>{`@media print {
-              @page { size: A4 portrait; margin: 6mm; }
+              @page { size: A4 portrait; margin: 7mm; }
               html, body { width: 100% !important; height: auto !important; margin: 0 !important; padding: 0 !important; }
               body * { visibility: hidden !important; }
               .contract-print-sheet, .contract-print-sheet * { visibility: visible !important; }
@@ -675,24 +675,24 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 width: 100% !important; max-width: 100% !important; box-sizing: border-box !important;
                 margin: 0 !important; padding: 0 !important; overflow: visible !important;
                 background: #fff !important; color: #202020 !important; font-family: Arial, sans-serif !important;
-                font-size: 7pt !important; line-height: 1.18 !important;
+                font-size: 8pt !important; line-height: 1.25 !important;
                 -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
               }
-              .contract-print-sheet header { gap: 8px !important; padding-bottom: 5px !important; margin-bottom: 5px !important; border-bottom-width: 2px !important; }
-              .contract-print-sheet header > div:first-child { width: 38px !important; height: 38px !important; font-size: 15px !important; }
-              .contract-print-sheet h1 { font-size: 11pt !important; margin: 4px 0 1px !important; line-height: 1.15 !important; }
-              .contract-print-sheet h2 { font-size: 7.5pt !important; margin: 5px 0 3px !important; padding-bottom: 2px !important; line-height: 1.1 !important; }
-              .contract-print-sheet p { font-size: 7pt !important; line-height: 1.2 !important; margin-top: 2px !important; margin-bottom: 3px !important; }
-              .contract-print-sheet section { margin-top: 5px !important; }
-              .contract-print-sheet table { width: 100% !important; border-collapse: collapse !important; margin-top: 3px !important; font-size: 6.5pt !important; break-inside: avoid !important; }
-              .contract-print-sheet th, .contract-print-sheet td { border: 1px solid #c9c2b8 !important; padding: 2px 3px !important; text-align: left !important; line-height: 1.15 !important; }
+              .contract-print-sheet header { gap: 10px !important; padding-bottom: 7px !important; margin-bottom: 7px !important; border-bottom-width: 2px !important; }
+              .contract-print-sheet header > div:first-child { width: 42px !important; height: 42px !important; font-size: 16px !important; }
+              .contract-print-sheet h1 { font-size: 12pt !important; margin: 6px 0 2px !important; line-height: 1.2 !important; }
+              .contract-print-sheet h2 { font-size: 8.5pt !important; margin: 7px 0 4px !important; padding-bottom: 3px !important; line-height: 1.2 !important; }
+              .contract-print-sheet p { font-size: 8pt !important; line-height: 1.3 !important; margin-top: 3px !important; margin-bottom: 4px !important; }
+              .contract-print-sheet section { margin-top: 7px !important; }
+              .contract-print-sheet table { width: 100% !important; border-collapse: collapse !important; margin-top: 4px !important; font-size: 7.5pt !important; break-inside: avoid !important; }
+              .contract-print-sheet th, .contract-print-sheet td { border: 1px solid #c9c2b8 !important; padding: 3px 4px !important; text-align: left !important; line-height: 1.2 !important; }
               .contract-print-sheet th { background: #f4efe7 !important; }
-              .contract-print-sheet ol { margin: 2px 0 !important; padding-left: 14px !important; line-height: 1.15 !important; }
-              .contract-print-sheet li { margin: 0 0 1px !important; }
+              .contract-print-sheet ol { margin: 3px 0 !important; padding-left: 16px !important; line-height: 1.25 !important; }
+              .contract-print-sheet li { margin: 0 0 2px !important; }
               .contract-print-sheet .print-no-break { break-inside: avoid !important; }
-              .contract-print-sheet section:last-of-type { margin-top: 8px !important; gap: 14px !important; }
-              .contract-print-sheet section:last-of-type p { font-size: 6.5pt !important; }
-              .contract-print-sheet section:last-of-type div[style*="height"] { height: 32px !important; }
+              .contract-print-sheet section:last-of-type { margin-top: 12px !important; gap: 18px !important; }
+              .contract-print-sheet section:last-of-type p { font-size: 7.5pt !important; }
+              .contract-print-sheet section:last-of-type div[style*="height"] { height: 40px !important; }
               .contract-print-sheet footer { display: none !important; }
             }
             @media screen { .contract-print-sheet { display: none; } }`}</style>
@@ -707,8 +707,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <div style={{textAlign:'right',fontSize:'9px'}}><b>HỢP ĐỒNG</b><br/>Mã: {code}</div>
               </header>
               <h1 style={{textAlign:'center',fontSize:'17px',fontWeight:700,margin:'12px 0 4px'}}>HỢP ĐỒNG DỊCH VỤ CƯỚI</h1>
-              <p style={{textAlign:'center',fontSize:'10px',marginBottom:'18px'}}>Số: {code}</p>
-              <p style={{lineHeight:1.65}}>Hai bên cùng thống nhất lập hợp đồng dịch vụ với các nội dung dưới đây:</p>
+              <p style={{textAlign:'center',fontSize:'10px',marginBottom:'12px'}}>Số: {code} <span style={{margin:'0 8px',color:'#b08a45'}}>•</span> Ngày tạo: {String(d.NgayTao || selectedContract.CapNhatLuc || '').slice(0,10) || '—'}</p>
+              <p style={{lineHeight:1.5,marginTop:'8px',marginBottom:'8px'}}>Hai bên cùng thống nhất lập hợp đồng dịch vụ với các nội dung dưới đây:</p>
               <section className="print-no-break" style={{marginTop:'12px'}}>
                 <h2 style={{fontSize:'12px',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'5px'}}>ĐIỀU 1. THÔNG TIN CÁC BÊN</h2>
                 <p style={{lineHeight:1.7}}><b>BÊN A – ĐƠN VỊ CUNG CẤP DỊCH VỤ:</b> HẠNH PHẠM Luxury Bridal<br/>Đại diện/nhân viên phụ trách: {String(d.NguoiTao || d.NhanVienTao || d.TenNguoiTao || d.NhanVien || staffList.find(s=>s.NhanVienID===d.NhanVienID)?.HoTen || '………………………………')}<br/>Địa chỉ: Mặt Định, 321 Lê Quý Đôn, Tân Xuân, Phường Bình Phước, TP Đồng Nai<br/>Điện thoại: 0936347879</p>
