@@ -212,7 +212,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       (['THU_TU_HOP_DONG', 'TIEN_COC_HOP_DONG'].includes(String(data.NguonTao || '')) ||
        !!data.HopDongQuanLyID || !!data.HopDongID || !!data.MaHopDong);
   };
-  const approvedRecords = records.filter(r => r.DuLieu?.TrangThaiDuyet === 'Đã duyệt');
+  const approvedRecords = records.filter(r => ['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(r.DuLieu?.TrangThaiDuyet || '')));
   const totalThu = approvedRecords.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'THU').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
   const totalChi = approvedRecords.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'CHI').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
   const totalContractRevenue = approvedRecords.filter(r => isContractReceipt(r)).reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
@@ -225,11 +225,16 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     return records.filter((record) => {
       const data = record.DuLieu || {};
       const status = String(data.TrangThaiDuyet || 'Chờ Admin duyệt').trim().toLowerCase();
-      // Nhân viên chỉ xem phiếu do mình lập khi phiếu vẫn đang chờ duyệt.
-      if (status === 'đã duyệt' || status === 'da duyet' || status === 'approved') return false;
       const creatorId = String(data.NguoiTaoID || data.NguoiLapID || data.NhanVienID || '');
       const creatorName = String(data.NguoiTao || data.NguoiLap || data.NhanVien || '').trim().toLowerCase();
-      return (employeeId && creatorId === employeeId) || (employeeName && creatorName === employeeName);
+      const isMine = (employeeId && creatorId === employeeId) || (employeeName && creatorName === employeeName);
+      if (!isMine) return false;
+      // Phiếu CHI của nhân viên còn hiển thị đến khi Admin xác nhận đã thanh toán và duyệt.
+      if (String(data.Loai || '').toUpperCase() === 'CHI') {
+        return !(status === 'đã thanh toán' || status === 'đã thanh toán và duyệt' || status === 'paid and approved');
+      }
+      // Phiếu thu cá nhân chỉ hiển thị khi còn chờ duyệt.
+      return !['đã duyệt', 'da duyet', 'approved'].includes(status);
     });
   }, [records, module, isEmployee, currentUser?.NhanVienID, loggedInStaffName]);
 
@@ -438,10 +443,15 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       try { await api.quanLy.update(record.QuanLyID, { TrangThai: next, ...(next === 'Đã hủy' ? { LyDoHuy: reason || '', NguoiHuy: currentUser?.HoTen || '', ThoiGianHuy: new Date().toISOString() } : {}) }); await loadRecords(); onRefresh(); } catch (error:any) { alert(error?.message || 'Không thể cập nhật hợp đồng.'); }
       return;
     }
-    if (module !== 'THU_CHI' || getStatus(record) === 'Đã duyệt') return;
-    if (!window.confirm('Duyệt phiếu này?')) return;
+    if (module !== 'THU_CHI' || getStatus(record) === 'Đã duyệt' || getStatus(record) === 'Đã thanh toán và duyệt') return;
+    const isExpense = String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI';
+    if (isExpense && !window.confirm('Xác nhận đã thanh toán khoản chi này và duyệt phiếu? Sau khi xác nhận, phiếu sẽ biến mất khỏi danh sách của nhân viên.')) return;
+    if (!isExpense && !window.confirm('Duyệt phiếu thu này?')) return;
     try {
-      await api.quanLy.update(record.QuanLyID, { TrangThaiDuyet: 'Đã duyệt' });
+      await api.quanLy.update(record.QuanLyID, {
+        TrangThaiDuyet: isExpense ? 'Đã thanh toán và duyệt' : 'Đã duyệt',
+        ...(isExpense ? { DaThanhToan: true, NgayThanhToan: getTodayLocal(), NguoiThanhToan: currentUser?.HoTen || 'Admin', NguoiDuyet: currentUser?.HoTen || 'Admin' } : {}),
+      });
       await loadRecords();
       onRefresh();
     } catch (error: any) {
@@ -670,10 +680,11 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                   </>
                 ) : (
                   <>
-                    <th className="p-3 text-left">Nội dung chính</th>
+                    <th className="p-3 text-left">Ngày thu/chi</th>
+                    <th className="p-3 text-left">Nhân viên lập phiếu</th>
+                    <th className="p-3 text-left">Nội dung</th>
                     <th className="p-3 text-left">Số tiền</th>
                     <th className="p-3 text-left">Trạng thái</th>
-                    <th className="p-3 text-left">Cập nhật</th>
                     <th className="p-3 text-right">Thao tác</th>
                   </>
                 )}
@@ -682,11 +693,11 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
             <tbody className="divide-y divide-[#E7DFD5]">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-stone-400">Đang tải dữ liệu...</td>
+                  <td colSpan={module === "THU_CHI" ? 6 : 5} className="p-10 text-center text-stone-400">Đang tải dữ liệu...</td>
                 </tr>
               ) : filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-stone-400">Chưa có dữ liệu.</td>
+                  <td colSpan={module === "THU_CHI" ? 6 : 5} className="p-10 text-center text-stone-400">Chưa có dữ liệu.</td>
                 </tr>
               ) : (
                 filteredRecords.map((record) => (
@@ -704,6 +715,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                       </>
                     ) : (
                     <>
+                    <td className="p-3 text-stone-600">{String(record.DuLieu?.Ngay || record.CapNhatLuc || '').slice(0,10) || '—'}</td>
+                    <td className="p-3 font-semibold">{String(record.DuLieu?.NhanVien || record.DuLieu?.NguoiTao || record.DuLieu?.NguoiLap || 'Chưa ghi tên')}</td>
                     <td className="p-3 font-semibold">{getTitle(record)}</td>
                     <td className="p-3 text-stone-700 font-semibold">
                       {module === 'THU_CHI' && record.DuLieu?.SoTien
@@ -717,9 +730,6 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                         {getStatus(record)}
                       </span>
                     </td>
-                    <td className="p-3 text-stone-600">
-                      {new Date(record.CapNhatLuc).toLocaleString('vi-VN')}
-                    </td>
                     <td className="p-3 text-right whitespace-nowrap">
                       {!isEmployee && (
                         <>
@@ -732,9 +742,9 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                           {module === 'HOP_DONG' && !isEmployee && (
                             <button type="button" onClick={() => void approveCashflow(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-stone-800 text-white text-[10px] font-bold">TRẠNG THÁI</button>
                           )}
-                          {module === 'THU_CHI' && getStatus(record) !== 'Đã duyệt' && (
-                            <button type="button" onClick={() => void approveCashflow(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold" title="Duyệt phiếu">
-                              DUYỆT
+                          {module === 'THU_CHI' && !['Đã duyệt', 'Đã thanh toán và duyệt'].includes(getStatus(record)) && (
+                            <button type="button" onClick={() => void approveCashflow(record)} className={`px-2.5 py-1.5 mr-1 rounded-lg text-white text-[10px] font-bold ${String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? 'bg-rose-700' : 'bg-emerald-600'}`} title={String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? 'Xác nhận đã trả tiền và duyệt chi' : 'Duyệt phiếu thu'}>
+                              {String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? 'ĐÃ TRẢ TIỀN & DUYỆT CHI' : 'DUYỆT THU'}
                             </button>
                           )}
                           <button type="button" onClick={() => openEdit(record)} className="p-2 text-stone-500 hover:text-stone-900" title="Sửa">
