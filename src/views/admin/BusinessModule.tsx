@@ -776,6 +776,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <table><tbody>
                   <tr><th>Loại dịch vụ</th><td>{String(d.LoaiDichVu || 'Dịch vụ cưới')}</td><th>Gói dịch vụ</th><td>{String(d.GoiDichVu || '—')}</td></tr>
                   <tr><th>Ngày cưới nhà trai</th><td>{String(d.NgayCuoiNhaTrai || '—')}</td><th>Ngày cưới nhà gái</th><td>{String(d.NgayCuoiNhaGai || '—')}</td></tr>
+                  <tr><th>Chụp cổng</th><td>{(Array.isArray(d.ChupCong)?d.ChupCong:[]).join(', ') || '—'}</td><th>Chụp tiệc cưới</th><td>{(Array.isArray(d.ChupTiecCuoi)?d.ChupTiecCuoi:[]).join(', ') || '—'}</td></tr>
+                  <tr><th>Quay phim cưới</th><td colSpan={3}>{(Array.isArray(d.QuayPhimCuoi)?d.QuayPhimCuoi:[]).join(', ') || '—'}</td></tr>
                   <tr><th>Yêu cầu / ghi chú</th><td colSpan={3}>{String(d.GhiChu || 'Theo nội dung hai bên thống nhất')}</td></tr>
                 </tbody></table>
               </section>
@@ -821,7 +823,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
             <section className="rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
               <h2 className="mb-4 text-base font-bold">Thông tin khách hàng</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {field('Tên khách hàng / cô dâu chú rể', customer)}{field('Số điện thoại', d.SDT)}{field('Địa chỉ', d.DiaChi)}{field('Ngày cưới nhà trai', d.NgayCuoiNhaTrai)}{field('Ngày cưới nhà gái', d.NgayCuoiNhaGai)}{field('Nhân viên phụ trách', d.NhanVien || staffList.find(s=>s.NhanVienID===d.NhanVienID)?.HoTen)}{field('Loại dịch vụ', d.LoaiDichVu)}{field('Gói dịch vụ', d.GoiDichVu)}{field('Ghi chú', d.GhiChu)}
+                {field('Tên khách hàng / cô dâu chú rể', customer)}{field('Số điện thoại', d.SDT)}{field('Địa chỉ', d.DiaChi)}{field('Ngày cưới nhà trai', d.NgayCuoiNhaTrai)}{field('Ngày cưới nhà gái', d.NgayCuoiNhaGai)}{field('Nhân viên phụ trách', d.NhanVien || staffList.find(s=>s.NhanVienID===d.NhanVienID)?.HoTen)}{field('Loại dịch vụ', d.LoaiDichVu)}{field('Gói dịch vụ', d.GoiDichVu)}{field('Chụp cổng', (Array.isArray(d.ChupCong)?d.ChupCong:[]).join(', '))}{field('Chụp tiệc cưới', (Array.isArray(d.ChupTiecCuoi)?d.ChupTiecCuoi:[]).join(', '))}{field('Quay phim cưới', (Array.isArray(d.QuayPhimCuoi)?d.QuayPhimCuoi:[]).join(', '))}{field('Ghi chú', d.GhiChu)}
               </div>
             </section>
             <section className="rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
@@ -897,6 +899,49 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                   <div><label className="block text-xs mb-1">Nhân viên phụ trách</label><select value={String(formData.NhanVienID||currentUser?.NhanVienID||'')} disabled={isEmployee} onChange={e=>{const x=staffList.find(n=>n.NhanVienID===e.target.value);setFormData({...formData,NhanVienID:e.target.value,NhanVien:x?.HoTen||''})}} className="w-full border rounded-lg p-2"><option value="">-- Chọn nhân viên --</option>{staffList.map(x=><option key={x.NhanVienID} value={x.NhanVienID}>{x.HoTen}</option>)}</select></div>
                   <div><label className="block text-xs mb-1">Ghi chú / yêu cầu</label><input value={String(formData.GhiChu||'')} onChange={e=>setFormData({...formData,GhiChu:e.target.value})} className="w-full border rounded-lg p-2"/></div>
                 </div></section>
+                <section className="border rounded-xl p-4">
+                  <h3 className="font-bold mb-1">Hạng mục dịch vụ cưới</h3>
+                  <p className="text-xs text-stone-500 mb-4">Có thể chọn nhiều hạng mục ở mỗi nhóm. Nếu chọn “Không chụp” thì các lựa chọn chụp cổng khác sẽ tự bỏ.</p>
+                  <div className="space-y-5">
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">Chụp cổng</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {['Không chụp','1 cổng','2 cổng','Album'].map(option => {
+                          const selected = Array.isArray(formData.ChupCong) ? formData.ChupCong as string[] : [];
+                          const checked = selected.includes(option);
+                          return <label key={option} className="flex items-center gap-2 rounded-lg border p-3 text-sm cursor-pointer hover:bg-stone-50">
+                            <input type="checkbox" checked={checked} onChange={e=>setFormData(prev=>({...prev,ChupCong:e.target.checked?(option==='Không chụp'?['Không chụp']:[...selected.filter(x=>x!=='Không chụp'),option]):selected.filter(x=>x!==option)}))}/>
+                            <span>{option}</span>
+                          </label>;
+                        })}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">Chụp tiệc cưới</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {['Truyền thống 1 máy','Truyền thống + P sự','Phóng sự 1 máy'].map(option => {
+                          const selected = Array.isArray(formData.ChupTiecCuoi) ? formData.ChupTiecCuoi as string[] : [];
+                          return <label key={option} className="flex items-center gap-2 rounded-lg border p-3 text-sm cursor-pointer hover:bg-stone-50">
+                            <input type="checkbox" checked={selected.includes(option)} onChange={e=>setFormData(prev=>({...prev,ChupTiecCuoi:e.target.checked?[...selected,option]:selected.filter(x=>x!==option)}))}/>
+                            <span>{option}</span>
+                          </label>;
+                        })}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">Quay phim cưới</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {['Quay phim truyền thống','Quay phim phóng sự'].map(option => {
+                          const selected = Array.isArray(formData.QuayPhimCuoi) ? formData.QuayPhimCuoi as string[] : [];
+                          return <label key={option} className="flex items-center gap-2 rounded-lg border p-3 text-sm cursor-pointer hover:bg-stone-50">
+                            <input type="checkbox" checked={selected.includes(option)} onChange={e=>setFormData(prev=>({...prev,QuayPhimCuoi:e.target.checked?[...selected,option]:selected.filter(x=>x!==option)}))}/>
+                            <span>{option}</span>
+                          </label>;
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </section>
                 <section className="border rounded-xl p-4"><h3 className="font-bold mb-3">Giá trị hợp đồng & thanh toán</h3>
                   <div className="grid sm:grid-cols-2 gap-3">
                     <div><label className="block text-xs mb-1">Giá gói ban đầu (đ)</label><input type="number" min="0" value={String(formData.GiaGoiBanDau??0)} onChange={e=>setFormData({...formData,GiaGoiBanDau:Number(e.target.value)})} className="w-full border rounded-lg p-2"/></div>
