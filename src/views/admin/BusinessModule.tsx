@@ -114,6 +114,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [cashflowType, setCashflowType] = useState<'THU' | 'CHI'>('THU');
+  const [cashflowSection, setCashflowSection] = useState<'ALL' | 'CONTRACT' | 'INTERNAL'>('ALL');
   const [selectedContract, setSelectedContract] = useState<QuanLyRecord | null>(null);
   const contractPrintRef = useRef<HTMLElement | null>(null);
   const [downloadingJpeg, setDownloadingJpeg] = useState(false);
@@ -205,8 +206,17 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     void loadRecords();
   }, [module]);
 
-  const totalThu = records.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'THU' && r.DuLieu?.TrangThaiDuyet === 'Đã duyệt').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
-  const totalChi = records.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'CHI' && r.DuLieu?.TrangThaiDuyet === 'Đã duyệt').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
+  const isContractReceipt = (record: QuanLyRecord) => {
+    const data = record.DuLieu || {};
+    return String(data.Loai || '').toUpperCase() === 'THU' &&
+      (['THU_TU_HOP_DONG', 'TIEN_COC_HOP_DONG'].includes(String(data.NguonTao || '')) ||
+       !!data.HopDongQuanLyID || !!data.HopDongID || !!data.MaHopDong);
+  };
+  const approvedRecords = records.filter(r => r.DuLieu?.TrangThaiDuyet === 'Đã duyệt');
+  const totalThu = approvedRecords.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'THU').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
+  const totalChi = approvedRecords.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'CHI').reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
+  const totalContractRevenue = approvedRecords.filter(r => isContractReceipt(r)).reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
+  const totalInternalIncome = approvedRecords.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === 'THU' && !isContractReceipt(r)).reduce((sum,r)=>sum+Number(r.DuLieu?.SoTien||0),0);
 
   const visibleRecords = useMemo(() => {
     if (module !== 'THU_CHI' || !isEmployee) return records;
@@ -224,12 +234,14 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   }, [records, module, isEmployee, currentUser?.NhanVienID, loggedInStaffName]);
 
   const filteredRecords = useMemo(() => {
+    let rows = visibleRecords;
+    if (module === 'THU_CHI' && cashflowSection !== 'ALL') {
+      rows = rows.filter(record => cashflowSection === 'CONTRACT' ? isContractReceipt(record) : !isContractReceipt(record));
+    }
     const keyword = search.trim().toLowerCase();
-    if (!keyword) return visibleRecords;
-    return visibleRecords.filter((record) =>
-      JSON.stringify(record.DuLieu).toLowerCase().includes(keyword)
-    );
-  }, [visibleRecords, search]);
+    if (!keyword) return rows;
+    return rows.filter((record) => JSON.stringify(record.DuLieu).toLowerCase().includes(keyword));
+  }, [visibleRecords, search, module, cashflowSection]);
 
   const getTodayLocal = () => {
     const now = new Date();
@@ -294,16 +306,27 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
 
     try {
       const payload: Record<string, any> = { ...formData };
+      if (module === 'THU_CHI' && !editing && cashflowSection === 'CONTRACT' && payload.Loai === 'THU' && !payload.HopDongQuanLyID) {
+        throw new Error('Vui lòng chọn mã hợp đồng cho khoản thu cọc/thanh toán cưới.');
+      }
+      if (module === 'THU_CHI' && !editing && cashflowSection === 'INTERNAL') {
+        delete payload.HopDongQuanLyID;
+        delete payload.HopDongID;
+        delete payload.MaHopDong;
+        delete payload.NguonTao;
+      }
       if (module === 'THU_CHI' && !editing && payload.Loai === 'THU' && payload.HopDongQuanLyID) {
         const linked = contractRecords.find((r) => r.QuanLyID === String(payload.HopDongQuanLyID));
         if (linked) { const d = linked.DuLieu || {}; payload.HopDongID = String(d.MaHopDong || linked.QuanLyID); payload.MaHopDong = payload.HopDongID; payload.TenHopDong = String(d.KhachHang || ''); payload.DoiTuong = payload.TenHopDong; payload.NguonTao = 'THU_TU_HOP_DONG'; }
       }
-      if (module === 'THU_CHI' && isEmployee && !editing) {
-        payload.NhanVienID = currentUser?.NhanVienID || '';
-        payload.NhanVien = loggedInStaffName;
-        payload.NguoiTao = loggedInStaffName;
+      if (module === 'THU_CHI' && !editing) {
+        payload.NguoiTao = loggedInStaffName || 'Admin';
         payload.NguoiTaoID = currentUser?.NhanVienID || '';
-        payload.TrangThaiDuyet = 'Chờ Admin duyệt';
+        if (isEmployee) {
+          payload.NhanVienID = currentUser?.NhanVienID || '';
+          payload.NhanVien = loggedInStaffName;
+          payload.TrangThaiDuyet = 'Chờ Admin duyệt';
+        }
       }
       if (module === 'HOP_DONG') {
         const base = Number(payload.GiaGoiBanDau ?? payload.TongGiaTri ?? 0);
@@ -597,7 +620,31 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         </div>
       </div>
 
-      {module === 'THU_CHI' && !isEmployee && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><div className="text-xs font-bold text-emerald-800">TỔNG PHIẾU THU ĐÃ DUYỆT</div><div className="mt-2 text-2xl font-bold text-emerald-700">+{totalThu.toLocaleString('vi-VN')} đ</div></div><div className="rounded-2xl border border-rose-200 bg-rose-50 p-5"><div className="text-xs font-bold text-rose-800">TỔNG PHIẾU CHI ĐÃ DUYỆT</div><div className="mt-2 text-2xl font-bold text-rose-700">-{totalChi.toLocaleString('vi-VN')} đ</div></div></div>}
+      {module === 'THU_CHI' && <section className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button type="button" onClick={() => setCashflowSection('CONTRACT')} className={`rounded-2xl border p-4 text-left transition ${cashflowSection === 'CONTRACT' ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-stone-200 bg-white hover:bg-emerald-50'}`}>
+            <div className="font-bold text-emerald-800">1. THU TIỀN HỢP ĐỒNG CƯỚI</div>
+            <p className="mt-1 text-xs text-stone-600">Thu cọc và các đợt thanh toán; chọn mã hợp đồng để liên kết doanh thu.</p>
+            {!isEmployee && <div className="mt-2 text-lg font-bold text-emerald-700">Đã duyệt: +{totalContractRevenue.toLocaleString('vi-VN')} đ</div>}
+          </button>
+          <button type="button" onClick={() => setCashflowSection('INTERNAL')} className={`rounded-2xl border p-4 text-left transition ${cashflowSection === 'INTERNAL' ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-100' : 'border-stone-200 bg-white hover:bg-amber-50'}`}>
+            <div className="font-bold text-amber-800">2. THU CHI NỘI BỘ</div>
+            <p className="mt-1 text-xs text-stone-600">Các khoản thu/chi phát sinh của nhân viên và Sale; phiếu gửi Admin duyệt.</p>
+            {!isEmployee && <div className="mt-2 text-sm font-bold text-amber-800">Thu nội bộ: +{totalInternalIncome.toLocaleString('vi-VN')} đ · Chi: -{totalChi.toLocaleString('vi-VN')} đ</div>}
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setCashflowSection('ALL')} className={`rounded-lg px-3 py-2 text-xs font-bold ${cashflowSection === 'ALL' ? 'bg-stone-900 text-white' : 'border bg-white text-stone-700'}`}>Tất cả phiếu</button>
+          <button type="button" onClick={() => { setCashflowSection('CONTRACT'); openCreate('THU'); }} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white">+ Thu cọc / thanh toán cưới</button>
+          <button type="button" onClick={() => { setCashflowSection('INTERNAL'); openCreate('THU'); }} className="rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-emerald-800">+ Thu nội bộ</button>
+          <button type="button" onClick={() => { setCashflowSection('INTERNAL'); openCreate('CHI'); }} className="rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white">+ Chi nội bộ</button>
+        </div>
+        {!isEmployee && <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-xl border bg-emerald-50 p-3"><div className="text-xs font-bold text-emerald-800">DOANH THU HỢP ĐỒNG ĐÃ DUYỆT</div><div className="mt-1 font-bold text-emerald-700">+{totalContractRevenue.toLocaleString('vi-VN')} đ</div></div>
+          <div className="rounded-xl border bg-amber-50 p-3"><div className="text-xs font-bold text-amber-800">THU NỘI BỘ ĐÃ DUYỆT</div><div className="mt-1 font-bold text-amber-700">+{totalInternalIncome.toLocaleString('vi-VN')} đ</div></div>
+          <div className="rounded-xl border bg-rose-50 p-3"><div className="text-xs font-bold text-rose-800">CHI ĐÃ DUYỆT</div><div className="mt-1 font-bold text-rose-700">-{totalChi.toLocaleString('vi-VN')} đ</div></div>
+        </div>}
+      </section>}
       <div className="bg-white p-3 rounded-xl border border-[#E7DFD5] flex items-center gap-2">
         <Search className="w-4 h-4 text-stone-400" />
         <input
