@@ -658,77 +658,87 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
             <div className="flex flex-wrap items-center justify-between gap-3">
               <button type="button" onClick={() => setSelectedContract(null)} className="inline-flex items-center gap-2 text-sm text-stone-400 hover:text-white"><X className="w-4 h-4"/> Quay lại danh sách hợp đồng</button>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500"><FileText className="w-4 h-4"/> Tải hợp đồng PDF</button>
+                <button type="button" onClick={() => {
+                  const format = window.prompt('Chọn định dạng tải hợp đồng: PDF, PNG hoặc JPG', 'PDF');
+                  if (!format) return;
+                  const kind = format.trim().toUpperCase();
+                  if (kind === 'PDF') { window.print(); return; }
+                  if (!['PNG','JPG','JPEG'].includes(kind)) { alert('Vui lòng chọn PDF, PNG hoặc JPG.'); return; }
+                  const esc = (v: unknown) => String(v ?? '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                  const rows = [
+                    ['Mã hợp đồng', code, 'Ngày cưới nhà trai', d.NgayCuoiNhaTrai || '—'],
+                    ['Khách hàng', customer, 'Ngày cưới nhà gái', d.NgayCuoiNhaGai || '—'],
+                    ['Điện thoại', d.SDT || '—', 'Gói dịch vụ', d.GoiDichVu || d.LoaiDichVu || '—'],
+                    ['Địa chỉ khách', d.DiaChi || '—', 'Nhân viên phụ trách', d.NguoiTao || d.NhanVienTao || d.TenNguoiTao || d.NhanVien || staffList.find(s=>s.NhanVienID===d.NhanVienID)?.HoTen || '—'],
+                  ];
+                  const rowSvg = rows.map((r,i)=>'<rect x="55" y="'+(350+i*70)+'" width="990" height="70" fill="'+(i%2?'#faf7f1':'#ffffff')+'" stroke="#ded5c7"/><text x="75" y="'+(378+i*70)+'" font-size="17" fill="#78684f">'+esc(r[0])+'</text><text x="75" y="'+(403+i*70)+'" font-size="20" font-weight="600" fill="#24201a">'+esc(r[1])+'</text><text x="555" y="'+(378+i*70)+'" font-size="17" fill="#78684f">'+esc(r[2])+'</text><text x="555" y="'+(403+i*70)+'" font-size="20" font-weight="600" fill="#24201a">'+esc(r[3])+'</text>').join('');
+                  const installments = (Array.isArray(d.LichThanhToan) ? d.LichThanhToan : []).slice(0,4);
+                  const paymentSvg = installments.map((p:any,i:number)=>'<text x="75" y="'+(790+i*36)+'" font-size="17" fill="#24201a">'+esc(p.TenDot || ('Đợt '+(i+1)))+' · Hạn: '+esc(p.HanThanhToan || '—')+' · '+esc(money(p.SoTienDuKien))+'</text>').join('');
+                  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="1100" viewBox="0 0 1100 1100"><rect width="1100" height="1100" fill="#fffdf9"/><rect x="30" y="30" width="1040" height="1040" rx="8" fill="none" stroke="#b08a45" stroke-width="3"/><circle cx="105" cy="115" r="48" fill="none" stroke="#b08a45" stroke-width="3"/><text x="105" y="124" text-anchor="middle" font-size="28" font-weight="700" fill="#9a763b">HP</text><text x="175" y="95" font-size="32" font-weight="700" letter-spacing="2" fill="#24201a">HẠNH PHẠM</text><text x="175" y="130" font-size="20" font-weight="700" letter-spacing="4" fill="#9a763b">LUXURY BRIDAL</text><text x="175" y="160" font-size="15" fill="#78684f">Địa chỉ: Mặt Định, 321 Lê Quý Đôn, Tân Xuân, Phường Bình Phước, TP Đồng Nai</text><text x="175" y="184" font-size="15" fill="#78684f">Điện thoại: 0936347879</text><line x1="55" y1="220" x2="1045" y2="220" stroke="#b08a45" stroke-width="3"/><text x="550" y="270" text-anchor="middle" font-size="30" font-weight="700" fill="#24201a">HỢP ĐỒNG DỊCH VỤ CƯỚI</text><text x="550" y="305" text-anchor="middle" font-size="18" fill="#78684f">Mã hợp đồng: '+esc(code)+'</text>'+rowSvg+'<rect x="55" y="650" width="990" height="105" rx="6" fill="#f5efe4" stroke="#b08a45"/><text x="80" y="685" font-size="18" fill="#78684f">GIÁ TRỊ HỢP ĐỒNG</text><text x="80" y="724" font-size="28" font-weight="700" fill="#24201a">'+esc(money(value))+'</text><text x="420" y="685" font-size="18" fill="#78684f">ĐÃ THU ĐƯỢC DUYỆT</text><text x="420" y="724" font-size="24" font-weight="700" fill="#187343">'+esc(money(collected))+'</text><text x="780" y="685" font-size="18" fill="#78684f">CÒN PHẢI THU</text><text x="780" y="724" font-size="24" font-weight="700" fill="#9a763b">'+esc(money(Math.max(0,value-collected)))+'</text><text x="65" y="775" font-size="20" font-weight="700" fill="#24201a">LỊCH THANH TOÁN</text>'+ (paymentSvg || '<text x="75" y="810" font-size="17" fill="#24201a">Theo thỏa thuận giữa hai bên.</text>') +'<line x1="80" y1="960" x2="480" y2="960" stroke="#b8ad9b"/><line x1="620" y1="960" x2="1020" y2="960" stroke="#b8ad9b"/><text x="280" y="925" text-anchor="middle" font-size="18" font-weight="700" fill="#24201a">ĐẠI DIỆN HẠNH PHẠM LUXURY BRIDAL</text><text x="820" y="925" text-anchor="middle" font-size="18" font-weight="700" fill="#24201a">KHÁCH HÀNG</text><text x="280" y="990" text-anchor="middle" font-size="15" fill="#78684f">(Ký và ghi rõ họ tên)</text><text x="820" y="990" text-anchor="middle" font-size="15" fill="#78684f">(Ký và ghi rõ họ tên)</text><text x="550" y="1035" text-anchor="middle" font-size="14" fill="#78684f">Hai bên vui lòng kiểm tra thông tin trước khi ký xác nhận.</text></svg>';
+                  const blob = new Blob([svg], {type:'image/svg+xml;charset=utf-8'});
+                  const url = URL.createObjectURL(blob);
+                  const img = new Image();
+                  img.onload = () => {
+                    const canvas = document.createElement('canvas'); canvas.width = 2200; canvas.height = 2200;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) { URL.revokeObjectURL(url); alert('Không thể tạo ảnh trên trình duyệt này.'); return; }
+                    ctx.fillStyle = '#fffdf9'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); URL.revokeObjectURL(url);
+                    canvas.toBlob((out) => { if (!out) { alert('Không thể xuất ảnh.'); return; } const link=document.createElement('a'); link.href=URL.createObjectURL(out); link.download='Hop-dong-'+code+'.'+(kind==='JPG'?'jpg':kind.toLowerCase()); link.click(); setTimeout(()=>URL.revokeObjectURL(link.href),1000); }, kind==='PNG'?'image/png':'image/jpeg', 0.95);
+                  };
+                  img.onerror = () => { URL.revokeObjectURL(url); alert('Không thể tạo ảnh hợp đồng.'); };
+                  img.src = url;
+                }} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500"><FileText className="w-4 h-4"/> Tải hợp đồng</button>
                 <button type="button" onClick={() => { const r = selectedContract; setSelectedContract(null); openEdit(r); }} className="inline-flex items-center gap-2 rounded-xl border border-stone-700 px-4 py-2 text-sm hover:bg-stone-800"><Edit3 className="w-4 h-4"/> Sửa hợp đồng</button>
               </div>
             </div>
             <style>{`@media print {
-              @page { size: A4; margin: 14mm; }
+              @page { size: A4; margin: 10mm; }
               body * { visibility: hidden !important; }
               .contract-print-sheet, .contract-print-sheet * { visibility: visible !important; }
-              .contract-print-sheet { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: #fff !important; color: #202020 !important; font-family: Arial, sans-serif !important; font-size: 10pt !important; }
+              .contract-print-sheet { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: #fff !important; color: #202020 !important; font-family: Arial, sans-serif !important; font-size: 9pt !important; }
               .contract-print-sheet h1, .contract-print-sheet h2, .contract-print-sheet h3, .contract-print-sheet p { color: #202020 !important; }
               .contract-print-sheet table { width: 100%; border-collapse: collapse; }
-              .contract-print-sheet th, .contract-print-sheet td { border: 1px solid #c9c2b8; padding: 7px; text-align: left; }
+              .contract-print-sheet th, .contract-print-sheet td { border: 1px solid #c9c2b8; padding: 5px; text-align: left; }
               .contract-print-sheet th { background: #f4efe7 !important; }
-              .contract-print-sheet .print-no-break { break-inside: avoid; }
-            }
-            @media screen { .contract-print-sheet { display: none; } }`}</style>
-            <article className="contract-print-sheet">
-              <header style={{display:'flex',alignItems:'center',gap:'16px',borderBottom:'3px solid #b08a45',paddingBottom:'14px',marginBottom:'18px'}}>
-                <div style={{width:'66px',height:'66px',border:'2px solid #b08a45',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px',fontWeight:700,color:'#9a763b',flexShrink:0}}>HP</div>
+            }`}</style>
+            <article className="contract-print-sheet" style={{background:'#fffdf9',color:'#24201a',fontFamily:'Arial,sans-serif',fontSize:'9pt',lineHeight:1.35,maxWidth:'190mm',margin:'0 auto',padding:'4mm'}}>
+              <header style={{display:'flex',alignItems:'center',gap:'12px',borderBottom:'2px solid #b08a45',paddingBottom:'9px',marginBottom:'10px'}}>
+                <div style={{width:'52px',height:'52px',border:'2px solid #b08a45',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'19px',fontWeight:700,color:'#9a763b',flexShrink:0}}>HP</div>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:'19px',fontWeight:700,letterSpacing:'1.4px'}}>HẠNH PHẠM</div>
-                  <div style={{fontSize:'11px',letterSpacing:'3px',color:'#9a763b',fontWeight:700}}>LUXURY BRIDAL</div>
-                  <div style={{fontSize:'9px',marginTop:'5px'}}>HỢP ĐỒNG DỊCH VỤ CƯỚI · Mã hợp đồng: {code}</div>
+                  <div style={{fontSize:'17px',fontWeight:700,letterSpacing:'1px'}}>HẠNH PHẠM</div>
+                  <div style={{fontSize:'10px',letterSpacing:'2px',color:'#9a763b',fontWeight:700}}>LUXURY BRIDAL</div>
+                  <div style={{fontSize:'8.5pt',marginTop:'4px'}}>Địa chỉ: Mặt Định, 321 Lê Quý Đôn, Tân Xuân, Phường Bình Phước, TP Đồng Nai</div>
+                  <div style={{fontSize:'8.5pt'}}>Điện thoại: 0936347879</div>
                 </div>
-                <div style={{textAlign:'right',fontSize:'9px'}}><b>HỢP ĐỒNG</b><br/>Ngày lập: {String(d.NgayTao || selectedContract.CapNhatLuc || '').slice(0,10) || '—'}<br/>Trạng thái: {getStatus(selectedContract)}</div>
               </header>
-              <h1 style={{textAlign:'center',fontSize:'17px',fontWeight:700,margin:'12px 0 4px'}}>HỢP ĐỒNG DỊCH VỤ CƯỚI</h1>
-              <p style={{textAlign:'center',fontSize:'10px',marginBottom:'18px'}}>Số: {code}</p>
-              <p style={{lineHeight:1.65}}>Hôm nay, ngày {String(d.NgayTao || selectedContract.CapNhatLuc || '').slice(0,10) || '……/……/………'}, hai bên cùng thống nhất lập hợp đồng dịch vụ với các nội dung dưới đây:</p>
-              <section className="print-no-break" style={{marginTop:'12px'}}>
-                <h2 style={{fontSize:'12px',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'5px'}}>ĐIỀU 1. THÔNG TIN CÁC BÊN</h2>
-                <p style={{lineHeight:1.7}}><b>BÊN A – ĐƠN VỊ CUNG CẤP DỊCH VỤ:</b> HẠNH PHẠM Luxury Bridal<br/>Đại diện/nhân viên phụ trách: {String(d.NhanVien || staffList.find(s=>s.NhanVienID===d.NhanVienID)?.HoTen || '………………………………')}<br/>Địa chỉ: ………………………………………………………………………………………<br/>Điện thoại: …………………………………………………………………………………</p>
-                <p style={{lineHeight:1.7}}><b>BÊN B – KHÁCH HÀNG:</b><br/>Tên cô dâu/chú rể: {customer}<br/>Số điện thoại: {String(d.SDT || '………………………………')}<br/>Địa chỉ: {String(d.DiaChi || '………………………………')}</p>
+              <h1 style={{textAlign:'center',fontSize:'15pt',fontWeight:700,margin:'8px 0 2px'}}>HỢP ĐỒNG DỊCH VỤ CƯỚI</h1>
+              <p style={{textAlign:'center',fontSize:'9pt',margin:'0 0 10px'}}>Mã hợp đồng: <b>{code}</b></p>
+              <h2 style={{fontSize:'10pt',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'3px',margin:'8px 0 5px'}}>1. THÔNG TIN KHÁCH HÀNG VÀ LỊCH CƯỚI</h2>
+              <table><tbody>
+                <tr><th style={{width:'20%'}}>Cô dâu / chú rể</th><td style={{width:'30%'}}>{customer}</td><th style={{width:'20%'}}>Điện thoại</th><td>{String(d.SDT || '—')}</td></tr>
+                <tr><th>Địa chỉ</th><td colSpan={3}>{String(d.DiaChi || '—')}</td></tr>
+                <tr><th>Ngày cưới nhà trai</th><td>{String(d.NgayCuoiNhaTrai || '—')}</td><th>Ngày cưới nhà gái</th><td>{String(d.NgayCuoiNhaGai || '—')}</td></tr>
+                <tr><th>Gói dịch vụ</th><td>{String(d.GoiDichVu || '—')}</td><th>Loại dịch vụ</th><td>{String(d.LoaiDichVu || '—')}</td></tr>
+                <tr><th>Nhân viên phụ trách</th><td colSpan={3}>{String(d.NguoiTao || d.NhanVienTao || d.TenNguoiTao || d.NhanVien || staffList.find(s=>s.NhanVienID===d.NhanVienID)?.HoTen || '—')}</td></tr>
+              </tbody></table>
+              <h2 style={{fontSize:'10pt',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'3px',margin:'10px 0 5px'}}>2. GIÁ TRỊ VÀ THANH TOÁN</h2>
+              <table><tbody>
+                <tr><th>Giá gói ban đầu</th><td>{money(d.GiaGoiBanDau ?? d.TongGiaTri)}</td><th>Giảm giá trực tiếp</th><td>{money(d.GiamGiaTrucTiep)}</td></tr>
+                <tr><th>Chiết khấu</th><td>{d.ChietKhauPhanTram ? String(d.ChietKhauPhanTram)+'%' : '0%'}</td><th>Phụ thu dịch vụ</th><td>{money(d.PhuThuDichVu)}</td></tr>
+                <tr><th colSpan={3}>TỔNG GIÁ TRỊ HỢP ĐỒNG</th><td><b>{money(value)}</b></td></tr>
+                <tr><th colSpan={3}>Đã thu (phiếu đã duyệt)</th><td>{money(collected)}</td></tr>
+                <tr><th colSpan={3}>Còn phải thanh toán</th><td>{money(Math.max(0,value-collected))}</td></tr>
+              </tbody></table>
+              <h2 style={{fontSize:'10pt',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'3px',margin:'10px 0 5px'}}>3. LỊCH THANH TOÁN DỰ KIẾN</h2>
+              <table><thead><tr><th>Đợt thanh toán</th><th>Hạn thanh toán</th><th>Số tiền</th><th>Ghi chú</th></tr></thead><tbody>
+                {(Array.isArray(d.LichThanhToan)?d.LichThanhToan:[]).length ? (d.LichThanhToan as any[]).map((p:any,i:number)=><tr key={i}><td>{p.TenDot || 'Đợt '+(i+1)}</td><td>{p.HanThanhToan || '—'}</td><td>{money(p.SoTienDuKien)}</td><td>{p.GhiChu || '—'}</td></tr>) : <tr><td colSpan={4}>Theo thỏa thuận giữa hai bên.</td></tr>}
+              </tbody></table>
+              {d.GhiChu && <p style={{marginTop:'8px'}}><b>Ghi chú:</b> {String(d.GhiChu)}</p>}
+              <p style={{marginTop:'10px',fontSize:'8.5pt'}}>Hai bên xác nhận các thông tin dịch vụ, lịch cưới và giá trị thanh toán nêu trên. Mọi thay đổi phát sinh sẽ được hai bên thống nhất trước khi thực hiện.</p>
+              <section style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'20px',marginTop:'20px',textAlign:'center',breakInside:'avoid'}}>
+                <div><b>ĐẠI DIỆN HẠNH PHẠM LUXURY BRIDAL</b><p style={{fontSize:'8pt',marginTop:'3px'}}>(Ký và ghi rõ họ tên)</p><div style={{height:'48px'}}></div><b>{String(d.NguoiTao || d.NhanVienTao || d.TenNguoiTao || d.NhanVien || staffList.find(s=>s.NhanVienID===d.NhanVienID)?.HoTen || 'Đại diện đơn vị')}</b></div>
+                <div><b>KHÁCH HÀNG</b><p style={{fontSize:'8pt',marginTop:'3px'}}>(Ký và ghi rõ họ tên)</p><div style={{height:'48px'}}></div><b>{customer}</b></div>
               </section>
-              <section className="print-no-break" style={{marginTop:'12px'}}>
-                <h2 style={{fontSize:'12px',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'5px'}}>ĐIỀU 2. NỘI DUNG DỊCH VỤ VÀ LỊCH CƯỚI</h2>
-                <table><tbody>
-                  <tr><th>Loại dịch vụ</th><td>{String(d.LoaiDichVu || 'Dịch vụ cưới')}</td><th>Gói dịch vụ</th><td>{String(d.GoiDichVu || '—')}</td></tr>
-                  <tr><th>Ngày cưới nhà trai</th><td>{String(d.NgayCuoiNhaTrai || '—')}</td><th>Ngày cưới nhà gái</th><td>{String(d.NgayCuoiNhaGai || '—')}</td></tr>
-                  <tr><th>Yêu cầu / ghi chú</th><td colSpan={3}>{String(d.GhiChu || 'Theo nội dung hai bên thống nhất')}</td></tr>
-                </tbody></table>
-              </section>
-              <section style={{marginTop:'12px'}}>
-                <h2 style={{fontSize:'12px',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'5px'}}>ĐIỀU 3. GIÁ TRỊ HỢP ĐỒNG VÀ THANH TOÁN</h2>
-                <table><tbody>
-                  <tr><th>Giá gói ban đầu</th><td>{money(d.GiaGoiBanDau ?? d.TongGiaTri)}</td><th>Giảm giá trực tiếp</th><td>{money(d.GiamGiaTrucTiep)}</td></tr>
-                  <tr><th>Chiết khấu</th><td>{d.ChietKhauPhanTram ? String(d.ChietKhauPhanTram)+'%' : '0%'}</td><th>Phụ thu dịch vụ</th><td>{money(d.PhuThuDichVu)}</td></tr>
-                  <tr><th colSpan={3}>TỔNG GIÁ TRỊ HỢP ĐỒNG</th><td><b>{money(value)}</b></td></tr>
-                  <tr><th colSpan={3}>Đã thu được Admin duyệt</th><td>{money(collected)}</td></tr>
-                  <tr><th colSpan={3}>Còn phải thanh toán</th><td>{money(Math.max(0,value-collected))}</td></tr>
-                </tbody></table>
-                <table style={{marginTop:'10px'}}><thead><tr><th>Đợt thanh toán</th><th>Hạn thanh toán</th><th>Số tiền dự kiến</th><th>Ghi chú</th></tr></thead><tbody>
-                  {(Array.isArray(d.LichThanhToan)?d.LichThanhToan:[]).length ? (d.LichThanhToan as any[]).map((p:any,i:number)=><tr key={i}><td>{p.TenDot || 'Đợt '+(i+1)}</td><td>{p.HanThanhToan || '—'}</td><td>{money(p.SoTienDuKien)}</td><td>{p.GhiChu || '—'}</td></tr>) : <tr><td colSpan={4}>Lịch thanh toán theo thỏa thuận giữa hai bên.</td></tr>}
-                </tbody></table>
-              </section>
-              <section style={{marginTop:'12px'}}>
-                <h2 style={{fontSize:'12px',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'5px'}}>ĐIỀU 4. THỎA THUẬN CHUNG</h2>
-                <ol style={{paddingLeft:'18px',lineHeight:1.65}}>
-                  <li>Bên A thực hiện dịch vụ theo gói, lịch và các nội dung đã thống nhất trong hợp đồng này.</li>
-                  <li>Bên B thanh toán theo các đợt và số tiền đã thỏa thuận; các khoản thanh toán được xác nhận bằng phiếu thu.</li>
-                  <li>Mọi thay đổi về dịch vụ, thời gian, chi phí hoặc yêu cầu phát sinh cần được hai bên xác nhận trước khi thực hiện.</li>
-                  <li>Việc thay đổi lịch, hủy dịch vụ, hoàn/không hoàn tiền và xử lý phát sinh thực hiện theo thỏa thuận bằng văn bản được hai bên xác nhận và quy định pháp luật hiện hành.</li>
-                  <li>Hợp đồng có hiệu lực khi hai bên ký xác nhận; hợp đồng được lập thành hai bản có giá trị như nhau, mỗi bên giữ một bản.</li>
-                </ol>
-                <p style={{marginTop:'8px',fontSize:'9px',fontStyle:'italic'}}>Lưu ý: Các điều khoản cần được hai bên rà soát và bổ sung thông tin địa chỉ, chính sách đổi lịch/hủy dịch vụ cụ thể trước khi ký chính thức.</p>
-              </section>
-              <section className="print-no-break" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'28px',marginTop:'30px',textAlign:'center'}}>
-                <div><b>ĐẠI DIỆN BÊN A</b><p style={{fontSize:'9px',marginTop:'4px'}}>(Ký, ghi rõ họ tên)</p><div style={{height:'76px'}}></div><b>HẠNH PHẠM Luxury Bridal</b></div>
-                <div><b>ĐẠI DIỆN BÊN B – KHÁCH HÀNG</b><p style={{fontSize:'9px',marginTop:'4px'}}>(Ký, ghi rõ họ tên)</p><div style={{height:'76px'}}></div><b>{customer}</b></div>
-              </section>
-              <footer style={{borderTop:'1px solid #b08a45',marginTop:'18px',paddingTop:'8px',textAlign:'center',fontSize:'8px',color:'#666'}}>HẠNH PHẠM Luxury Bridal · Hợp đồng {code} · Vui lòng kiểm tra thông tin trước khi ký</footer>
             </article>
             <div className="rounded-2xl border border-stone-800 bg-gradient-to-br from-stone-900 to-stone-950 p-6 sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-4">
