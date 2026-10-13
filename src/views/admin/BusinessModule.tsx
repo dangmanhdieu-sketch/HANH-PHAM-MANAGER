@@ -353,6 +353,51 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     }
   };
 
+  const createContractPaymentReceipt = async (record: QuanLyRecord) => {
+    const data = record.DuLieu || {};
+    const code = String(data.MaHopDong || record.QuanLyID || '');
+    const customer = String(data.KhachHang || '');
+    const rawAmount = window.prompt(`Nhập số tiền khách vừa thanh toán cho hợp đồng ${code} - ${customer} (VNĐ):`);
+    if (rawAmount === null) return;
+    const amount = Number(rawAmount.replace(/[^0-9]/g, ''));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      alert('Số tiền thanh toán phải lớn hơn 0.');
+      return;
+    }
+    const paymentLabel = window.prompt('Khoản thanh toán này là gì?', 'Thanh toán đợt tiếp theo');
+    if (paymentLabel === null) return;
+    try {
+      setSaving(true);
+      await api.quanLy.create('THU_CHI', {
+        Ngay: getTodayLocal(),
+        Loai: 'THU',
+        DanhMuc: `${paymentLabel} · ${code} · ${customer}`,
+        NoiDungThu: `${paymentLabel} hợp đồng ${code} - ${customer}`,
+        SoTien: amount,
+        HopDongID: code,
+        MaHopDong: code,
+        TenHopDong: customer,
+        DoiTuong: customer,
+        NhanVienID: currentUser?.NhanVienID || '',
+        NhanVien: loggedInStaffName,
+        NguoiTao: loggedInStaffName || 'Admin',
+        NguoiTaoID: currentUser?.NhanVienID || '',
+        PhuongThucThanhToan: 'Tiền mặt',
+        TrangThaiDuyet: 'Chờ Admin duyệt',
+        GhiChu: `Phiếu thu thanh toán hợp đồng ${code} - ${customer}`,
+        NguonTao: 'THU_TU_HOP_DONG',
+        HopDongQuanLyID: record.QuanLyID,
+      });
+      alert('Đã tạo phiếu thu ở trạng thái Chờ Admin duyệt. Phiếu chỉ được tính vào doanh thu sau khi Admin duyệt.');
+      await loadRecords();
+      onRefresh();
+    } catch (error: any) {
+      alert(error?.message || 'Không thể tạo phiếu thu thanh toán.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const approveCashflow = async (record: QuanLyRecord) => {
     if (module === 'HOP_DONG') {
       const next = window.prompt('Nhập trạng thái mới: Đã xác nhận / Đang thực hiện / Hoàn thành / Đã hủy', 'Đã xác nhận');
@@ -540,6 +585,9 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                         <>
                           {module === 'HOP_DONG' && ['Chờ admin duyệt','Nháp'].includes(getStatus(record)) && (
                             <button type="button" onClick={() => void approveCashflow(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold">DUYỆT</button>
+                          )}
+                          {module === 'HOP_DONG' && (
+                            <button type="button" disabled={saving} onClick={() => void createContractPaymentReceipt(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-emerald-700 text-white text-[10px] font-bold">+ PHIẾU THU</button>
                           )}
                           {module === 'HOP_DONG' && !isEmployee && (
                             <button type="button" onClick={() => void approveCashflow(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-stone-800 text-white text-[10px] font-bold">TRẠNG THÁI</button>
