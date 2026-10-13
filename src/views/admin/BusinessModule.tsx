@@ -669,7 +669,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                         {getStatus(record)}
                       </span>
                     </td>
-                    <td className="p-3 text-stone-400">
+                    <td className="p-3 text-stone-600">
                       {new Date(record.CapNhatLuc).toLocaleString('vi-VN')}
                     </td>
                     <td className="p-3 text-right whitespace-nowrap">
@@ -716,11 +716,11 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         const collected = getContractCollected(selectedContract);
         const receipts = receiptRecords.filter((receipt) => String(receipt.DuLieu?.Loai || '').toUpperCase() === 'THU' && (String(receipt.DuLieu?.HopDongQuanLyID || '') === String(selectedContract.QuanLyID) || String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === code));
         const money = (n: unknown) => Number(n || 0).toLocaleString('vi-VN') + ' đ';
-        const field = (label: string, value: unknown) => <div className="rounded-xl bg-stone-900/70 p-3"><div className="text-[11px] uppercase tracking-wide text-stone-500">{label}</div><div className="mt-1 text-sm font-semibold text-stone-100 break-words">{String(value || '—')}</div></div>;
-        return <div className="fixed inset-0 z-[90] bg-[#111110] text-stone-100 overflow-y-auto">
+        const field = (label: string, value: unknown) => <div className="rounded-xl border border-stone-200 bg-white p-3"><div className="text-[11px] uppercase tracking-wide text-stone-600">{label}</div><div className="mt-1 text-sm font-semibold text-stone-800 break-words">{String(value || '—')}</div></div>;
+        return <div className="fixed inset-0 z-[90] bg-stone-100 text-stone-800 overflow-y-auto">
           <div className="max-w-6xl mx-auto p-4 sm:p-8 space-y-6">
             <div className="flex items-center justify-start">
-              <button type="button" onClick={() => setSelectedContract(null)} className="inline-flex items-center gap-2 text-sm text-stone-400 hover:text-white"><X className="w-4 h-4"/> Quay lại danh sách hợp đồng</button>
+              <button type="button" onClick={() => setSelectedContract(null)} className="inline-flex items-center gap-2 text-sm text-stone-600 hover:text-stone-950"><X className="w-4 h-4"/> Quay lại danh sách hợp đồng</button>
             </div>
             <style>{`@media print {
               @page { size: A4 portrait; margin: 5mm; }
@@ -809,40 +809,40 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <div><b>ĐẠI DIỆN BÊN B – KHÁCH HÀNG</b><p style={{fontSize:'9px',marginTop:'4px'}}>(Ký, ghi rõ họ tên)</p><div style={{height:'76px'}}></div><b>{customer}</b></div>
               </section>
             </article>
-            <div className="rounded-2xl border border-stone-800 bg-gradient-to-br from-stone-900 to-stone-950 p-6 sm:p-8">
+            <div className="rounded-2xl border border-stone-200 bg-white shadow-sm p-6 sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-4">
-                <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-500">Chi tiết hợp đồng</p><h1 className="mt-2 text-3xl font-bold">{code}</h1><p className="mt-2 text-lg text-stone-300">{customer}</p><p className="mt-1 text-sm text-stone-500">Ngày tạo: {String(d.NgayTao || selectedContract.CapNhatLuc || '').slice(0,10) || '—'}</p></div>
-                <span className="rounded-full bg-emerald-950 px-3 py-1.5 text-sm font-semibold text-emerald-400">{getStatus(selectedContract)}</span>
+                <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Chi tiết hợp đồng</p><h1 className="mt-2 text-3xl font-bold text-stone-900">{code}</h1><p className="mt-2 text-lg text-stone-700">{customer}</p><p className="mt-1 text-sm text-stone-600">Ngày tạo: {String(d.NgayTao || selectedContract.CapNhatLuc || '').slice(0,10) || '—'}</p></div>
+                <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-semibold text-emerald-800">{getStatus(selectedContract)}</span>
               </div>
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-xl bg-black/25 p-4"><p className="text-xs text-stone-400">Giá trị hợp đồng</p><p className="mt-2 text-xl font-bold">{money(value)}</p></div>
-                <div className="rounded-xl bg-black/25 p-4"><p className="text-xs text-stone-400">Đã thu được Admin duyệt</p><p className="mt-2 text-xl font-bold text-emerald-400">{money(collected)}</p></div>
-                <div className="rounded-xl bg-black/25 p-4"><p className="text-xs text-stone-400">Còn phải thu</p><p className="mt-2 text-xl font-bold text-amber-400">{money(Math.max(0,value-collected))}</p></div>
+                <div className="rounded-xl border border-stone-200 bg-stone-50 p-4"><p className="text-xs text-stone-600">Giá trị hợp đồng</p><p className="mt-2 text-xl font-bold text-stone-900">{money(value)}</p></div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="text-xs text-emerald-800">Đã thu được Admin duyệt</p><p className="mt-2 text-xl font-bold text-emerald-700">{money(collected)}</p></div>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs text-amber-800">Còn phải thu</p><p className="mt-2 text-xl font-bold text-amber-700">{money(Math.max(0,value-collected))}</p></div>
               </div>
             </div>
-            <section className="rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
+            <section className="rounded-2xl border border-stone-200 bg-white shadow-sm p-5">
               <h2 className="mb-4 text-base font-bold">Thông tin khách hàng</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {field('Tên khách hàng / cô dâu chú rể', customer)}{field('Số điện thoại', d.SDT)}{field('Địa chỉ', d.DiaChi)}{field('Ngày cưới nhà trai', d.NgayCuoiNhaTrai)}{field('Ngày cưới nhà gái', d.NgayCuoiNhaGai)}{field('Nhân viên phụ trách', d.NhanVien || staffList.find(s=>s.NhanVienID===d.NhanVienID)?.HoTen)}{field('Loại dịch vụ', d.LoaiDichVu)}{field('Gói dịch vụ', d.GoiDichVu)}{field('Chụp cổng', (Array.isArray(d.ChupCong)?d.ChupCong:[]).join(', '))}{field('Chụp tiệc cưới', (Array.isArray(d.ChupTiecCuoi)?d.ChupTiecCuoi:[]).join(', '))}{field('Quay phim cưới', (Array.isArray(d.QuayPhimCuoi)?d.QuayPhimCuoi:[]).join(', '))}{field('Ghi chú', d.GhiChu)}
               </div>
             </section>
-            <section className="rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
+            <section className="rounded-2xl border border-stone-200 bg-white shadow-sm p-5">
               <h2 className="mb-4 text-base font-bold">Giá trị & lịch thanh toán</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {field('Giá gói ban đầu', money(d.GiaGoiBanDau ?? d.TongGiaTri))}{field('Giảm giá trực tiếp', money(d.GiamGiaTrucTiep))}{field('Chiết khấu (%)', d.ChietKhauPhanTram ? String(d.ChietKhauPhanTram)+'%' : '0%')}{field('Phụ thu dịch vụ', money(d.PhuThuDichVu))}
               </div>
-              <div className="mt-5 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-stone-800 text-left text-stone-500"><th className="p-3">Đợt thanh toán</th><th className="p-3">Hạn thanh toán</th><th className="p-3 text-right">Số tiền dự kiến</th><th className="p-3">Ghi chú</th></tr></thead><tbody>{(Array.isArray(d.LichThanhToan)?d.LichThanhToan:[]).map((p:any,i:number)=><tr key={i} className="border-b border-stone-900"><td className="p-3">{p.TenDot || 'Đợt '+(i+1)}</td><td className="p-3">{p.HanThanhToan || '—'}</td><td className="p-3 text-right">{money(p.SoTienDuKien)}</td><td className="p-3 text-stone-400">{p.GhiChu || '—'}</td></tr>)}</tbody></table></div>
+              <div className="mt-5 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-stone-200 bg-stone-50 text-left text-stone-600"><th className="p-3">Đợt thanh toán</th><th className="p-3">Hạn thanh toán</th><th className="p-3 text-right">Số tiền dự kiến</th><th className="p-3">Ghi chú</th></tr></thead><tbody>{(Array.isArray(d.LichThanhToan)?d.LichThanhToan:[]).map((p:any,i:number)=><tr key={i} className="border-b border-stone-100"><td className="p-3">{p.TenDot || 'Đợt '+(i+1)}</td><td className="p-3">{p.HanThanhToan || '—'}</td><td className="p-3 text-right">{money(p.SoTienDuKien)}</td><td className="p-3 text-stone-400">{p.GhiChu || '—'}</td></tr>)}</tbody></table></div>
             </section>
-            <section className="rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
+            <section className="rounded-2xl border border-stone-200 bg-white shadow-sm p-5">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div><h2 className="text-base font-bold">Lịch sử phiếu thu</h2><p className="mt-1 text-xs text-stone-500">Thêm khoản khách vừa thanh toán tại đây; phiếu sẽ chờ Admin duyệt.</p></div>
+                <div><h2 className="text-base font-bold">Lịch sử phiếu thu</h2><p className="mt-1 text-xs text-stone-600">Thêm khoản khách vừa thanh toán tại đây; phiếu sẽ chờ Admin duyệt.</p></div>
                 <button type="button" disabled={saving || collected >= value} onClick={() => void createContractPaymentReceipt(selectedContract)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold hover:bg-emerald-600 disabled:opacity-40"><Plus className="w-4 h-4"/> Thêm cọc / thanh toán</button>
-                <span className="text-xs text-stone-500">{receipts.length} phiếu</span>
+                <span className="text-xs text-stone-600">{receipts.length} phiếu</span>
               </div>
-              {receipts.length ? <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-stone-800 text-left text-stone-500"><th className="p-3">Ngày thu</th><th className="p-3">Nội dung</th><th className="p-3 text-right">Số tiền</th><th className="p-3">Trạng thái</th></tr></thead><tbody>{receipts.map(receipt=><tr key={receipt.QuanLyID} className="border-b border-stone-900"><td className="p-3">{String(receipt.DuLieu?.Ngay || '').slice(0,10) || '—'}</td><td className="p-3">{String(receipt.DuLieu?.NoiDungThu || receipt.DuLieu?.DanhMuc || 'Phiếu thu')}</td><td className="p-3 text-right font-semibold">{money(receipt.DuLieu?.SoTien)}</td><td className="p-3"><span className={receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt' ? 'text-emerald-400' : 'text-amber-400'}>{String(receipt.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt')}</span></td></tr>)}</tbody></table></div> : <p className="text-sm text-stone-500">Chưa có phiếu thu liên kết với hợp đồng này.</p>}
+              {receipts.length ? <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-stone-200 text-left text-stone-600"><th className="p-3">Ngày thu</th><th className="p-3">Nội dung</th><th className="p-3 text-right">Số tiền</th><th className="p-3">Trạng thái</th></tr></thead><tbody>{receipts.map(receipt=><tr key={receipt.QuanLyID} className="border-b border-stone-900"><td className="p-3">{String(receipt.DuLieu?.Ngay || '').slice(0,10) || '—'}</td><td className="p-3">{String(receipt.DuLieu?.NoiDungThu || receipt.DuLieu?.DanhMuc || 'Phiếu thu')}</td><td className="p-3 text-right font-semibold">{money(receipt.DuLieu?.SoTien)}</td><td className="p-3"><span className={receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt' ? 'text-emerald-400' : 'text-amber-400'}>{String(receipt.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt')}</span></td></tr>)}</tbody></table></div> : <p className="text-sm text-stone-600">Chưa có phiếu thu liên kết với hợp đồng này.</p>}
             </section>
-            <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-stone-800 bg-stone-950/60 p-5">
-              <div><h2 className="font-bold">Hoàn thành hợp đồng</h2><p className="mt-1 text-sm text-stone-500">Chỉ hoàn thành khi tổng phiếu thu đã được Admin duyệt đủ giá trị hợp đồng.</p></div>
+            <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-stone-200 bg-white shadow-sm p-5">
+              <div><h2 className="font-bold">Hoàn thành hợp đồng</h2><p className="mt-1 text-sm text-stone-600">Chỉ hoàn thành khi tổng phiếu thu đã được Admin duyệt đủ giá trị hợp đồng.</p></div>
               {getStatus(selectedContract) === 'Hoàn thành' ? <span className="rounded-full bg-emerald-950 px-3 py-2 text-sm font-semibold text-emerald-400">Hợp đồng đã hoàn thành</span> : <button type="button" disabled={saving || collected < value} onClick={async () => {
                 if (collected < value) { alert('Chưa thể hoàn thành: số tiền đã được Admin duyệt chưa đủ giá trị hợp đồng.'); return; }
                 if (!window.confirm('Xác nhận hoàn thành hợp đồng này?')) return;
@@ -857,10 +857,10 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 finally { setSaving(false); }
               }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"><CheckSquare className="w-4 h-4"/> Hoàn thành hợp đồng</button>}
             </section>
-            <div className="flex flex-wrap justify-end gap-3 border-t border-stone-800 pt-5 pb-2">
+            <div className="flex flex-wrap justify-end gap-3 border-t border-stone-200 pt-5 pb-2">
               <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-3 text-sm font-bold text-white hover:bg-amber-500"><FileText className="w-4 h-4"/> In / Tải PDF</button>
               <button type="button" disabled={downloadingJpeg} onClick={() => void downloadContractJpeg()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-60">{downloadingJpeg ? 'Đang tạo JPEG...' : 'Tải JPEG'}</button>
-              <button type="button" onClick={() => { const r = selectedContract; setSelectedContract(null); openEdit(r); }} className="inline-flex items-center gap-2 rounded-xl border border-stone-700 px-5 py-3 text-sm hover:bg-stone-800"><Edit3 className="w-4 h-4"/> Sửa hợp đồng</button>
+              <button type="button" onClick={() => { const r = selectedContract; setSelectedContract(null); openEdit(r); }} className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-5 py-3 text-sm text-stone-800 hover:bg-stone-100"><Edit3 className="w-4 h-4"/> Sửa hợp đồng</button>
             </div>
           </div>
         </div>;
@@ -990,7 +990,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                       <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e=>{handleProofImage(e.target.files?.[0]);e.currentTarget.value='';}} />
                     </label>
                   </div>
-                  <p className="mt-2 text-xs text-stone-500">Chọn ảnh có sẵn trong thiết bị hoặc chụp trực tiếp bằng camera điện thoại.</p>
+                  <p className="mt-2 text-xs text-stone-600">Chọn ảnh có sẵn trong thiết bị hoặc chụp trực tiếp bằng camera điện thoại.</p>
                   {formData.AnhChungTu && <div className="mt-3 flex items-start gap-3"><img src={String(formData.AnhChungTu)} alt="Ảnh chứng từ" className="h-24 w-24 rounded-lg object-cover border" /><button type="button" onClick={()=>setFormData({...formData,AnhChungTu:''})} className="text-xs text-rose-600 font-semibold">Xóa ảnh</button></div>}
                 </div>
                 <div className="sm:col-span-2"><label className="block text-xs font-semibold mb-1">Ghi chú</label>
