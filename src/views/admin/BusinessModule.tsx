@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import { Plus, Search, Trash2, Edit3, Save, X, FileText, CheckSquare, Wallet, Upload, Camera } from 'lucide-react';
+import { HanhPhamLogo } from '../../components/HanhPhamLogo';
 import type { NhanVien, QuanLyModule, QuanLyRecord } from '../../types';
 import { api } from '../../api';
 
@@ -736,6 +737,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
               }
               .contract-print-sheet header { gap: 8px !important; padding-bottom: 5px !important; margin-bottom: 5px !important; border-bottom-width: 2px !important; }
+              .contract-print-sheet .contract-brand-logo { width: 46px !important; height: 46px !important; }
+              .contract-print-sheet .contract-brand-logo-inner > div { width: 46px !important; height: 46px !important; border-radius: 8px !important; }
               .contract-print-sheet header > div:first-child { width: 40px !important; height: 40px !important; font-size: 15px !important; }
               .contract-print-sheet h1 { font-size: 15pt !important; margin: 6px 0 3px !important; line-height: 1.15 !important; }
               .contract-print-sheet h2 { font-size: 10.5pt !important; margin: 7px 0 4px !important; padding-bottom: 3px !important; line-height: 1.15 !important; }
@@ -755,7 +758,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
             @media screen { .contract-print-sheet { display: none; } }`}</style>
             <article ref={contractPrintRef} className="contract-print-sheet">
               <header style={{display:'flex',alignItems:'center',gap:'16px',borderBottom:'3px solid #b08a45',paddingBottom:'14px',marginBottom:'18px'}}>
-                <div style={{width:'66px',height:'66px',border:'2px solid #b08a45',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px',fontWeight:700,color:'#9a763b',flexShrink:0}}>HP</div>
+                <div className="contract-brand-logo" style={{width:'66px',height:'66px',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}><HanhPhamLogo size="lg" showText={false} brandName="HẠNH PHẠM Luxury Bridal" className="contract-brand-logo-inner" /></div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:'19px',fontWeight:700,letterSpacing:'1.4px'}}>HẠNH PHẠM</div>
                   <div style={{fontSize:'11px',letterSpacing:'3px',color:'#9a763b',fontWeight:700}}>LUXURY BRIDAL</div>
