@@ -116,7 +116,20 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const loadRecords = async () => {
     try {
       setLoading(true);
-      const data = await api.quanLy.getAll(module);
+      let data = await api.quanLy.getAll(module);
+      // Migration an toàn: hợp đồng cũ đang chờ duyệt được chuyển sang đã xác nhận.
+      // Chỉ cập nhật trạng thái hợp đồng; không thay đổi phiếu thu hay trạng thái thu/chi.
+      if (module === 'HOP_DONG' && !isEmployee) {
+        const pendingContracts = data.filter((record) =>
+          ['Chờ admin duyệt', 'Chờ Admin duyệt'].includes(String(record.DuLieu?.TrangThai || '').trim())
+        );
+        for (const record of pendingContracts) {
+          await api.quanLy.update(record.QuanLyID, { TrangThai: 'Đã xác nhận' });
+        }
+        if (pendingContracts.length > 0) {
+          data = await api.quanLy.getAll(module);
+        }
+      }
       setRecords(data);
       if (module === 'HOP_DONG') {
         const receipts = await api.quanLy.getAll('THU_CHI');
