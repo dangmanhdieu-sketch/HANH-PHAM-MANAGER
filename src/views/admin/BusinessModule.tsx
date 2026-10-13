@@ -132,7 +132,57 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       }
       setRecords(data);
       if (module === 'HOP_DONG') {
-        const receipts = await api.quanLy.getAll('THU_CHI');
+        let receipts = await api.quanLy.getAll('THU_CHI');
+        // Đồng bộ tiền cọc cho hợp đồng cũ: chỉ tạo phiếu còn thiếu, không tạo trùng.
+        // Phiếu mới luôn chờ Admin duyệt; không tự duyệt hoặc tự cộng doanh thu.
+        if (!isEmployee) {
+          const receiptRows = receipts;
+          let createdCount = 0;
+          for (const contract of data) {
+            const details = contract.DuLieu || {};
+            const deposit = getContractDeposit(details);
+            if (deposit <= 0) continue;
+            const contractCode = String(details.MaHopDong || contract.QuanLyID || '');
+            const contractName = String(details.KhachHang || '');
+            const hasDepositReceipt = receiptRows.some((receipt) => {
+              const d = receipt.DuLieu || {};
+              if (String(d.Loai || '').toUpperCase() !== 'THU') return false;
+              const source = String(d.NguonTao || '');
+              const linkedId = String(d.HopDongQuanLyID || '');
+              const linkedCode = String(d.MaHopDong || d.HopDongID || '');
+              const description = String(d.NoiDungThu || d.DanhMuc || d.GhiChu || '').toLowerCase();
+              const linkedToContract = linkedId === String(contract.QuanLyID) || (!!contractCode && linkedCode === contractCode);
+              const clearlyDeposit = source === 'TIEN_COC_HOP_DONG' || (description.includes('cọc') && linkedToContract);
+              return clearlyDeposit && (linkedToContract || source === 'TIEN_COC_HOP_DONG');
+            });
+            if (hasDepositReceipt) continue;
+            await api.quanLy.create('THU_CHI', {
+              Ngay: String(details.NgayTao || getTodayLocal()).slice(0, 10),
+              Loai: 'THU',
+              DanhMuc: `Thu tiền cọc · ${contractCode} · ${contractName}`,
+              NoiDungThu: `Thu tiền cọc hợp đồng ${contractCode} - ${contractName}`,
+              SoTien: deposit,
+              HopDongID: contractCode,
+              MaHopDong: contractCode,
+              TenHopDong: contractName,
+              DoiTuong: contractName,
+              NhanVienID: String(details.NhanVienID || ''),
+              NhanVien: String(details.NhanVien || details.NguoiTao || ''),
+              NguoiTao: String(details.NguoiTao || details.NhanVien || 'Đồng bộ hợp đồng cũ'),
+              NguoiTaoID: String(details.NguoiTaoID || details.NhanVienID || ''),
+              PhuongThucThanhToan: String(details.PhuongThucThanhToan || 'Tiền mặt'),
+              TrangThaiDuyet: 'Chờ Admin duyệt',
+              GhiChu: `Phiếu thu cọc được đồng bộ từ hợp đồng cũ ${contractCode} - ${contractName}`,
+              NguonTao: 'TIEN_COC_HOP_DONG',
+              HopDongQuanLyID: contract.QuanLyID,
+            });
+            createdCount += 1;
+          }
+          if (createdCount > 0) {
+            receipts = await api.quanLy.getAll('THU_CHI');
+            console.info(`Đã đồng bộ ${createdCount} phiếu thu cọc từ hợp đồng cũ.`);
+          }
+        }
         setReceiptRecords(receipts);
       }
       if (module === 'THU_CHI') {
