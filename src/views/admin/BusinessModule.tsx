@@ -104,6 +104,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
 
   const [records, setRecords] = useState<QuanLyRecord[]>([]);
   const [receiptRecords, setReceiptRecords] = useState<QuanLyRecord[]>([]);
+  const [contractRecords, setContractRecords] = useState<QuanLyRecord[]>([]);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<QuanLyRecord | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -120,6 +121,10 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       if (module === 'HOP_DONG') {
         const receipts = await api.quanLy.getAll('THU_CHI');
         setReceiptRecords(receipts);
+      }
+      if (module === 'THU_CHI') {
+        const contracts = await api.quanLy.getAll('HOP_DONG');
+        setContractRecords(contracts.filter((r) => !['Đã hủy', 'Hủy'].includes(String(r.DuLieu?.TrangThai || ''))));
       }
     } catch (error: any) {
       alert(error?.message || 'Không thể tải dữ liệu.');
@@ -218,6 +223,10 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
 
     try {
       const payload: Record<string, any> = { ...formData };
+      if (module === 'THU_CHI' && !editing && payload.Loai === 'THU' && payload.HopDongQuanLyID) {
+        const linked = contractRecords.find((r) => r.QuanLyID === String(payload.HopDongQuanLyID));
+        if (linked) { const d = linked.DuLieu || {}; payload.HopDongID = String(d.MaHopDong || linked.QuanLyID); payload.MaHopDong = payload.HopDongID; payload.TenHopDong = String(d.KhachHang || ''); payload.DoiTuong = payload.TenHopDong; payload.NguonTao = 'THU_TU_HOP_DONG'; }
+      }
       if (module === 'THU_CHI' && isEmployee && !editing) {
         payload.NhanVienID = currentUser?.NhanVienID || '';
         payload.NhanVien = loggedInStaffName;
@@ -246,30 +255,26 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       } else {
         const createdRecord = await api.quanLy.create(module, payload);
 
-        // Khi nhân viên tạo hợp đồng có tiền cọc, tự sinh phiếu thu chờ Admin duyệt.
-        // Admin tạo hợp đồng thì không cần phiếu chờ duyệt.
-        if (module === 'HOP_DONG' && isEmployee) {
+        // Tự tạo phiếu thu cho khoản cọc trên hợp đồng, bất kể người tạo.
+        // Mọi khoản thu từ hợp đồng đều chờ Admin duyệt trước khi tính doanh thu.
+        if (module === 'HOP_DONG') {
           const deposit = getContractDeposit(payload);
           if (deposit > 0) {
             const savedContract = createdRecord?.DuLieu || payload;
             const contractCode = String(savedContract.MaHopDong || payload.MaHopDong || createdRecord?.QuanLyID || '');
+            const contractName = String(savedContract.KhachHang || payload.KhachHang || '');
             await api.quanLy.create('THU_CHI', {
-              Ngay: getTodayLocal(),
-              Loai: 'THU',
-              DanhMuc: `Thu tiền cọc hợp đồng ${contractCode}`,
-              NoiDungThu: `Thu tiền cọc hợp đồng ${contractCode}`,
-              SoTien: deposit,
-              HopDongID: contractCode,
-              DoiTuong: payload.KhachHang || '',
-              NhanVienID: currentUser?.NhanVienID || '',
-              NhanVien: loggedInStaffName,
-              NguoiTao: loggedInStaffName,
-              NguoiTaoID: currentUser?.NhanVienID || '',
+              Ngay: getTodayLocal(), Loai: 'THU',
+              DanhMuc: `Thu tiền cọc · ${contractCode} · ${contractName}`,
+              NoiDungThu: `Thu tiền cọc hợp đồng ${contractCode} - ${contractName}`,
+              SoTien: deposit, HopDongID: contractCode, MaHopDong: contractCode,
+              TenHopDong: contractName, DoiTuong: contractName,
+              NhanVienID: currentUser?.NhanVienID || '', NhanVien: loggedInStaffName,
+              NguoiTao: loggedInStaffName, NguoiTaoID: currentUser?.NhanVienID || '',
               PhuongThucThanhToan: payload.PhuongThucThanhToan || 'Tiền mặt',
               TrangThaiDuyet: 'Chờ Admin duyệt',
-              GhiChu: `Phiếu thu tự tạo từ hợp đồng ${contractCode}`,
-              NguonTao: 'TIEN_COC_HOP_DONG',
-              HopDongQuanLyID: createdRecord?.QuanLyID || '',
+              GhiChu: `Phiếu thu tự tạo từ hợp đồng ${contractCode} - ${contractName}`,
+              NguonTao: 'TIEN_COC_HOP_DONG', HopDongQuanLyID: createdRecord?.QuanLyID || '',
             });
           }
         }
@@ -565,8 +570,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                   <input inputMode="numeric" value={formatMoneyInput(formData.SoTien ?? '')} onChange={e=>setFormData({...formData,SoTien:parseMoneyInput(e.target.value)})} className="w-full border rounded-lg px-3 py-2 text-sm" required /></div>
                 <div><label className="block text-xs font-semibold mb-1">Phương thức thanh toán</label>
                   <select value={String(formData.PhuongThucThanhToan ?? 'Tiền mặt')} onChange={e=>setFormData({...formData,PhuongThucThanhToan:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option>Tiền mặt</option><option>Chuyển khoản</option></select></div>
-                <div><label className="block text-xs font-semibold mb-1">Mã hợp đồng liên quan</label>
-                  <input value={String(formData.HopDongID ?? '')} onChange={e=>setFormData({...formData,HopDongID:e.target.value})} placeholder="Có thể bỏ trống" className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="block text-xs font-semibold mb-1">Liên kết hợp đồng</label>
+                  <select value={String(formData.HopDongQuanLyID || '')} onChange={e=>{const contract=contractRecords.find(r=>r.QuanLyID===e.target.value);const d=contract?.DuLieu||{};const code=String(d.MaHopDong||contract?.QuanLyID||'');const name=String(d.KhachHang||'');setFormData({...formData,HopDongQuanLyID:contract?.QuanLyID||'',HopDongID:code,MaHopDong:code,TenHopDong:name,DoiTuong:name,DanhMuc:cashflowType==='THU'?(`Thu tiền hợp đồng ${code} - ${name}`):String(formData.DanhMuc||''),NoiDungThu:cashflowType==='THU'?(`Thu tiền hợp đồng ${code} - ${name}`):String(formData.NoiDungThu||'')})}} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option value="">-- Không liên kết hợp đồng --</option>{contractRecords.map(r=>{const d=r.DuLieu||{};return <option key={r.QuanLyID} value={r.QuanLyID}>{String(d.MaHopDong||r.QuanLyID)} · {String(d.KhachHang||'Chưa có tên')}</option>})}</select>{formData.HopDongID && <p className="text-xs text-stone-500 mt-1">Mã: {String(formData.HopDongID)} · Khách hàng: {String(formData.TenHopDong||formData.DoiTuong||'')}</p>}</div>
                 <div>
                   <label className="block text-xs font-semibold mb-2">Ảnh chứng từ</label>
                   <div className="flex flex-wrap gap-2">
