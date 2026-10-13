@@ -657,10 +657,79 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
           <div className="max-w-6xl mx-auto p-4 sm:p-8 space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <button type="button" onClick={() => setSelectedContract(null)} className="inline-flex items-center gap-2 text-sm text-stone-400 hover:text-white"><X className="w-4 h-4"/> Quay lại danh sách hợp đồng</button>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500"><FileText className="w-4 h-4"/> Tải hợp đồng PDF</button>
                 <button type="button" onClick={() => { const r = selectedContract; setSelectedContract(null); openEdit(r); }} className="inline-flex items-center gap-2 rounded-xl border border-stone-700 px-4 py-2 text-sm hover:bg-stone-800"><Edit3 className="w-4 h-4"/> Sửa hợp đồng</button>
-                </div>
+              </div>
             </div>
+            <style>{`@media print {
+              @page { size: A4; margin: 14mm; }
+              body * { visibility: hidden !important; }
+              .contract-print-sheet, .contract-print-sheet * { visibility: visible !important; }
+              .contract-print-sheet { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: #fff !important; color: #202020 !important; font-family: Arial, sans-serif !important; font-size: 10pt !important; }
+              .contract-print-sheet h1, .contract-print-sheet h2, .contract-print-sheet h3, .contract-print-sheet p { color: #202020 !important; }
+              .contract-print-sheet table { width: 100%; border-collapse: collapse; }
+              .contract-print-sheet th, .contract-print-sheet td { border: 1px solid #c9c2b8; padding: 7px; text-align: left; }
+              .contract-print-sheet th { background: #f4efe7 !important; }
+              .contract-print-sheet .print-no-break { break-inside: avoid; }
+            }
+            @media screen { .contract-print-sheet { display: none; } }`}</style>
+            <article className="contract-print-sheet">
+              <header style={{display:'flex',alignItems:'center',gap:'16px',borderBottom:'3px solid #b08a45',paddingBottom:'14px',marginBottom:'18px'}}>
+                <div style={{width:'66px',height:'66px',border:'2px solid #b08a45',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px',fontWeight:700,color:'#9a763b',flexShrink:0}}>HP</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'19px',fontWeight:700,letterSpacing:'1.4px'}}>HẠNH PHẠM</div>
+                  <div style={{fontSize:'11px',letterSpacing:'3px',color:'#9a763b',fontWeight:700}}>LUXURY BRIDAL</div>
+                  <div style={{fontSize:'9px',marginTop:'5px'}}>HỢP ĐỒNG DỊCH VỤ CƯỚI · Mã hợp đồng: {code}</div>
+                </div>
+                <div style={{textAlign:'right',fontSize:'9px'}}><b>HỢP ĐỒNG</b><br/>Ngày lập: {String(d.NgayTao || selectedContract.CapNhatLuc || '').slice(0,10) || '—'}<br/>Trạng thái: {getStatus(selectedContract)}</div>
+              </header>
+              <h1 style={{textAlign:'center',fontSize:'17px',fontWeight:700,margin:'12px 0 4px'}}>HỢP ĐỒNG DỊCH VỤ CƯỚI</h1>
+              <p style={{textAlign:'center',fontSize:'10px',marginBottom:'18px'}}>Số: {code}</p>
+              <p style={{lineHeight:1.65}}>Hôm nay, ngày {String(d.NgayTao || selectedContract.CapNhatLuc || '').slice(0,10) || '……/……/………'}, hai bên cùng thống nhất lập hợp đồng dịch vụ với các nội dung dưới đây:</p>
+              <section className="print-no-break" style={{marginTop:'12px'}}>
+                <h2 style={{fontSize:'12px',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'5px'}}>ĐIỀU 1. THÔNG TIN CÁC BÊN</h2>
+                <p style={{lineHeight:1.7}}><b>BÊN A – ĐƠN VỊ CUNG CẤP DỊCH VỤ:</b> HẠNH PHẠM Luxury Bridal<br/>Đại diện/nhân viên phụ trách: {String(d.NhanVien || staffList.find(s=>s.NhanVienID===d.NhanVienID)?.HoTen || '………………………………')}<br/>Địa chỉ: ………………………………………………………………………………………<br/>Điện thoại: …………………………………………………………………………………</p>
+                <p style={{lineHeight:1.7}}><b>BÊN B – KHÁCH HÀNG:</b><br/>Tên cô dâu/chú rể: {customer}<br/>Số điện thoại: {String(d.SDT || '………………………………')}<br/>Địa chỉ: {String(d.DiaChi || '………………………………')}</p>
+              </section>
+              <section className="print-no-break" style={{marginTop:'12px'}}>
+                <h2 style={{fontSize:'12px',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'5px'}}>ĐIỀU 2. NỘI DUNG DỊCH VỤ VÀ LỊCH CƯỚI</h2>
+                <table><tbody>
+                  <tr><th>Loại dịch vụ</th><td>{String(d.LoaiDichVu || 'Dịch vụ cưới')}</td><th>Gói dịch vụ</th><td>{String(d.GoiDichVu || '—')}</td></tr>
+                  <tr><th>Ngày cưới nhà trai</th><td>{String(d.NgayCuoiNhaTrai || '—')}</td><th>Ngày cưới nhà gái</th><td>{String(d.NgayCuoiNhaGai || '—')}</td></tr>
+                  <tr><th>Yêu cầu / ghi chú</th><td colSpan={3}>{String(d.GhiChu || 'Theo nội dung hai bên thống nhất')}</td></tr>
+                </tbody></table>
+              </section>
+              <section style={{marginTop:'12px'}}>
+                <h2 style={{fontSize:'12px',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'5px'}}>ĐIỀU 3. GIÁ TRỊ HỢP ĐỒNG VÀ THANH TOÁN</h2>
+                <table><tbody>
+                  <tr><th>Giá gói ban đầu</th><td>{money(d.GiaGoiBanDau ?? d.TongGiaTri)}</td><th>Giảm giá trực tiếp</th><td>{money(d.GiamGiaTrucTiep)}</td></tr>
+                  <tr><th>Chiết khấu</th><td>{d.ChietKhauPhanTram ? String(d.ChietKhauPhanTram)+'%' : '0%'}</td><th>Phụ thu dịch vụ</th><td>{money(d.PhuThuDichVu)}</td></tr>
+                  <tr><th colSpan={3}>TỔNG GIÁ TRỊ HỢP ĐỒNG</th><td><b>{money(value)}</b></td></tr>
+                  <tr><th colSpan={3}>Đã thu được Admin duyệt</th><td>{money(collected)}</td></tr>
+                  <tr><th colSpan={3}>Còn phải thanh toán</th><td>{money(Math.max(0,value-collected))}</td></tr>
+                </tbody></table>
+                <table style={{marginTop:'10px'}}><thead><tr><th>Đợt thanh toán</th><th>Hạn thanh toán</th><th>Số tiền dự kiến</th><th>Ghi chú</th></tr></thead><tbody>
+                  {(Array.isArray(d.LichThanhToan)?d.LichThanhToan:[]).length ? (d.LichThanhToan as any[]).map((p:any,i:number)=><tr key={i}><td>{p.TenDot || 'Đợt '+(i+1)}</td><td>{p.HanThanhToan || '—'}</td><td>{money(p.SoTienDuKien)}</td><td>{p.GhiChu || '—'}</td></tr>) : <tr><td colSpan={4}>Lịch thanh toán theo thỏa thuận giữa hai bên.</td></tr>}
+                </tbody></table>
+              </section>
+              <section style={{marginTop:'12px'}}>
+                <h2 style={{fontSize:'12px',fontWeight:700,borderBottom:'1px solid #b08a45',paddingBottom:'5px'}}>ĐIỀU 4. THỎA THUẬN CHUNG</h2>
+                <ol style={{paddingLeft:'18px',lineHeight:1.65}}>
+                  <li>Bên A thực hiện dịch vụ theo gói, lịch và các nội dung đã thống nhất trong hợp đồng này.</li>
+                  <li>Bên B thanh toán theo các đợt và số tiền đã thỏa thuận; các khoản thanh toán được xác nhận bằng phiếu thu.</li>
+                  <li>Mọi thay đổi về dịch vụ, thời gian, chi phí hoặc yêu cầu phát sinh cần được hai bên xác nhận trước khi thực hiện.</li>
+                  <li>Việc thay đổi lịch, hủy dịch vụ, hoàn/không hoàn tiền và xử lý phát sinh thực hiện theo thỏa thuận bằng văn bản được hai bên xác nhận và quy định pháp luật hiện hành.</li>
+                  <li>Hợp đồng có hiệu lực khi hai bên ký xác nhận; hợp đồng được lập thành hai bản có giá trị như nhau, mỗi bên giữ một bản.</li>
+                </ol>
+                <p style={{marginTop:'8px',fontSize:'9px',fontStyle:'italic'}}>Lưu ý: Các điều khoản cần được hai bên rà soát và bổ sung thông tin địa chỉ, chính sách đổi lịch/hủy dịch vụ cụ thể trước khi ký chính thức.</p>
+              </section>
+              <section className="print-no-break" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'28px',marginTop:'30px',textAlign:'center'}}>
+                <div><b>ĐẠI DIỆN BÊN A</b><p style={{fontSize:'9px',marginTop:'4px'}}>(Ký, ghi rõ họ tên)</p><div style={{height:'76px'}}></div><b>HẠNH PHẠM Luxury Bridal</b></div>
+                <div><b>ĐẠI DIỆN BÊN B – KHÁCH HÀNG</b><p style={{fontSize:'9px',marginTop:'4px'}}>(Ký, ghi rõ họ tên)</p><div style={{height:'76px'}}></div><b>{customer}</b></div>
+              </section>
+              <footer style={{borderTop:'1px solid #b08a45',marginTop:'18px',paddingTop:'8px',textAlign:'center',fontSize:'8px',color:'#666'}}>HẠNH PHẠM Luxury Bridal · Hợp đồng {code} · Vui lòng kiểm tra thông tin trước khi ký</footer>
+            </article>
             <div className="rounded-2xl border border-stone-800 bg-gradient-to-br from-stone-900 to-stone-950 p-6 sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-500">Chi tiết hợp đồng</p><h1 className="mt-2 text-3xl font-bold">{code}</h1><p className="mt-2 text-lg text-stone-300">{customer}</p><p className="mt-1 text-sm text-stone-500">Ngày tạo: {String(d.NgayTao || selectedContract.CapNhatLuc || '').slice(0,10) || '—'}</p></div>
