@@ -924,23 +924,27 @@ class DatabaseService {
 
     this.db.NHANVIEN[index] = updated;
 
-    // Sync HoTen / Email to related tables if updated
+    // Sync employee name to related tables when it changes.
     if (updated.HoTen !== current.HoTen) {
       this.db.CHAMCONG.forEach((cc) => {
         if (cc.NhanVienID === id) cc.HoTen = updated.HoTen;
       });
       this.db.LUONG.forEach((l) => {
-        if (l.NhanVienID === id) {
-          l.HoTen = updated.HoTen;
-          // If Luong is still Chờ duyệt, update LuongCoBan if changed
-          if (l.TrangThai === 'Chờ duyệt') {
-            l.LuongCoBan = updated.LuongCoBan;
-            this.recalculateLuong(l);
-          }
-        }
+        if (l.NhanVienID === id) l.HoTen = updated.HoTen;
       });
       this.db.HOAHONG.forEach((hh) => {
         if (hh.NhanVienID === id) hh.HoTen = updated.HoTen;
+      });
+    }
+
+    // Salary edits must also update every unpaid payroll row, even when the employee name did not change.
+    // Approved/paid rows are kept as historical records.
+    if (updated.LuongCoBan !== current.LuongCoBan) {
+      this.db.LUONG.forEach((l) => {
+        if (l.NhanVienID === id && l.TrangThai === 'Chờ duyệt') {
+          l.LuongCoBan = updated.LuongCoBan;
+          this.recalculateLuong(l);
+        }
       });
     }
 
