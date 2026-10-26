@@ -1450,7 +1450,7 @@ class DatabaseService {
         if (!nv) throw new Error('Không tìm thấy nhân viên để điều chỉnh tạm ứng.');
         const [month, year] = luong.Thang.split('/');
         const today = new Date();
-        const date = `${year}-${month}-${String(today.getDate()).padStart(2, '0')}`;
+        const date = `${year}-${month}-01`;
         this.db.TAM_UNG.unshift({
           TamUngID: `TU-ADJ-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
           NhanVienID: luong.NhanVienID,
