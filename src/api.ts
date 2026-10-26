@@ -857,6 +857,17 @@ export const api = {
     },
 
     // -------------------------------------------------------
+    // RESTORE BACKUP
+    // -------------------------------------------------------
+
+    async restoreBackup(data: unknown): Promise<{ message: string }> {
+      return request<{ message: string }>('/api/backup/restore', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    // -------------------------------------------------------
     // RESET DEMO DATA
     // -------------------------------------------------------
 
