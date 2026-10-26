@@ -618,7 +618,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                 <div className="px-4 py-3 bg-[#FAF8F5] border-b border-[#E7DFD5] flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-stone-700">Lịch sử tạm ứng {selectedMonth ? 'tháng ' + selectedMonth : ''}</span>
                   <span className="text-xs font-mono font-bold text-orange-700">
-                    Tổng: {tamUngList.reduce((sum, item) => sum + Number(item.SoTien || 0), 0).toLocaleString('vi-VN')} đ
+                    Đã duyệt: {tamUngList.filter(item => !item.TrangThai || item.TrangThai === 'Đã duyệt').reduce((sum, item) => sum + Number(item.SoTien || 0), 0).toLocaleString('vi-VN')} đ
                   </span>
                 </div>
                 <div className="max-h-64 overflow-y-auto">
