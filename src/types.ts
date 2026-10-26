@@ -59,6 +59,10 @@ export interface TamUng {
   GhiChu?: string;
   TaoLuc: string;
   TaoBoi: string;
+  TrangThai?: 'Chờ duyệt' | 'Đã duyệt' | 'Từ chối';
+  NgayDuyet?: string;
+  NguoiDuyet?: string;
+  LyDoTuChoi?: string;
 }
 
 export interface Luong {
