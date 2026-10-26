@@ -80,6 +80,20 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
   // ============================================================
   const activeLogo = logoUrl || customLogo;
 
+  // Đồng bộ logo đã chọn với biểu tượng tab trình duyệt (favicon).
+  useEffect(() => {
+    const favicon = document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
+    if (!favicon) return;
+
+    if (activeLogo) {
+      favicon.href = activeLogo;
+      favicon.type = activeLogo.startsWith('data:image/svg+xml') ? 'image/svg+xml' : 'image/png';
+    } else {
+      favicon.href = '/favicon.svg';
+      favicon.type = 'image/svg+xml';
+    }
+  }, [activeLogo]);
+
   return (
     <div
       className={`
@@ -99,13 +113,10 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
       <div
         className={`
           ${sizeMap[size]}
-          bg-black
-          text-white
-          rounded-2xl
+          \${activeLogo ? 'bg-transparent rounded-none p-0 border-0 shadow-none' : 'bg-black text-white rounded-2xl p-2 border border-stone-800 shadow-md'}
           flex
           items-center
           justify-center
-          p-2
           relative
           flex-shrink-0
           transition-transform
@@ -113,9 +124,6 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
           hover:scale-105
           group
           overflow-hidden
-          border
-          border-stone-800
-          shadow-md
         `}
       >
         {activeLogo ? (
