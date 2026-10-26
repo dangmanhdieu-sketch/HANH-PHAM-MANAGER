@@ -454,7 +454,6 @@ function AppContent() {
             )}
 
             {currentTab === 'congviec' && <BusinessModule module="CONG_VIEC" staffList={staffList} onRefresh={refreshAllData} />}
-            {currentTab === 'vaycuoi' && <BusinessModule module="VAY_CUOI" staffList={staffList} onRefresh={refreshAllData} />}
             {currentTab === 'hopdong' && <BusinessModule module="HOP_DONG" staffList={staffList} currentUser={currentUser} onRefresh={refreshAllData} />}
             {currentTab === 'thuchi' && <BusinessModule module="THU_CHI" staffList={staffList} currentUser={currentUser} onRefresh={refreshAllData} />}
             {currentTab === 'thietlap' && (
