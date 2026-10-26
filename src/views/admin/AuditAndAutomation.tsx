@@ -216,7 +216,7 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
           </div>
           <div className="rounded-xl border border-dashed border-stone-300 p-4 space-y-3">
             <p className="font-semibold text-sm">Logo thương hiệu</p>
-            <div className={`w-full ${previewTheme.logoSize === "sm" ? "h-24" : previewTheme.logoSize === "md" ? "h-32" : previewTheme.logoSize === "lg" ? "h-44" : "h-56"}`} rounded-lg border border-stone-200 bg-white flex items-center justify-center overflow-hidden p-3 transition-all">
+            <div className={`w-full ${previewTheme.logoSize === "sm" ? "h-24" : previewTheme.logoSize === "md" ? "h-32" : previewTheme.logoSize === "lg" ? "h-44" : "h-56"} rounded-lg border border-stone-200 bg-white flex items-center justify-center overflow-hidden p-3 transition-all`}>
               {(logoPreview || previewTheme.customLogoUrl) ? <img src={logoPreview || previewTheme.customLogoUrl} alt="Logo thương hiệu" className="max-w-full max-h-full object-contain"/> : <ImagePlus className="w-10 h-10 text-[#bf954f]"/>}
             </div>
             <p className="text-xs text-stone-500">Chọn ảnh PNG, JPG, WebP hoặc SVG, tối đa 2 MB. Logo này dùng chung cho tiêu đề ứng dụng và biểu tượng tab trình duyệt trên trình duyệt hiện tại.</p>
