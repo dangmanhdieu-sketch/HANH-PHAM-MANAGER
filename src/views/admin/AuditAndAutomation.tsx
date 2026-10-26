@@ -110,13 +110,8 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
 
   const handleDownloadBackup = async () => {
     try {
-      const blob = await api.system.downloadBackup();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `backup_hanhphambridal_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      window.URL.revokeObjectURL(url);
+      // The API method handles the authenticated download and browser save itself.
+      await api.system.downloadBackup();
     } catch (err: any) {
       alert(err.message || 'Không thể tải bản backup');
     }
