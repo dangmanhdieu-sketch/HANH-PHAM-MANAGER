@@ -432,6 +432,10 @@ export const api = {
       );
     },
 
+    async delete(id: string): Promise<{ message: string }> {
+      return request(`/api/luong/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
+
     async updateDetail(
       id: string,
       updates: Partial<Luong>

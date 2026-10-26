@@ -162,6 +162,21 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     });
   };
 
+  const handleDeleteLuong = async (luong: Luong) => {
+    if (luong.TrangThai !== 'Chờ duyệt') {
+      alert('Chỉ có thể xóa bảng lương đang Chờ duyệt. Bảng lương đã duyệt hoặc đã thanh toán được giữ để bảo toàn lịch sử.');
+      return;
+    }
+    if (!window.confirm(`Bạn có chắc muốn xóa bảng lương của ${luong.HoTen} kỳ ${luong.Thang}? Thao tác này không thể hoàn tác.`)) return;
+    try {
+      await api.payroll.delete(luong.LuongID);
+      onRefresh();
+      alert('Đã xóa bảng lương.');
+    } catch (err: any) {
+      alert(err.message || 'Không thể xóa bảng lương.');
+    }
+  };
+
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingLuong) return;
@@ -423,6 +438,30 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                             ĐÃ THANH TOÁN
                           </button>
                         )}
+
+                        {/* Nút chỉnh sửa luôn nằm ở từng dòng; bảng lương đã thanh toán bị khóa */}
+                        {l.TrangThai !== 'Chờ duyệt' && (
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(l)}
+                            disabled={l.TrangThai === 'Đã thanh toán'}
+                            className="p-1.5 text-stone-500 hover:text-[#a97d3e] hover:bg-stone-100 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={l.TrangThai === 'Đã thanh toán' ? 'Bảng lương đã thanh toán, không thể chỉnh sửa' : 'Chỉnh sửa bảng lương'}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* Nút xóa luôn hiển thị; chỉ xóa được kỳ chưa duyệt */}
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteLuong(l)}
+                          disabled={l.TrangThai !== 'Chờ duyệt'}
+                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
+                          title={l.TrangThai === 'Chờ duyệt' ? 'Xóa bảng lương này' : 'Chỉ được xóa bảng lương đang Chờ duyệt'}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
 
                         {/* If Đã thanh toán: Locked */}
                         {l.TrangThai === 'Đã thanh toán' && (

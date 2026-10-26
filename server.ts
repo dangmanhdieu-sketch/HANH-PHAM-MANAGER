@@ -714,6 +714,19 @@ app.post('/api/luong/tao-thang', authenticateToken, requireAdmin, (req: AuthRequ
   }
 });
 
+// Delete an unpaid, unapproved salary row only; preserve approved/paid payroll history.
+app.delete('/api/luong/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const result = dbService.deleteLuong(req.params.id, {
+      HoTen: req.user!.HoTen,
+      Email: req.user!.Email,
+    });
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
 // Update salary detail
 app.put('/api/luong/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   try {
