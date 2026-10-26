@@ -1316,7 +1316,8 @@ class DatabaseService {
       const soGioLam = attendance.reduce((sum, cc) => sum + (cc.SoGioLam || 0), 0);
       const ngayNghi = attendance.filter((cc) => cc.TrangThai === 'Nghỉ' || cc.TrangThai === 'Nghỉ phép').length;
       const ngayDiTre = attendance.filter((cc) => cc.TrangThai === 'Đi trễ').length;
-      const donGiaNgay = Math.max(0, Number(nv.LuongCoBan || 0)) / 26;
+      // Studio operates every day; calculate daily deductions using a 30-day month.
+      const donGiaNgay = Math.max(0, Number(nv.LuongCoBan || 0)) / 30;
       const ngayNghiVuotMien = Math.max(0, ngayNghi - 2);
       const khauTruNghi = Math.round(ngayNghiVuotMien * donGiaNgay);
       const khauTruDiTre = Math.round(ngayDiTre * donGiaNgay * 0.5);
