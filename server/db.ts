@@ -1346,6 +1346,20 @@ class DatabaseService {
     return { createdCount, skippedCount, createdItems, skippedItems };
   }
 
+  public deleteLuong(luongId: string, adminUser: { HoTen: string; Email: string }): { message: string } {
+    const index = this.db.LUONG.findIndex((item) => item.LuongID === luongId);
+    if (index < 0) throw new Error('Không tìm thấy bảng lương.');
+    const luong = this.db.LUONG[index];
+    if (luong.TrangThai !== 'Chờ duyệt') {
+      throw new Error('Chỉ được xóa bảng lương đang Chờ duyệt. Bảng lương đã duyệt hoặc đã thanh toán được giữ để bảo toàn lịch sử.');
+    }
+    this.db.LUONG.splice(index, 1);
+    this.refreshKPIs();
+    this.save();
+    this.logAudit(adminUser.HoTen, adminUser.Email, 'Xóa bảng lương', `Xóa bảng lương ${luong.LuongID} của ${luong.HoTen}, kỳ ${luong.Thang}`);
+    return { message: 'Đã xóa bảng lương đang chờ duyệt.' };
+  }
+
   public updateLuongDetail(
     luongId: string,
     updates: Partial<Luong>,
