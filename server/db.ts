@@ -1041,16 +1041,19 @@ class DatabaseService {
       throw new Error(`Bạn đã Check-in hôm nay lúc ${record.CheckIn}. Không thể Check-in lại!`);
     }
 
-    // Evaluate on-time or late based on config (08:30)
-    const [h, m] = this.db.SYSTEM_CONFIG.GioVaoCaChuan.split(':').map(Number);
-    const standardCheckInMinutes = h * 60 + m;
+    // Attendance policy: on time through 08:30; late after 08:30; after 13:00 counts as a full-day absence.
     const currentMinutes = zoned.hour * 60 + zoned.minute;
-
+    const morningDeadlineMinutes = 8 * 60 + 30;
+    const afternoonAbsenceMinutes = 13 * 60;
     let trangThai: ChamCong['TrangThai'] = 'Có mặt';
-    if (currentMinutes > standardCheckInMinutes) {
+    let policyNote = '';
+    if (currentMinutes >= afternoonAbsenceMinutes) {
+      trangThai = 'Nghỉ';
+      policyNote = 'Check-in sau 13:00: tính nghỉ cả ngày theo quy định chấm công.';
+    } else if (currentMinutes > morningDeadlineMinutes) {
       trangThai = 'Đi trễ';
+      policyNote = 'Check-in sau 08:30: tính nửa ngày công theo quy định chấm công.';
     }
-
     const chamCongId = `CC-${todayStr.replace(/-/g, '')}-${user.NhanVienID}`;
 
     if (!record) {
@@ -1065,7 +1068,7 @@ class DatabaseService {
         GPSCheckIn: data.gps,
         SoGioLam: 0,
         TrangThai: trangThai,
-        GhiChu: data.ghiChu || '',
+        GhiChu: [data.ghiChu, policyNote].filter(Boolean).join(' | '),
       };
       this.db.CHAMCONG.unshift(record);
     } else {
@@ -1073,7 +1076,7 @@ class DatabaseService {
       record.AnhCheckIn = data.anh;
       record.GPSCheckIn = data.gps;
       record.TrangThai = trangThai;
-      if (data.ghiChu) record.GhiChu = data.ghiChu;
+      if (data.ghiChu || policyNote) record.GhiChu = [data.ghiChu, policyNote].filter(Boolean).join(' | ');
     }
 
     this.refreshKPIs();
@@ -1302,13 +1305,22 @@ class DatabaseService {
         continue;
       }
 
-      // Calculate attendance statistics for this employee in this month
+      // Calculate attendance and payroll deductions for the month.
       const attendance = this.db.CHAMCONG.filter(
         (cc) => cc.NhanVienID === nv.NhanVienID && cc.Ngay.startsWith(monthPrefix)
       );
-      const soNgayCong = attendance.filter((cc) => cc.CheckIn).length;
+      const soNgayCong = attendance.reduce((sum, cc) => {
+        if (!cc.CheckIn || cc.TrangThai === 'Nghỉ') return sum;
+        return sum + (cc.TrangThai === 'Đi trễ' || cc.TrangThai === 'Về sớm' ? 0.5 : 1);
+      }, 0);
       const soGioLam = attendance.reduce((sum, cc) => sum + (cc.SoGioLam || 0), 0);
-
+      const ngayNghi = attendance.filter((cc) => cc.TrangThai === 'Nghỉ' || cc.TrangThai === 'Nghỉ phép').length;
+      const ngayDiTre = attendance.filter((cc) => cc.TrangThai === 'Đi trễ').length;
+      const donGiaNgay = Math.max(0, Number(nv.LuongCoBan || 0)) / 26;
+      const ngayNghiVuotMien = Math.max(0, ngayNghi - 2);
+      const khauTruNghi = Math.round(ngayNghiVuotMien * donGiaNgay);
+      const khauTruDiTre = Math.round(ngayDiTre * donGiaNgay * 0.5);
+      const tongKhauTruChamCong = khauTruNghi + khauTruDiTre;
       // Sum approved commissions for this month
       const approvedCommissions = this.db.HOAHONG.filter(
         (hh) =>
@@ -1330,13 +1342,13 @@ class DatabaseService {
         PhuCap: 0,
         Thuong: 0,
         HoaHong: tongHoaHong,
-        Phat: 0,
+        Phat: tongKhauTruChamCong,
         TamUng: this.getTongTamUng(nv.NhanVienID, thang),
         TongLuong: 0,
         ThucLanh: 0,
         TrangThai: 'Chờ duyệt',
         NgayTao: new Date().toISOString(),
-        GhiChu: `Bảng lương ${thang} tạo tự động`,
+        GhiChu: `Bảng lương ${thang} tạo tự động. Khấu trừ chấm công: nghỉ ${ngayNghi} ngày (miễn 2 ngày, trừ ${khauTruNghi.toLocaleString('vi-VN')}đ); đi trễ ${ngayDiTre} lần (trừ ${khauTruDiTre.toLocaleString('vi-VN')}đ).`,
       };
 
       this.recalculateLuong(newLuong);
