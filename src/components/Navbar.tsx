@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from '../context/ThemeContext';
 import {
   Bell,
   LogOut,
@@ -41,6 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   notifications,
   onMarkReadNotifications,
 }) => {
+  const { theme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [switchDropdownOpen, setSwitchDropdownOpen] = useState(false);
@@ -174,7 +176,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <div className="shrink-0">
               <HanhPhamLogo
-                size="sm"
+                size={theme.logoSize}
                 variant="gold"
               />
             </div>
@@ -438,7 +440,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* LOGO */}
             <div className="flex items-center gap-3">
               <HanhPhamLogo
-                size="md"
+                size={theme.logoSize}
                 variant="gold"
               />
 
