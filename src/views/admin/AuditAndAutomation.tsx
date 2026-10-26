@@ -199,6 +199,16 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
           <div className="space-y-4">
             <div><label className="block text-xs font-semibold mb-1">Tên thương hiệu hiển thị</label><input value={previewTheme.brandName} onChange={e=>setPreviewTheme(p=>({...p,brandName:e.target.value}))} className="w-full border border-stone-300 rounded-lg p-2.5 text-sm"/></div>
             <div><label className="block text-xs font-semibold mb-1">Slogan</label><input value={previewTheme.tagline} onChange={e=>setPreviewTheme(p=>({...p,tagline:e.target.value}))} className="w-full border border-stone-300 rounded-lg p-2.5 text-sm" placeholder="Slogan thương hiệu"/></div>
+            <div>
+              <label className="block text-xs font-semibold mb-1">Kích thước logo</label>
+              <select value={previewTheme.logoSize} onChange={e=>setPreviewTheme(p=>({...p,logoSize:e.target.value as 'sm' | 'md' | 'lg' | 'xl'}))} className="w-full border border-stone-300 rounded-lg p-2.5 text-sm">
+                <option value="sm">Nhỏ</option>
+                <option value="md">Vừa</option>
+                <option value="lg">Lớn</option>
+                <option value="xl">Rất lớn</option>
+              </select>
+              <p className="text-xs text-stone-500 mt-1">Áp dụng cho logo trên thanh tiêu đề sau khi lưu giao diện.</p>
+            </div>
             <div><label className="block text-xs font-semibold mb-1">Màu chủ đạo</label><div className="flex gap-2"><input type="color" value={previewTheme.primaryColor} onChange={e=>setPreviewTheme(p=>({...p,primaryColor:e.target.value}))} className="h-10 w-14 border rounded"/><input value={previewTheme.primaryColor} onChange={e=>setPreviewTheme(p=>({...p,primaryColor:e.target.value}))} className="flex-1 border rounded-lg p-2 text-sm"/></div></div>
             <div><label className="block text-xs font-semibold mb-1">Dòng mô tả thương hiệu</label><input value={previewTheme.brandSubtitle} onChange={e=>setPreviewTheme(p=>({...p,brandSubtitle:e.target.value}))} className="w-full border border-stone-300 rounded-lg p-2.5 text-sm" placeholder="Ví dụ: Luxury Bridal Studio"/></div>
             <div><label className="block text-xs font-semibold mb-1">Màu nền ứng dụng</label><div className="flex gap-2"><input type="color" value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="h-10 w-14 border rounded"/><input value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="flex-1 border rounded-lg p-2 text-sm"/></div></div>
@@ -206,7 +216,7 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
           </div>
           <div className="rounded-xl border border-dashed border-stone-300 p-4 space-y-3">
             <p className="font-semibold text-sm">Logo thương hiệu</p>
-            <div className="w-full h-44 rounded-lg border border-stone-200 bg-white flex items-center justify-center overflow-hidden p-3">
+            <div className={`w-full ${previewTheme.logoSize === "sm" ? "h-24" : previewTheme.logoSize === "md" ? "h-32" : previewTheme.logoSize === "lg" ? "h-44" : "h-56"} rounded-lg border border-stone-200 bg-white flex items-center justify-center overflow-hidden p-3 transition-all">
               {(logoPreview || previewTheme.customLogoUrl) ? <img src={logoPreview || previewTheme.customLogoUrl} alt="Logo thương hiệu" className="max-w-full max-h-full object-contain"/> : <ImagePlus className="w-10 h-10 text-[#bf954f]"/>}
             </div>
             <p className="text-xs text-stone-500">Chọn ảnh PNG, JPG, WebP hoặc SVG, tối đa 2 MB. Logo này dùng chung cho tiêu đề ứng dụng và biểu tượng tab trình duyệt trên trình duyệt hiện tại.</p>
