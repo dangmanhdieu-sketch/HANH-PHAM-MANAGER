@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DollarSign, Printer, CheckCircle, Clock, Sparkles, X, Shield } from 'lucide-react';
-import type { Luong, NhanVien } from '../../types';
+import type { Luong, NhanVien, TamUng } from '../../types';
+import { api } from '../../api';
 
 interface MyPayrollProps {
   currentUser: NhanVien;
@@ -11,6 +12,31 @@ interface MyPayrollProps {
 
 export const MyPayroll: React.FC<MyPayrollProps> = ({ currentUser, payrollList, isFreelancer = false, onOpenDailyClaim }) => {
   const [selectedPayslip, setSelectedPayslip] = useState<Luong | null>(payrollList[0] || null);
+  const [showAdvanceForm, setShowAdvanceForm] = useState(false);
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [advanceReason, setAdvanceReason] = useState('');
+  const [advanceSaving, setAdvanceSaving] = useState(false);
+  const [advances, setAdvances] = useState<TamUng[]>([]);
+  const [advanceLoading, setAdvanceLoading] = useState(false);
+  const loadAdvances = async () => {
+    setAdvanceLoading(true);
+    try { setAdvances(await api.tamUng.getAll()); } catch (error) { console.error('Không tải được lịch sử ứng lương', error); }
+    finally { setAdvanceLoading(false); }
+  };
+  const submitAdvance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = Number(advanceAmount.replace(/[^0-9]/g, ''));
+    if (!amount || amount <= 0) return alert('Vui lòng nhập số tiền ứng hợp lệ.');
+    if (!advanceReason.trim()) return alert('Vui lòng nhập lý do ứng lương.');
+    setAdvanceSaving(true);
+    try {
+      await api.tamUng.request({ Ngay: new Date().toISOString().slice(0, 10), SoTien: amount, LyDo: advanceReason.trim() });
+      alert('Đã gửi yêu cầu ứng lương. Khoản ứng chỉ được khấu trừ sau khi Admin duyệt.');
+      setShowAdvanceForm(false); setAdvanceAmount(''); setAdvanceReason('');
+      await loadAdvances();
+    } catch (error: any) { alert(error.message || 'Không gửi được yêu cầu ứng lương.'); }
+    finally { setAdvanceSaving(false); }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
@@ -35,7 +61,8 @@ export const MyPayroll: React.FC<MyPayrollProps> = ({ currentUser, payrollList, 
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <button type="button" onClick={() => { setShowAdvanceForm(true); void loadAdvances(); }} className="px-4 py-2.5 bg-[#a97d3e] hover:bg-[#8f682f] text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2"><DollarSign className="w-4 h-4" /> Ứng lương</button>
           <span className="font-semibold text-stone-600">Chọn kỳ lương:</span>
           <select
             value={selectedPayslip?.LuongID || ''}
@@ -54,6 +81,11 @@ export const MyPayroll: React.FC<MyPayrollProps> = ({ currentUser, payrollList, 
         </div>
       </div>
 
+      <div className="bg-white p-4 rounded-2xl border border-[#E7DFD5] shadow-sm">
+        <div className="flex items-center justify-between gap-3 mb-3"><h2 className="text-sm font-bold text-stone-800">Lịch sử ứng lương</h2><button type="button" onClick={() => void loadAdvances()} className="text-xs text-[#a97d3e] font-semibold">Làm mới</button></div>
+        {advanceLoading ? <p className="text-xs text-stone-400">Đang tải...</p> : advances.length === 0 ? <p className="text-xs text-stone-400">Chưa có yêu cầu ứng lương.</p> : <div className="space-y-2">{advances.map(item => <div key={item.TamUngID} className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2 text-xs"><div><p className="font-semibold text-stone-800">{item.Ngay} · {item.LyDo || 'Ứng lương'}</p><p className="text-stone-400">{item.TrangThai || 'Đã duyệt'}{item.LyDoTuChoi ? ' · '+item.LyDoTuChoi : ''}</p></div><span className="font-mono font-bold text-orange-700">{Number(item.SoTien).toLocaleString('vi-VN')} đ</span></div>)}</div>}
+      </div>
+      {showAdvanceForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><form onSubmit={submitAdvance} className="w-full max-w-md bg-white rounded-2xl p-6 space-y-4 shadow-2xl"><div className="flex justify-between items-center"><h2 className="text-lg font-bold text-stone-900">Yêu cầu ứng lương</h2><button type="button" onClick={() => setShowAdvanceForm(false)}><X className="w-5 h-5" /></button></div><p className="text-xs text-stone-500">Yêu cầu sẽ chờ Admin duyệt. Chỉ khoản được duyệt mới khấu trừ vào tổng lương và hoa hồng khi tính thực lãnh.</p><div><label className="block text-xs font-semibold mb-1">Số tiền muốn ứng (VNĐ)</label><input required inputMode="numeric" value={advanceAmount} onChange={e => setAdvanceAmount(e.target.value)} placeholder="VD: 2.000.000" className="w-full px-3 py-2 border rounded-lg" /></div><div><label className="block text-xs font-semibold mb-1">Lý do ứng lương</label><textarea required value={advanceReason} onChange={e => setAdvanceReason(e.target.value)} placeholder="Nhập lý do..." className="w-full px-3 py-2 border rounded-lg" rows={3} /></div><div className="flex justify-end gap-2"><button type="button" onClick={() => setShowAdvanceForm(false)} className="px-4 py-2 border rounded-lg">Hủy</button><button disabled={advanceSaving} type="submit" className="px-4 py-2 bg-stone-900 text-white rounded-lg font-bold">{advanceSaving ? 'ĐANG GỬI...' : 'GỬI YÊU CẦU'}</button></div></form></div>}
       {payrollList.length === 0 ? (
         <div className="bg-white p-12 rounded-2xl border border-[#E7DFD5] text-center space-y-3">
           <DollarSign className="w-12 h-12 mx-auto text-stone-300" />
