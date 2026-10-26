@@ -721,9 +721,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                     <td className="p-3 text-stone-700 font-semibold">
                       {module === 'THU_CHI' && record.DuLieu?.SoTien
                         ? (String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? '-' : '+') + Number(record.DuLieu.SoTien).toLocaleString('vi-VN') + ' đ'
-                        : module === 'HOP_DONG'
-                          ? `Giá trị ${Math.max(0, Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) - Number(record.DuLieu?.GiamGiaTrucTiep || 0) - Math.round(Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) * Number(record.DuLieu?.ChietKhauPhanTram || 0) / 100) - Number(record.DuLieu?.KhuyenMaiBoSung || 0) + Number(record.DuLieu?.PhuThuDichVu || 0)).toLocaleString('vi-VN')} đ · Cọc ${getContractDeposit(record.DuLieu).toLocaleString('vi-VN')} đ · Đã thu ${getContractCollected(record).toLocaleString('vi-VN')} đ · Còn ${Math.max(0, Math.max(0, Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) - Number(record.DuLieu?.GiamGiaTrucTiep || 0) - Math.round(Number(record.DuLieu?.GiaGoiBanDau ?? record.DuLieu?.TongGiaTri ?? 0) * Number(record.DuLieu?.ChietKhauPhanTram || 0) / 100) - Number(record.DuLieu?.KhuyenMaiBoSung || 0) + Number(record.DuLieu?.PhuThuDichVu || 0)) - getContractCollected(record)).toLocaleString('vi-VN')} đ`
-                          : getLink(record)}
+                        : getLink(record)}
                     </td>
                     <td className="p-3">
                       <span className={getStatus(record) === 'Đã xác nhận' || getStatus(record) === 'Hoàn thành' || getStatus(record) === 'Đã duyệt' ? 'px-2 py-1 rounded-full bg-emerald-50 text-emerald-700' : getStatus(record) === 'Đã hủy' ? 'px-2 py-1 rounded-full bg-rose-50 text-rose-700' : 'px-2 py-1 rounded-full bg-amber-50 text-amber-700'}>
@@ -733,15 +731,6 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                     <td className="p-3 text-right whitespace-nowrap">
                       {!isEmployee && (
                         <>
-                          {module === 'HOP_DONG' && ['Chờ admin duyệt','Nháp'].includes(getStatus(record)) && (
-                            <button type="button" onClick={() => void approveCashflow(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold">DUYỆT</button>
-                          )}
-                          {module === 'HOP_DONG' && (
-                            <button type="button" disabled={saving} onClick={() => void createContractPaymentReceipt(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-emerald-700 text-white text-[10px] font-bold">+ PHIẾU THU</button>
-                          )}
-                          {module === 'HOP_DONG' && !isEmployee && (
-                            <button type="button" onClick={() => void approveCashflow(record)} className="px-2.5 py-1.5 mr-1 rounded-lg bg-stone-800 text-white text-[10px] font-bold">TRẠNG THÁI</button>
-                          )}
                           {module === 'THU_CHI' && !['Đã duyệt', 'Đã thanh toán và duyệt'].includes(getStatus(record)) && (
                             <button type="button" onClick={() => void approveCashflow(record)} className={`px-2.5 py-1.5 mr-1 rounded-lg text-white text-[10px] font-bold ${String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? 'bg-rose-700' : 'bg-emerald-600'}`} title={String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? 'Xác nhận đã trả tiền và duyệt chi' : 'Duyệt phiếu thu'}>
                               {String(record.DuLieu?.Loai || '').toUpperCase() === 'CHI' ? 'ĐÃ TRẢ TIỀN & DUYỆT CHI' : 'DUYỆT THU'}
@@ -1037,7 +1026,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <div><label className="block text-xs font-semibold mb-1">Phương thức thanh toán</label>
                   <select value={String(formData.PhuongThucThanhToan ?? 'Tiền mặt')} onChange={e=>setFormData({...formData,PhuongThucThanhToan:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option>Tiền mặt</option><option>Chuyển khoản</option></select></div>
                 <div><label className="block text-xs font-semibold mb-1">Liên kết hợp đồng</label>
-                  <select value={String(formData.HopDongQuanLyID || '')} onChange={e=>{const contract=contractRecords.find(r=>r.QuanLyID===e.target.value);const d=contract?.DuLieu||{};const code=String(d.MaHopDong||contract?.QuanLyID||'');const name=String(d.KhachHang||'');setFormData({...formData,HopDongQuanLyID:contract?.QuanLyID||'',HopDongID:code,MaHopDong:code,TenHopDong:name,DoiTuong:name,DanhMuc:cashflowType==='THU'?(`Thu tiền hợp đồng ${code} - ${name}`):String(formData.DanhMuc||''),NoiDungThu:cashflowType==='THU'?(`Thu tiền hợp đồng ${code} - ${name}`):String(formData.NoiDungThu||'')})}} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option value="">-- Không liên kết hợp đồng --</option>{contractRecords.map(r=>{const d=r.DuLieu||{};return <option key={r.QuanLyID} value={r.QuanLyID}>{String(d.MaHopDong||r.QuanLyID)} · {String(d.KhachHang||'Chưa có tên')}</option>})}</select>{formData.HopDongID && <p className="text-xs text-stone-500 mt-1">Mã: {String(formData.HopDongID)} · Khách hàng: {String(formData.TenHopDong||formData.DoiTuong||'')}</p>}</div>
+                  <select value={String(formData.HopDongQuanLyID || '')} onChange={e=>{const contract=contractRecords.find(r=>r.QuanLyID===e.target.value);const d=contract?.DuLieu||{};const code=String(d.MaHopDong||contract?.QuanLyID||'');const name=String(d.KhachHang||'');setFormData({...formData,HopDongQuanLyID:contract?.QuanLyID||'',HopDongID:code,MaHopDong:code,TenHopDong:name,DoiTuong:name,DanhMuc:cashflowType==='THU'?(`Thu tiền hợp đồng ${code} - ${name}`):String(formData.DanhMuc||''),NoiDungThu:cashflowType==='THU'?(`Thu tiền hợp đồng ${code} - ${name}`):String(formData.NoiDungThu||'')})}} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option value="">-- Không liên kết hợp đồng --</option>{contractRecords.map(r=>{const d=r.DuLieu||{};return <option key={r.QuanLyID} value={r.QuanLyID}>{String(d.MaHopDong||r.QuanLyID)} · {String(d.KhachHang||'Chưa có tên')}</option>})}</select>{Boolean(formData.HopDongID) && <p className="text-xs text-stone-500 mt-1">Mã: {String(formData.HopDongID)} · Khách hàng: {String(formData.TenHopDong||formData.DoiTuong||'')}</p>}</div>
                 <div>
                   <label className="block text-xs font-semibold mb-2">Ảnh chứng từ</label>
                   <div className="flex flex-wrap gap-2">
@@ -1051,7 +1040,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                     </label>
                   </div>
                   <p className="mt-2 text-xs text-stone-600">Chọn ảnh có sẵn trong thiết bị hoặc chụp trực tiếp bằng camera điện thoại.</p>
-                  {formData.AnhChungTu && <div className="mt-3 flex items-start gap-3"><img src={String(formData.AnhChungTu)} alt="Ảnh chứng từ" className="h-24 w-24 rounded-lg object-cover border" /><button type="button" onClick={()=>setFormData({...formData,AnhChungTu:''})} className="text-xs text-rose-600 font-semibold">Xóa ảnh</button></div>}
+                  {Boolean(formData.AnhChungTu) && <div className="mt-3 flex items-start gap-3"><img src={String(formData.AnhChungTu)} alt="Ảnh chứng từ" className="h-24 w-24 rounded-lg object-cover border" /><button type="button" onClick={()=>setFormData({...formData,AnhChungTu:''})} className="text-xs text-rose-600 font-semibold">Xóa ảnh</button></div>}
                 </div>
                 <div className="sm:col-span-2"><label className="block text-xs font-semibold mb-1">Ghi chú</label>
                   <textarea value={String(formData.GhiChu ?? '')} onChange={e=>setFormData({...formData,GhiChu:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" rows={3} /></div>
