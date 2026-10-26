@@ -321,6 +321,30 @@ function getInitialData(): DatabaseSchema {
   };
 }
 
+/**
+ * Firestore rejects undefined values anywhere inside a document. Legacy records
+ * may contain optional fields with undefined values, so remove those fields
+ * before writing while preserving the rest of the record and its array order.
+ */
+function sanitizeFirestoreValue(value: any): any {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) {
+    return value.map((item) => {
+      const sanitized = sanitizeFirestoreValue(item);
+      return sanitized === undefined ? null : sanitized;
+    });
+  }
+  if (value && typeof value === 'object' && !(value instanceof Date)) {
+    const result: Record<string, any> = {};
+    for (const [key, nestedValue] of Object.entries(value)) {
+      if (nestedValue === undefined) continue;
+      result[key] = sanitizeFirestoreValue(nestedValue);
+    }
+    return result;
+  }
+  return value;
+}
+
 class DatabaseService {
   private db: DatabaseSchema;
   private firestoreSaveQueue: Promise<void> = Promise.resolve();
@@ -602,7 +626,7 @@ class DatabaseService {
         batch.set(
           rootRef.collection('tables').doc(table),
           {
-            data: value,
+            data: sanitizeFirestoreValue(value),
             updatedAt: new Date().toISOString(),
           },
           { merge: false }
