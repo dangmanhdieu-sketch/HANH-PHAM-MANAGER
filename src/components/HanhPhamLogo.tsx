@@ -113,7 +113,7 @@ export const HanhPhamLogo: React.FC<HanhPhamLogoProps> = ({
       <div
         className={`
           ${sizeMap[size]}
-          \${activeLogo ? 'bg-transparent rounded-none p-0 border-0 shadow-none' : 'bg-black text-white rounded-2xl p-2 border border-stone-800 shadow-md'}
+          ${activeLogo ? 'bg-transparent rounded-none p-0 border-0 shadow-none' : 'bg-black text-white rounded-2xl p-2 border border-stone-800 shadow-md'}
           flex
           items-center
           justify-center
