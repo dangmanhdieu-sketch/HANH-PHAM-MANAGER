@@ -17,6 +17,7 @@ import {
   Palette,
   ImagePlus,
   Building2,
+  Database,
 } from 'lucide-react';
 import type { AuditLog, SystemConfig } from '../../types';
 import { api } from '../../api';
@@ -185,7 +186,7 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
       <section className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <button type="button" onClick={()=>onNavigateToTab('nhanvien')} className="text-left bg-white border border-[#E7DFD5] rounded-xl p-4 hover:border-[#c5a059]"><Shield className="w-5 h-5 text-[#bf954f]"/><p className="font-bold text-sm mt-2">Phân quyền nhân viên</p><p className="text-xs text-stone-500 mt-1">Quản lý tài khoản, vai trò và trạng thái nhân viên.</p></button>
         <button type="button" onClick={handleDownloadBackup} className="text-left bg-white border border-[#E7DFD5] rounded-xl p-4 hover:border-[#c5a059]"><Download className="w-5 h-5 text-[#bf954f]"/><p className="font-bold text-sm mt-2">Sao chép dữ liệu</p><p className="text-xs text-stone-500 mt-1">Tải bản sao lưu dữ liệu để lưu trữ an toàn.</p></button>
-        <button type="button" onClick={()=>onNavigateToTab('thuchi')} className="text-left bg-white border border-[#E7DFD5] rounded-xl p-4 hover:border-[#c5a059]"><Building2 className="w-5 h-5 text-[#bf954f]"/><p className="font-bold text-sm mt-2">Quản lý nghiệp vụ</p><p className="text-xs text-stone-500 mt-1">Đi tới khu vực quản lý phiếu thu chi và dữ liệu liên quan.</p></button>
+        <button type="button" onClick={()=>document.getElementById('backup-restore-section')?.scrollIntoView({behavior:'smooth',block:'start'})} className="text-left bg-white border border-[#E7DFD5] rounded-xl p-4 hover:border-[#c5a059]"><Database className="w-5 h-5 text-[#bf954f]"/><p className="font-bold text-sm mt-2">Khôi phục dữ liệu</p><p className="text-xs text-stone-500 mt-1">Khôi phục dữ liệu từ tệp sao lưu an toàn.</p></button>
       </section>
 
       {/* BRAND & APP APPEARANCE SETTINGS */}
@@ -194,25 +195,29 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
           <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#E7DFD5]"><Palette className="w-5 h-5 text-[#bf954f]" /></div>
           <div><h2 className="font-bold text-stone-900">Giao diện ứng dụng & thương hiệu</h2><p className="text-xs text-stone-500 mt-1">Tùy chỉnh màu sắc, tên thương hiệu và logo hiển thị trên ứng dụng.</p></div>
         </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div><label className="block text-xs font-semibold mb-1">Tên thương hiệu hiển thị</label><input value={previewTheme.brandName} onChange={e=>setPreviewTheme(p=>({...p,brandName:e.target.value}))} className="w-full border rounded-lg p-2.5 text-sm"/></div>
-          <div><label className="block text-xs font-semibold mb-1">Dòng mô tả thương hiệu</label><input value={previewTheme.brandSubtitle} onChange={e=>setPreviewTheme(p=>({...p,brandSubtitle:e.target.value}))} className="w-full border rounded-lg p-2.5 text-sm" placeholder="Ví dụ: Luxury Bridal Studio"/></div>
-          <div><label className="block text-xs font-semibold mb-1">Slogan</label><input value={previewTheme.tagline} onChange={e=>setPreviewTheme(p=>({...p,tagline:e.target.value}))} className="w-full border rounded-lg p-2.5 text-sm" placeholder="Slogan thương hiệu"/></div>
-          <div><label className="block text-xs font-semibold mb-1">Mẫu giao diện</label><select onChange={e=>applyPreset(e.target.value)} defaultValue="" className="w-full border rounded-lg p-2.5 text-sm"><option value="" disabled>Chọn giao diện có sẵn</option>{THEME_PRESETS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-          <div><label className="block text-xs font-semibold mb-1">Màu chủ đạo</label><div className="flex gap-2"><input type="color" value={previewTheme.primaryColor} onChange={e=>setPreviewTheme(p=>({...p,primaryColor:e.target.value}))} className="h-10 w-14 border rounded"/><input value={previewTheme.primaryColor} onChange={e=>setPreviewTheme(p=>({...p,primaryColor:e.target.value}))} className="flex-1 border rounded-lg p-2 text-sm"/></div></div>
-          <div><label className="block text-xs font-semibold mb-1">Màu nền ứng dụng</label><div className="flex gap-2"><input type="color" value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="h-10 w-14 border rounded"/><input value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="flex-1 border rounded-lg p-2 text-sm"/></div></div>
-        </div>
-        <div className="rounded-xl border border-dashed border-stone-300 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="w-20 h-20 rounded-xl bg-stone-900 flex items-center justify-center overflow-hidden shrink-0">
-            {(logoPreview || previewTheme.customLogoUrl) ? <img src={logoPreview || previewTheme.customLogoUrl} alt="Logo thương hiệu" className="w-full h-full object-contain"/> : <ImagePlus className="w-8 h-8 text-[#dfc79f]"/>}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div><label className="block text-xs font-semibold mb-1">Tên thương hiệu hiển thị</label><input value={previewTheme.brandName} onChange={e=>setPreviewTheme(p=>({...p,brandName:e.target.value}))} className="w-full border border-stone-300 rounded-lg p-2.5 text-sm"/></div>
+            <div><label className="block text-xs font-semibold mb-1">Slogan</label><input value={previewTheme.tagline} onChange={e=>setPreviewTheme(p=>({...p,tagline:e.target.value}))} className="w-full border border-stone-300 rounded-lg p-2.5 text-sm" placeholder="Slogan thương hiệu"/></div>
+            <div><label className="block text-xs font-semibold mb-1">Màu chủ đạo</label><div className="flex gap-2"><input type="color" value={previewTheme.primaryColor} onChange={e=>setPreviewTheme(p=>({...p,primaryColor:e.target.value}))} className="h-10 w-14 border rounded"/><input value={previewTheme.primaryColor} onChange={e=>setPreviewTheme(p=>({...p,primaryColor:e.target.value}))} className="flex-1 border rounded-lg p-2 text-sm"/></div></div>
+            <div><label className="block text-xs font-semibold mb-1">Dòng mô tả thương hiệu</label><input value={previewTheme.brandSubtitle} onChange={e=>setPreviewTheme(p=>({...p,brandSubtitle:e.target.value}))} className="w-full border border-stone-300 rounded-lg p-2.5 text-sm" placeholder="Ví dụ: Luxury Bridal Studio"/></div>
+            <div><label className="block text-xs font-semibold mb-1">Màu nền ứng dụng</label><div className="flex gap-2"><input type="color" value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="h-10 w-14 border rounded"/><input value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="flex-1 border rounded-lg p-2 text-sm"/></div></div>
+            <div><label className="block text-xs font-semibold mb-1">Mẫu giao diện</label><select onChange={e=>applyPreset(e.target.value)} defaultValue="" className="w-full border border-stone-300 rounded-lg p-2.5 text-sm"><option value="" disabled>Chọn giao diện có sẵn</option>{THEME_PRESETS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
           </div>
-          <div className="flex-1"><p className="font-semibold text-sm">Logo thương hiệu</p><p className="text-xs text-stone-500 mt-1">Chọn ảnh PNG, JPG hoặc WebP, tối đa 2 MB. Logo được áp dụng trên trình duyệt hiện tại.</p><label className="inline-flex mt-3 items-center gap-2 rounded-lg bg-stone-900 text-white px-4 py-2 text-xs font-bold cursor-pointer"><ImagePlus className="w-4 h-4"/> Thay ảnh logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={e=>{handleLogoFile(e.target.files?.[0]);e.currentTarget.value='';}}/></label></div>
+          <div className="rounded-xl border border-dashed border-stone-300 p-4 space-y-3">
+            <p className="font-semibold text-sm">Logo thương hiệu</p>
+            <div className="w-full h-44 rounded-lg border border-stone-200 bg-white flex items-center justify-center overflow-hidden p-3">
+              {(logoPreview || previewTheme.customLogoUrl) ? <img src={logoPreview || previewTheme.customLogoUrl} alt="Logo thương hiệu" className="max-w-full max-h-full object-contain"/> : <ImagePlus className="w-10 h-10 text-[#bf954f]"/>}
+            </div>
+            <p className="text-xs text-stone-500">Chọn ảnh PNG, JPG, WebP hoặc SVG, tối đa 2 MB. Logo này dùng chung cho tiêu đề ứng dụng và biểu tượng tab trình duyệt trên trình duyệt hiện tại.</p>
+            <label className="inline-flex items-center gap-2 rounded-lg bg-stone-900 text-white px-4 py-2.5 text-xs font-bold cursor-pointer"><ImagePlus className="w-4 h-4"/> Thay ảnh logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={e=>{handleLogoFile(e.target.files?.[0]);e.currentTarget.value='';}}/></label>
+          </div>
         </div>
         <div className="flex justify-end"><button type="button" disabled={isSaving} onClick={()=>void saveTheme()} className="px-5 py-2.5 rounded-xl bg-stone-900 text-[#dfc79f] text-xs font-bold disabled:opacity-50">{isSaving?'Đang lưu...':'LƯU GIAO DIỆN & THƯƠNG HIỆU'}</button></div>
       </section>
 
       {/* AUTOMATION ENGINE CARD */}
-      <div className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-6 space-y-4">
+      <div id="backup-restore-section" className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-6 space-y-4">
         <div className="flex items-center justify-between pb-4 border-b border-stone-100">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-stone-900 text-[#dfc79f]">
