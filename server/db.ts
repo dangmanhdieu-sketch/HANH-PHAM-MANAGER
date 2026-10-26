@@ -1138,7 +1138,8 @@ class DatabaseService {
   }
 
   public getTongTamUng(nhanVienId: string, thang: string): number {
-    return this.getTamUngList({ nhanVienId, thang }).reduce((sum, item) => sum + (Number(item.SoTien) || 0), 0);
+    // Legacy records without status remain counted as approved for backward compatibility.
+    return this.getTamUngList({ nhanVienId, thang }).filter((item) => !item.TrangThai || item.TrangThai === 'Đã duyệt').reduce((sum, item) => sum + (Number(item.SoTien) || 0), 0);
   }
 
   private syncTamUngToLuong(luong: Luong): void {
@@ -1146,7 +1147,7 @@ class DatabaseService {
     this.recalculateLuong(luong);
   }
 
-  public createTamUng(data: { NhanVienID: string; Ngay: string; SoTien: number; LyDo?: string; GhiChu?: string }, adminUser: { HoTen: string; Email: string }): TamUng {
+  public createTamUng(data: { NhanVienID: string; Ngay: string; SoTien: number; LyDo?: string; GhiChu?: string; TrangThai?: 'Chờ duyệt' | 'Đã duyệt' }, adminUser: { HoTen: string; Email: string }): TamUng {
     const nv = this.findNhanVienById(data.NhanVienID);
     if (!nv) throw new Error('Nhân viên không tồn tại');
     const amount = Number(data.SoTien);
@@ -1167,12 +1168,31 @@ class DatabaseService {
       GhiChu: String(data.GhiChu || '').trim(),
       TaoLuc: new Date().toISOString(),
       TaoBoi: adminUser.HoTen,
+      TrangThai: data.TrangThai || 'Đã duyệt',
     };
     this.db.TAM_UNG.unshift(item);
-    if (luong) this.syncTamUngToLuong(luong);
+    if (luong && item.TrangThai === 'Đã duyệt') this.syncTamUngToLuong(luong);
     this.refreshKPIs();
     this.save();
-    this.logAudit(adminUser.HoTen, adminUser.Email, 'Thêm tạm ứng lương', `Thêm tạm ứng ${item.SoTien.toLocaleString('vi-VN')} đ cho ${nv.HoTen} ngày ${item.Ngay}`);
+    this.logAudit(adminUser.HoTen, adminUser.Email, item.TrangThai === 'Chờ duyệt' ? 'Gửi yêu cầu ứng lương' : 'Thêm tạm ứng lương', `${item.TrangThai === 'Chờ duyệt' ? 'Yêu cầu ứng' : 'Thêm tạm ứng'} ${item.SoTien.toLocaleString('vi-VN')} đ cho ${nv.HoTen} ngày ${item.Ngay}`);
+    if (item.TrangThai === 'Chờ duyệt') this.addNotification('Yêu cầu ứng lương mới', `${nv.HoTen} yêu cầu ứng ${item.SoTien.toLocaleString('vi-VN')} đ. Vui lòng kiểm tra và duyệt.`, 'info');
+    return item;
+  }
+
+  public duyetTamUng(id: string, approve: boolean, lyDoTuChoi: string | undefined, adminUser: { HoTen: string; Email: string }): TamUng {
+    const item = this.db.TAM_UNG.find((x) => x.TamUngID === id);
+    if (!item) throw new Error('Không tìm thấy yêu cầu ứng lương.');
+    if (item.TrangThai !== 'Chờ duyệt') throw new Error('Yêu cầu này đã được xử lý.');
+    const luong = this.db.LUONG.find((l) => l.NhanVienID === item.NhanVienID && l.Thang === item.Thang);
+    if (approve && luong && luong.TrangThai !== 'Chờ duyệt') throw new Error('Bảng lương tháng này đã duyệt hoặc thanh toán; không thể thêm khoản ứng vào kỳ đã khóa.');
+    item.TrangThai = approve ? 'Đã duyệt' : 'Từ chối';
+    item.NgayDuyet = new Date().toISOString();
+    item.NguoiDuyet = adminUser.HoTen;
+    item.LyDoTuChoi = approve ? '' : String(lyDoTuChoi || '').trim();
+    if (approve && luong) this.syncTamUngToLuong(luong);
+    this.refreshKPIs(); this.save();
+    this.logAudit(adminUser.HoTen, adminUser.Email, approve ? 'Duyệt ứng lương' : 'Từ chối ứng lương', `${approve ? 'Duyệt' : 'Từ chối'} yêu cầu ứng ${item.SoTien.toLocaleString('vi-VN')} đ của ${item.HoTen}`);
+    this.addNotification(approve ? 'Yêu cầu ứng lương đã duyệt' : 'Yêu cầu ứng lương bị từ chối', approve ? `Yêu cầu ứng ${item.SoTien.toLocaleString('vi-VN')} đ đã được duyệt và sẽ khấu trừ vào bảng lương tháng ${item.Thang}.` : `Yêu cầu ứng ${item.SoTien.toLocaleString('vi-VN')} đ bị từ chối. ${item.LyDoTuChoi || ''}`, approve ? 'success' : 'warning', item.NhanVienID);
     return item;
   }
 
