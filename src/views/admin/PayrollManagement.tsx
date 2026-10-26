@@ -105,6 +105,16 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     }
   };
 
+  const handleReviewTamUng = async (item: TamUng, approve: boolean) => {
+    const action = approve ? 'duyệt' : 'từ chối';
+    if (!window.confirm('Bạn có chắc chắn muốn ' + action + ' yêu cầu ứng ' + Number(item.SoTien).toLocaleString('vi-VN') + ' đ của ' + item.HoTen + '?')) return;
+    try {
+      await api.tamUng.review(item.TamUngID, approve);
+      await loadTamUng(); onRefresh();
+      alert(approve ? 'Đã duyệt ứng lương. Khoản ứng sẽ được khấu trừ vào bảng lương kỳ tương ứng.' : 'Đã từ chối yêu cầu ứng lương.');
+    } catch (err: any) { alert(err.message || 'Không thể xử lý yêu cầu ứng lương.'); }
+  };
+
   const handleDeleteTamUng = async (item: TamUng) => {
     if (!window.confirm('Xóa khoản tạm ứng ' + item.SoTien.toLocaleString('vi-VN') + ' đ của ' + item.HoTen + ' ngày ' + item.Ngay + '?')) return;
     try {
@@ -608,7 +618,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                 <div className="px-4 py-3 bg-[#FAF8F5] border-b border-[#E7DFD5] flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-stone-700">Lịch sử tạm ứng {selectedMonth ? 'tháng ' + selectedMonth : ''}</span>
                   <span className="text-xs font-mono font-bold text-orange-700">
-                    Tổng: {tamUngList.reduce((sum, item) => sum + Number(item.SoTien || 0), 0).toLocaleString('vi-VN')} đ
+                    Đã duyệt: {tamUngList.filter(item => !item.TrangThai || item.TrangThai === 'Đã duyệt').reduce((sum, item) => sum + Number(item.SoTien || 0), 0).toLocaleString('vi-VN')} đ
                   </span>
                 </div>
                 <div className="max-h-64 overflow-y-auto">
@@ -624,7 +634,8 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                           <th className="px-4 py-2 text-left">Nhân viên</th>
                           <th className="px-4 py-2 text-left">Lý do</th>
                           <th className="px-4 py-2 text-right">Số tiền</th>
-                          <th className="px-4 py-2 text-right">Xóa</th>
+                          <th className="px-4 py-2 text-left">Trạng thái</th>
+                          <th className="px-4 py-2 text-right">Thao tác</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100">
@@ -633,11 +644,10 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                             <td className="px-4 py-2.5">{item.Ngay}</td>
                             <td className="px-4 py-2.5 font-semibold">{item.HoTen}</td>
                             <td className="px-4 py-2.5 text-stone-500">{item.LyDo || '—'}</td>
-                            <td className="px-4 py-2.5 text-right font-mono font-bold text-orange-700">-{Number(item.SoTien).toLocaleString('vi-VN')} đ</td>
+                            <td className="px-4 py-2.5 text-right font-mono font-bold text-orange-700">{Number(item.SoTien).toLocaleString('vi-VN')} đ</td>
+                            <td className="px-4 py-2.5">{item.TrangThai || 'Đã duyệt'}</td>
                             <td className="px-4 py-2.5 text-right">
-                              <button type="button" onClick={() => handleDeleteTamUng(item)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg" title="Xóa khoản tạm ứng">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {item.TrangThai === 'Chờ duyệt' ? <div className="flex justify-end gap-1"><button type="button" onClick={() => handleReviewTamUng(item, true)} className="px-2 py-1 bg-emerald-600 text-white rounded-md font-bold">Duyệt</button><button type="button" onClick={() => handleReviewTamUng(item, false)} className="px-2 py-1 bg-rose-600 text-white rounded-md font-bold">Từ chối</button></div> : <button type="button" onClick={() => handleDeleteTamUng(item)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg" title="Xóa khoản tạm ứng"><Trash2 className="w-4 h-4" /></button>}
                             </td>
                           </tr>
                         ))}

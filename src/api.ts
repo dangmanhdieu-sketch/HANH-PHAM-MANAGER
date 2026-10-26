@@ -488,6 +488,12 @@ export const api = {
     async create(data: { NhanVienID: string; Ngay: string; SoTien: number; LyDo?: string; GhiChu?: string }): Promise<TamUng> {
       return request<TamUng>('/api/tam-ung', { method: 'POST', body: JSON.stringify(data) });
     },
+    async request(data: { Ngay: string; SoTien: number; LyDo?: string; GhiChu?: string }): Promise<TamUng> {
+      return request<TamUng>('/api/tam-ung/yeu-cau', { method: 'POST', body: JSON.stringify(data) });
+    },
+    async review(id: string, approve: boolean, LyDoTuChoi?: string): Promise<{ message: string; tamUng: TamUng }> {
+      return request(`/api/tam-ung/${encodeURIComponent(id)}/duyet`, { method: 'POST', body: JSON.stringify({ approve, LyDoTuChoi }) });
+    },
     async delete(id: string): Promise<{ message: string }> {
       return request(`/api/tam-ung/${id}`, { method: 'DELETE' });
     },

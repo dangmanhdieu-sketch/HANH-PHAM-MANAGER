@@ -770,6 +770,22 @@ app.get('/api/tam-ung', authenticateToken, (req: AuthRequest, res: Response) => 
   return res.json(dbService.getTamUngList({ thang, nhanVienId: targetNhanVienId }));
 });
 
+app.post('/api/tam-ung/yeu-cau', authenticateToken, (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    if (user.Quyen === 'Admin') return res.status(400).json({ error: 'Admin hãy tạo khoản ứng trực tiếp trong bảng lương.' });
+    const created = dbService.createTamUng({ ...req.body, NhanVienID: user.NhanVienID, TrangThai: 'Chờ duyệt' }, { HoTen: user.HoTen, Email: user.Email });
+    return res.status(201).json(created);
+  } catch (err: any) { return res.status(400).json({ error: err.message }); }
+});
+
+app.post('/api/tam-ung/:id/duyet', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const updated = dbService.duyetTamUng(req.params.id, req.body?.approve === true, req.body?.LyDoTuChoi, { HoTen: req.user!.HoTen, Email: req.user!.Email });
+    return res.json({ message: updated.TrangThai === 'Đã duyệt' ? 'Đã duyệt yêu cầu ứng lương.' : 'Đã từ chối yêu cầu ứng lương.', tamUng: updated });
+  } catch (err: any) { return res.status(400).json({ error: err.message }); }
+});
+
 app.post('/api/tam-ung', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   try {
     const created = dbService.createTamUng(req.body, { HoTen: req.user!.HoTen, Email: req.user!.Email });
