@@ -669,6 +669,9 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       if (status && !['Chờ duyệt', 'Đã duyệt', 'Từ chối'].includes(status)) {
         return res.status(400).json({ error: 'Trạng thái đơn nghỉ phép không hợp lệ.' });
       }
+      if (status && current.DuLieu?.TrangThai !== 'Chờ duyệt' && status !== current.DuLieu?.TrangThai) {
+        return res.status(409).json({ error: 'Đơn nghỉ phép này đã được xử lý, không thể duyệt lại.' });
+      }
       if (status && status !== current.DuLieu?.TrangThai) {
         changes.NgayXuLy = new Date().toISOString();
         changes.NguoiXuLy = req.user!.HoTen;
@@ -685,6 +688,17 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
+    if (current.Module === 'NGHI_PHEP' && changes.TrangThai && changes.TrangThai !== current.DuLieu?.TrangThai) {
+      const approved = changes.TrangThai === 'Đã duyệt';
+      dbService.addNotification(
+        approved ? 'Đơn nghỉ phép đã được duyệt' : 'Đơn nghỉ phép bị từ chối',
+        approved
+          ? `Đơn nghỉ phép từ ${current.DuLieu?.TuNgay} đến ${current.DuLieu?.DenNgay} đã được duyệt.`
+          : `Đơn nghỉ phép từ ${current.DuLieu?.TuNgay} đến ${current.DuLieu?.DenNgay} bị từ chối. ${changes.GhiChuAdmin || ''}`,
+        approved ? 'success' : 'warning',
+        String(current.DuLieu?.NhanVienID || '')
+      );
+    }
     return res.json(record);
   } catch (err: any) {
     return res.status(400).json({ error: err.message || 'Không thể cập nhật dữ liệu.' });
