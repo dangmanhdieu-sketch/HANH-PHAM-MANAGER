@@ -1365,7 +1365,7 @@ class DatabaseService {
 
       const fullAbsenceDays = new Set<string>(approvedLeaveDays);
       attendance.forEach((cc) => {
-        if (cc.TrangThai === 'Nghỉ') fullAbsenceDays.add(cc.Ngay);
+        if (cc.TrangThai === 'Nghỉ' || cc.TrangThai === 'Nghỉ phép') fullAbsenceDays.add(cc.Ngay);
       });
       const ngayNghi = fullAbsenceDays.size;
       const ngayDiTreKhauTru = attendance.filter(isHalfDayLate).length;
@@ -1871,7 +1871,7 @@ class DatabaseService {
   }
 
   public createQuanLyRecord(module: QuanLyModule, data: Record<string, any>, adminUser: { HoTen: string; Email: string }): QuanLyRecord {
-    if (!['CONG_VIEC', 'HOP_DONG', 'THU_CHI'].includes(module)) {
+    if (!['CONG_VIEC', 'HOP_DONG', 'THU_CHI', 'NGHI_PHEP'].includes(module)) {
       throw new Error('Module nghiệp vụ không hợp lệ.');
     }
     const now = new Date().toISOString();
