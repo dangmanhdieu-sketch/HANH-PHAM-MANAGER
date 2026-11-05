@@ -981,6 +981,19 @@ class DatabaseService {
     return true;
   }
 
+  // Admin reviews the employee's explanation for a late arrival or early checkout.
+  public reviewChamCong(id: string, decision: 'Chấp nhận' | 'Không chấp nhận', note: string, admin: NhanVien): ChamCong | null {
+    const record = this.db.CHAMCONG.find((item) => item.ChamCongID === id);
+    if (!record) return null;
+    record.KetQuaGiaiTrinh = decision;
+    record.GhiChuDuyet = note;
+    record.NguoiDuyetGiaiTrinh = admin.HoTen;
+    record.NgayDuyetGiaiTrinh = new Date().toISOString();
+    this.save();
+    this.logAudit(admin.HoTen, admin.Email, 'Duyệt giải trình chấm công', decision + ': ' + record.HoTen + ' ngày ' + record.Ngay);
+    return record;
+  }
+
   // CHAMCONG methods
   public deleteChamCong(id: string): boolean {
     const index = this.db.CHAMCONG.findIndex((cc) => cc.ChamCongID === id);
