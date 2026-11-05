@@ -834,7 +834,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                   HANH PHAM BRIDAL
                 </h2>
                 <p className="text-xs text-stone-500 uppercase tracking-widest mt-0.5">
-                  {studioConfig?.DiaChi || '321 Lê Quý Đôn, Tân Xuân, Bình Phước, Đồng Nai'}
+                  321 Lê Quý Đôn, Tân Xuân, Bình Phước, Đồng Nai
                 </p>
                 <p className="text-xs text-stone-400">Hotline: {studioConfig?.Hotline || '0988 123 456'}</p>
                 <div className="inline-block mt-3 px-4 py-1 bg-[#FAF8F5] rounded-full border border-[#E7DFD5]">
