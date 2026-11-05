@@ -777,6 +777,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 })}
 
               </div>
+            </div>
 
             {/* LOGOUT */}
             <div
