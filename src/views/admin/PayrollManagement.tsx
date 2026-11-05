@@ -224,6 +224,51 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     }
   };
 
+  const formatMonthLabel = (month: string) => month || 'Tất cả các tháng';
+  const monthCommissions = commissionList.filter((item) => {
+    const [mm, yyyy] = selectedMonth.split('/');
+    const monthKey = yyyy && mm ? yyyy + '-' + mm : '';
+    const dateMonth = (item.Ngay || '').slice(0, 7);
+    return (!monthKey || dateMonth === monthKey) &&
+      (selectedStaffId === 'ALL' || item.NhanVienID === selectedStaffId);
+  });
+  const monthAdvances = tamUngList.filter((item) =>
+    (!selectedMonth || item.Thang === selectedMonth) &&
+    (selectedStaffId === 'ALL' || item.NhanVienID === selectedStaffId)
+  );
+  const approvedCommissionTotal = monthCommissions
+    .filter((item) => item.TrangThai === 'Đã duyệt')
+    .reduce((sum, item) => sum + Number(item.SoTienHoaHong || 0), 0);
+  const pendingCommissionTotal = monthCommissions
+    .filter((item) => item.TrangThai === 'Chờ duyệt')
+    .reduce((sum, item) => sum + Number(item.SoTienHoaHong || 0), 0);
+  const approvedAdvanceTotal = monthAdvances
+    .filter((item) => item.TrangThai === 'Đã duyệt')
+    .reduce((sum, item) => sum + Number(item.SoTien || 0), 0);
+  const pendingAdvanceTotal = monthAdvances
+    .filter((item) => item.TrangThai === 'Chờ duyệt')
+    .reduce((sum, item) => sum + Number(item.SoTien || 0), 0);
+
+  const exportMonthlyLedgerPdf = (staffId?: string) => {
+    const staff = staffId ? staffList.find((item) => item.NhanVienID === staffId) : null;
+    const commissions = monthCommissions.filter((item) => !staffId || item.NhanVienID === staffId);
+    const advances = monthAdvances.filter((item) => !staffId || item.NhanVienID === staffId);
+    const payrolls = filteredList.filter((item) => !staffId || item.NhanVienID === staffId);
+    const money = (value: number) => Number(value || 0).toLocaleString('vi-VN') + ' đ';
+    const esc = (value: unknown) => String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char] || char));
+    const commissionRows = commissions.map((item) => '<tr><td>' + esc(item.Ngay) + '</td><td>' + esc(item.HoTen) + '</td><td>' + esc(item.LoaiKhoan || 'Hoa Hồng') + '</td><td>' + esc(item.NoiDung) + '</td><td class="num">' + money(item.SoTienHoaHong) + '</td><td>' + esc(item.TrangThai) + '</td></tr>').join('');
+    const advanceRows = advances.map((item) => '<tr><td>' + esc(item.Ngay) + '</td><td>' + esc(item.HoTen) + '</td><td>' + esc(item.LyDo || '') + '</td><td class="num">' + money(item.SoTien) + '</td><td>' + esc(item.TrangThai || 'Chờ duyệt') + '</td></tr>').join('');
+    const payrollRows = payrolls.map((item) => '<tr><td>' + esc(item.HoTen) + '</td><td>' + esc(item.Thang) + '</td><td class="num">' + money(item.HoaHong) + '</td><td class="num">' + money(item.TamUng) + '</td><td class="num">' + money(item.ThucLanh) + '</td><td>' + esc(item.TrangThai) + '</td></tr>').join('');
+    const approvedCommission = commissions.filter((item) => item.TrangThai === 'Đã duyệt').reduce((sum, item) => sum + Number(item.SoTienHoaHong || 0), 0);
+    const pendingCommission = commissions.filter((item) => item.TrangThai === 'Chờ duyệt').reduce((sum, item) => sum + Number(item.SoTienHoaHong || 0), 0);
+    const approvedAdvance = advances.filter((item) => item.TrangThai === 'Đã duyệt').reduce((sum, item) => sum + Number(item.SoTien || 0), 0);
+    const pendingAdvance = advances.filter((item) => item.TrangThai === 'Chờ duyệt').reduce((sum, item) => sum + Number(item.SoTien || 0), 0);
+    const doc = window.open('', '_blank');
+    if (!doc) { alert('Trình duyệt đang chặn cửa sổ in. Vui lòng cho phép pop-up rồi thử lại.'); return; }
+    doc.document.write('<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Đối chiếu thu nhập ' + esc(selectedMonth) + '</title><style>body{font-family:Arial,sans-serif;color:#222;padding:28px;font-size:12px}h1{font-size:20px;margin:0 0 6px}h2{font-size:14px;margin:24px 0 8px;color:#76562d}.muted{color:#666;margin-bottom:18px}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.tile{border:1px solid #ddd;padding:10px;border-radius:6px}.tile b{display:block;margin-top:5px;font-size:14px}table{width:100%;border-collapse:collapse;margin:8px 0 16px}th,td{border:1px solid #ccc;padding:7px;text-align:left}th{background:#f5f1e9}.num{text-align:right;white-space:nowrap}.note{font-size:10px;color:#666;margin-top:18px}@media print{body{padding:0}.no-print{display:none}}</style></head><body><h1>HẠNH PHẠM LUXURY BRIDAL</h1><div class="muted">SỔ ĐỐI CHIẾU HOA HỒNG & TẠM ỨNG — Kỳ ' + esc(formatMonthLabel(selectedMonth)) + (staff ? ' — ' + esc(staff.HoTen) : ' — Toàn bộ nhân viên') + '</div><div class="summary"><div class="tile">Hoa hồng đã duyệt<b>' + money(approvedCommission) + '</b></div><div class="tile">Hoa hồng chờ duyệt<b>' + money(pendingCommission) + '</b></div><div class="tile">Tạm ứng đã duyệt<b>' + money(approvedAdvance) + '</b></div><div class="tile">Tạm ứng chờ duyệt<b>' + money(pendingAdvance) + '</b></div></div><h2>1. Chi tiết hoa hồng / tiền show</h2><table><thead><tr><th>Ngày</th><th>Nhân viên</th><th>Loại</th><th>Nội dung</th><th>Số tiền</th><th>Trạng thái</th></tr></thead><tbody>' + (commissionRows || '<tr><td colspan="6">Không có giao dịch</td></tr>') + '</tbody></table><h2>2. Chi tiết tạm ứng</h2><table><thead><tr><th>Ngày</th><th>Nhân viên</th><th>Lý do</th><th>Số tiền</th><th>Trạng thái</th></tr></thead><tbody>' + (advanceRows || '<tr><td colspan="5">Không có giao dịch</td></tr>') + '</tbody></table><h2>3. Đối chiếu bảng lương</h2><table><thead><tr><th>Nhân viên</th><th>Kỳ</th><th>Hoa hồng trên lương</th><th>Tạm ứng trên lương</th><th>Thực lãnh</th><th>Trạng thái</th></tr></thead><tbody>' + (payrollRows || '<tr><td colspan="6">Chưa có bảng lương kỳ này</td></tr>') + '</tbody></table><div class="note">Báo cáo được tạo từ dữ liệu hiện có trong ứng dụng. Chỉ khoản hoa hồng và tạm ứng đã duyệt được tính vào tổng đối chiếu; các khoản chờ duyệt được liệt kê riêng và chưa cộng/trừ vào lương. Ngày xuất: ' + new Date().toLocaleString('vi-VN') + '</div><script>window.onload=function(){window.print();};</script></body></html>');
+    doc.document.close();
+  };
+
   // Preview computed ThucLanh in edit form
   const computedNet =
     Number(editForm.LuongCoBan) +
@@ -325,6 +370,37 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
           </select>
         </div>
       </div>
+
+      {/* Monthly employee income & advance ledger */}
+      <section className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-4 sm:p-5 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-stone-900 flex items-center gap-2"><FileText className="w-4 h-4 text-[#bf954f]" /> Sổ theo dõi hoa hồng & tạm ứng</h2>
+            <p className="text-xs text-stone-500 mt-1">Đối chiếu theo tháng và từng nhân viên; giao dịch cũ vẫn được lưu.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => exportMonthlyLedgerPdf()} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-stone-900 text-white text-xs font-bold"><Printer className="w-4 h-4" /> Xuất PDF toàn bộ</button>
+            {selectedStaffId !== 'ALL' && <button type="button" onClick={() => exportMonthlyLedgerPdf(selectedStaffId)} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[#c5a059] text-stone-800 text-xs font-bold"><Download className="w-4 h-4" /> PDF nhân viên</button>}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] text-emerald-700 font-semibold">Hoa hồng đã duyệt</p><p className="text-sm font-bold text-emerald-900 mt-1">{formatMoney(approvedCommissionTotal)}</p></div>
+          <div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] text-amber-700 font-semibold">Hoa hồng chờ duyệt</p><p className="text-sm font-bold text-amber-900 mt-1">{formatMoney(pendingCommissionTotal)}</p></div>
+          <div className="rounded-xl bg-blue-50 p-3"><p className="text-[10px] text-blue-700 font-semibold">Tạm ứng đã duyệt</p><p className="text-sm font-bold text-blue-900 mt-1">{formatMoney(approvedAdvanceTotal)}</p></div>
+          <div className="rounded-xl bg-orange-50 p-3"><p className="text-[10px] text-orange-700 font-semibold">Tạm ứng chờ duyệt</p><p className="text-sm font-bold text-orange-900 mt-1">{formatMoney(pendingAdvanceTotal)}</p></div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div>
+            <h3 className="text-xs font-bold text-stone-700 mb-2">Hoa hồng / Tiền show ({monthCommissions.length})</h3>
+            <div className="overflow-x-auto border border-stone-100 rounded-xl"><table className="w-full text-xs"><thead className="bg-stone-50"><tr><th className="p-2 text-left">Ngày</th><th className="p-2 text-left">Nhân viên</th><th className="p-2 text-left">Nội dung</th><th className="p-2 text-right">Số tiền</th><th className="p-2">Trạng thái</th></tr></thead><tbody className="divide-y">{monthCommissions.map((item) => <tr key={item.HoaHongID}><td className="p-2 whitespace-nowrap">{item.Ngay}</td><td className="p-2 whitespace-nowrap">{item.HoTen}</td><td className="p-2 min-w-40">{item.NoiDung}</td><td className="p-2 text-right whitespace-nowrap">{formatMoney(item.SoTienHoaHong)}</td><td className="p-2 whitespace-nowrap">{item.TrangThai}</td></tr>)}{monthCommissions.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-stone-400">Chưa có giao dịch hoa hồng trong kỳ.</td></tr>}</tbody></table></div>
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-stone-700 mb-2">Tạm ứng ({monthAdvances.length})</h3>
+            <div className="overflow-x-auto border border-stone-100 rounded-xl"><table className="w-full text-xs"><thead className="bg-stone-50"><tr><th className="p-2 text-left">Ngày</th><th className="p-2 text-left">Nhân viên</th><th className="p-2 text-left">Lý do</th><th className="p-2 text-right">Số tiền</th><th className="p-2">Trạng thái</th></tr></thead><tbody className="divide-y">{monthAdvances.map((item) => <tr key={item.TamUngID}><td className="p-2 whitespace-nowrap">{item.Ngay}</td><td className="p-2 whitespace-nowrap">{item.HoTen}</td><td className="p-2 min-w-32">{item.LyDo || '—'}</td><td className="p-2 text-right whitespace-nowrap">{formatMoney(item.SoTien)}</td><td className="p-2 whitespace-nowrap">{item.TrangThai || 'Chờ duyệt'}</td></tr>)}{monthAdvances.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-stone-400">Chưa có khoản ứng trong kỳ.</td></tr>}</tbody></table></div>
+          </div>
+        </div>
+        <p className="text-[10px] text-stone-500">Chỉ khoản đã duyệt được tính vào tổng đối chiếu. Khi xuất PDF, trình duyệt mở hộp thoại in — chọn “Lưu dưới dạng PDF”.</p>
+      </section>
 
       {/* Formula Reminder Box */}
       <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E7DFD5] text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
