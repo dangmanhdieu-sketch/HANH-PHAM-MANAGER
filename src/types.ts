@@ -46,6 +46,10 @@ export interface ChamCong {
   SoGioLam?: number; // Hours (e.g. 8.5)
   TrangThai: TrangThaiChamCong;
   GhiChu?: string;
+  KetQuaGiaiTrinh?: 'Chấp nhận' | 'Không chấp nhận';
+  GhiChuDuyet?: string;
+  NguoiDuyetGiaiTrinh?: string;
+  NgayDuyetGiaiTrinh?: string;
 }
 
 export interface TamUng {
