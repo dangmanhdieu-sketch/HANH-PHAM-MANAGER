@@ -605,16 +605,17 @@ class DatabaseService {
       this.db = {
         ...this.db,
         ...legacy,
-        NHANVIEN: Array.isArray(legacy.NHANVIEN) ? legacy.NHANVIEN : this.db.NHANVIEN,
-        CHAMCONG: Array.isArray(legacy.CHAMCONG) ? legacy.CHAMCONG : this.db.CHAMCONG,
-        LUONG: Array.isArray(legacy.LUONG) ? legacy.LUONG : this.db.LUONG,
-        TAM_UNG: Array.isArray(legacy.TAM_UNG) ? legacy.TAM_UNG : this.db.TAM_UNG,
-        HOAHONG: Array.isArray(legacy.HOAHONG) ? legacy.HOAHONG : this.db.HOAHONG,
-        THONGKE: Array.isArray(legacy.THONGKE) ? legacy.THONGKE : this.db.THONGKE,
-        AUDIT_LOG: Array.isArray(legacy.AUDIT_LOG) ? legacy.AUDIT_LOG : this.db.AUDIT_LOG,
-        NOTIFICATIONS: Array.isArray(legacy.NOTIFICATIONS) ? legacy.NOTIFICATIONS : this.db.NOTIFICATIONS,
-        SYSTEM_CONFIG: legacy.SYSTEM_CONFIG || this.db.SYSTEM_CONFIG,
-        THEME: legacy.THEME || this.db.THEME,
+        NHANVIEN: Array.isArray(legacy.NHANVIEN) ? legacy.NHANVIEN : [],
+        CHAMCONG: Array.isArray(legacy.CHAMCONG) ? legacy.CHAMCONG : [],
+        LUONG: Array.isArray(legacy.LUONG) ? legacy.LUONG : [],
+        TAM_UNG: Array.isArray(legacy.TAM_UNG) ? legacy.TAM_UNG : [],
+        HOAHONG: Array.isArray(legacy.HOAHONG) ? legacy.HOAHONG : [],
+        THONGKE: Array.isArray(legacy.THONGKE) ? legacy.THONGKE : [],
+        AUDIT_LOG: Array.isArray(legacy.AUDIT_LOG) ? legacy.AUDIT_LOG : [],
+        NOTIFICATIONS: Array.isArray(legacy.NOTIFICATIONS) ? legacy.NOTIFICATIONS : [],
+        QUAN_LY: Array.isArray(legacy.QUAN_LY) ? legacy.QUAN_LY : [],
+        SYSTEM_CONFIG: legacy.SYSTEM_CONFIG || DEFAULT_CONFIG,
+        THEME: legacy.THEME,
       };
 
       const migrated = this.applyMigrations();
