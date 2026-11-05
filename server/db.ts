@@ -1045,18 +1045,22 @@ class DatabaseService {
       throw new Error(`Bạn đã Check-in hôm nay lúc ${record.CheckIn}. Không thể Check-in lại!`);
     }
 
-    // Attendance policy: on time through 08:30; late after 08:30; after 13:00 counts as a full-day absence.
+    // Vietnam attendance policy: after 08:40 is a late notice; after 09:30 deduct half a day; after 13:00 deduct a full day.
     const currentMinutes = zoned.hour * 60 + zoned.minute;
-    const morningDeadlineMinutes = 8 * 60 + 30;
-    const afternoonAbsenceMinutes = 13 * 60;
+    const lateNoticeMinutes = 8 * 60 + 30;
+    const halfDayDeductionMinutes = 9 * 60 + 30;
+    const fullDayAbsenceMinutes = 13 * 60;
     let trangThai: ChamCong['TrangThai'] = 'Có mặt';
     let policyNote = '';
-    if (currentMinutes >= afternoonAbsenceMinutes) {
+    if (currentMinutes > fullDayAbsenceMinutes) {
       trangThai = 'Nghỉ';
       policyNote = 'Check-in sau 13:00: tính nghỉ cả ngày theo quy định chấm công.';
-    } else if (currentMinutes > morningDeadlineMinutes) {
+    } else if (currentMinutes > halfDayDeductionMinutes) {
       trangThai = 'Đi trễ';
-      policyNote = 'Check-in sau 08:30: tính nửa ngày công theo quy định chấm công.';
+      policyNote = 'Check-in sau 09:30: khấu trừ nửa ngày lương.';
+    } else if (currentMinutes > lateNoticeMinutes) {
+      trangThai = 'Đi trễ';
+      policyNote = 'Check-in sau 08:40: ghi nhận đi trễ, không khấu trừ lương.';
     }
     const chamCongId = `CC-${todayStr.replace(/-/g, '')}-${user.NhanVienID}`;
 
@@ -1138,13 +1142,15 @@ class DatabaseService {
     const diffHours = Math.max(0, (outTotalSec - inTotalSec) / 3600);
     record.SoGioLam = Math.round(diffHours * 100) / 100;
 
-    // Check early leave if before 17:30
-    const [stdOutH, stdOutM] = this.db.SYSTEM_CONFIG.GioTanCaChuan.split(':').map(Number);
-    const stdOutMinutes = stdOutH * 60 + stdOutM;
-    const currentMinutes = zoned.hour * 60 + zoned.minute;
-
-    if (currentMinutes < stdOutMinutes && record.TrangThai === 'Có mặt') {
-      record.TrangThai = 'Về sớm';
+    // Checkout is flexible; 20:30 is the studio's standard reference time.
+    // Earlier checkout is recorded for review only and does not automatically reduce salary.
+    const standardCheckoutMinutes = 20 * 60 + 30;
+    const checkoutMinutes = zoned.hour * 60 + zoned.minute;
+    if (checkoutMinutes < standardCheckoutMinutes) {
+      const note = 'Check-out trước 20:30 (thời gian linh hoạt, quản lý đối chiếu nếu cần).';
+      if (!record.GhiChu?.includes(note)) {
+        record.GhiChu = [record.GhiChu, note].filter(Boolean).join(' | ');
+      }
     }
 
     this.refreshKPIs();
@@ -1315,16 +1321,21 @@ class DatabaseService {
       );
       const soNgayCong = attendance.reduce((sum, cc) => {
         if (!cc.CheckIn || cc.TrangThai === 'Nghỉ') return sum;
-        return sum + (cc.TrangThai === 'Đi trễ' || cc.TrangThai === 'Về sớm' ? 0.5 : 1);
+        const [hour, minute] = cc.CheckIn.split(':').map(Number);
+        return sum + (hour * 60 + minute > 9 * 60 + 30 ? 0.5 : 1);
       }, 0);
       const soGioLam = attendance.reduce((sum, cc) => sum + (cc.SoGioLam || 0), 0);
       const ngayNghi = attendance.filter((cc) => cc.TrangThai === 'Nghỉ' || cc.TrangThai === 'Nghỉ phép').length;
-      const ngayDiTre = attendance.filter((cc) => cc.TrangThai === 'Đi trễ').length;
-      // Studio operates every day; calculate daily deductions using a 30-day month.
+      // Only check-ins strictly after 09:30 incur half-day deduction; 08:40–09:30 is notice only.
+      const ngayDiTreNuaNgay = attendance.filter((cc) => {
+        if (!cc.CheckIn || cc.TrangThai === 'Nghỉ') return false;
+        const [hour, minute] = cc.CheckIn.split(':').map(Number);
+        return hour * 60 + minute > 9 * 60 + 30;
+      }).length;
       const donGiaNgay = Math.max(0, Number(nv.LuongCoBan || 0)) / 30;
       const ngayNghiVuotMien = Math.max(0, ngayNghi - 2);
       const khauTruNghi = Math.round(ngayNghiVuotMien * donGiaNgay);
-      const khauTruDiTre = Math.round(ngayDiTre * donGiaNgay * 0.5);
+      const khauTruDiTre = Math.round(ngayDiTreNuaNgay * donGiaNgay * 0.5);
       const tongKhauTruChamCong = khauTruNghi + khauTruDiTre;
       // Sum approved commissions for this month
       const approvedCommissions = this.db.HOAHONG.filter(
@@ -1353,7 +1364,7 @@ class DatabaseService {
         ThucLanh: 0,
         TrangThai: 'Chờ duyệt',
         NgayTao: new Date().toISOString(),
-        GhiChu: `Bảng lương ${thang} tạo tự động. Khấu trừ chấm công: nghỉ ${ngayNghi} ngày (miễn 2 ngày, trừ ${khauTruNghi.toLocaleString('vi-VN')}đ); đi trễ ${ngayDiTre} lần (trừ ${khauTruDiTre.toLocaleString('vi-VN')}đ).`,
+        GhiChu: `Bảng lương ${thang} tạo tự động. Khấu trừ chấm công: nghỉ ${ngayNghi} ngày (miễn 2 ngày, trừ ${khauTruNghi.toLocaleString('vi-VN')}đ); check-in sau 09:30 ${ngayDiTreNuaNgay} lần (trừ nửa ngày/lần, ${khauTruDiTre.toLocaleString('vi-VN')}đ).`,
       };
 
       this.recalculateLuong(newLuong);
