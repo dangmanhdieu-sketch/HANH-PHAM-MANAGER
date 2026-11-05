@@ -1064,7 +1064,6 @@ class DatabaseService {
 
     // Attendance policy: before 08:30 is on time; 08:30-09:30 is late notice only;
     // after 09:30 through 13:00 deducts half a day; strictly after 13:00 is a full absence.
-    const currentMinutes = zoned.hour * 60 + zoned.minute;
     const onTimeDeadline = 8 * 60 + 30;
     const halfDayDeadline = 9 * 60 + 30;
     const fullDayAbsenceDeadline = 13 * 60;
