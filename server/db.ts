@@ -1905,36 +1905,40 @@ class DatabaseService {
       throw new Error('Không tìm thấy tài khoản Admin NV001. Không thể reset dữ liệu.');
     }
 
-    // Create a local safety copy first.
-    const backup = this.backupDatabase();
-    const backupId = new Date().toISOString().replace(/[:.]/g, '-');
-
-    // Firestore is authoritative in production. Do not proceed with deletion
-    // unless a cloud backup of every persisted table has been committed.
-    if (this.firestoreEnabled && this.firestore) {
-      const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
-      const backupRef = rootRef.collection('backups').doc(backupId);
-      const batch = this.firestore.batch();
-      batch.set(backupRef, {
-        createdAt: new Date().toISOString(),
-        createdBy: adminUser.HoTen,
-        description: 'Safety backup created before full demo-data reset',
-        tables: [...this.firestoreTables],
-      });
-      for (const table of this.firestoreTables) {
-        const value = (this.db as any)[table];
-        if (value === undefined) continue;
-        batch.set(backupRef.collection('tables').doc(table), {
-          data: sanitizeFirestoreValue(value),
-          updatedAt: new Date().toISOString(),
-        });
-      }
-      await batch.commit();
-    } else {
+    // Wait for any previously queued cloud write before taking the backup.
+    // The reset must never race with an older save operation.
+    if (!this.firestoreEnabled || !this.firestore) {
       throw new Error('Firebase chưa kết nối. Đã dừng thao tác để không xóa dữ liệu khi chưa có bản sao lưu an toàn trên đám mây.');
     }
+    await this.firestoreSaveQueue;
 
-    // Keep the existing administrator account and studio configuration/theme.
+    // Create a local safety copy first, then a complete cloud backup.
+    const backup = this.backupDatabase();
+    const backupId = new Date().toISOString().replace(/[:.]/g, '-');
+    const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+    const backupRef = rootRef.collection('backups').doc(backupId);
+    const batch = this.firestore.batch();
+    batch.set(backupRef, {
+      createdAt: new Date().toISOString(),
+      createdBy: adminUser.HoTen,
+      description: 'Safety backup created before full business-data reset',
+      tables: [...this.firestoreTables],
+      adminIdPreserved: admin.NhanVienID,
+    });
+    for (const table of this.firestoreTables) {
+      const value = (this.db as any)[table];
+      if (value === undefined) continue;
+      batch.set(backupRef.collection('tables').doc(table), {
+        data: sanitizeFirestoreValue(value),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    // If the backup cannot be committed, abort before changing any live data.
+    await batch.commit();
+
+    // Keep the exact existing Admin credentials, studio configuration and theme.
+    // All contracts, receipts, tasks and leave requests are stored in QUAN_LY,
+    // so clearing this collection removes every business module record.
     this.db.NHANVIEN = [admin];
     this.db.CHAMCONG = [];
     this.db.LUONG = [];
@@ -1945,6 +1949,7 @@ class DatabaseService {
     this.db.AUDIT_LOG = [];
     this.db.QUAN_LY = [];
 
+    // Disable scheduled demo/automatic generation during the clean start.
     this.db.SYSTEM_CONFIG = {
       ...this.db.SYSTEM_CONFIG,
       AutomationEnabled: false,
@@ -1954,17 +1959,35 @@ class DatabaseService {
     this.refreshKPIs();
     this.saveSync();
     await this.persistToFirestoreNow();
+
+    // Verify the persisted clean state before reporting success.
+    const verifyAdmin = await rootRef.collection('tables').doc('NHANVIEN').get();
+    const verifyQuanLy = await rootRef.collection('tables').doc('QUAN_LY').get();
+    const persistedStaff = verifyAdmin.data()?.data;
+    const persistedQuanLy = verifyQuanLy.data()?.data;
+    if (!Array.isArray(persistedStaff) || persistedStaff.length !== 1 ||
+        persistedStaff[0]?.NhanVienID !== 'NV001' ||
+        !Array.isArray(persistedQuanLy) || persistedQuanLy.length !== 0) {
+      throw new Error('Reset chưa được xác minh trên Firestore. Bản sao lưu vẫn được giữ tại backups/' + backupId + '.');
+    }
+
     this.logAudit(
       adminUser.HoTen,
       adminUser.Email,
-      'Reset dữ liệu demo',
-      'Đã xóa dữ liệu nghiệp vụ; giữ tài khoản Admin, cấu hình studio và giao diện. Bản sao lưu an toàn đã được lưu trên Firestore.'
+      'Reset dữ liệu nghiệp vụ',
+      'Đã xóa dữ liệu nghiệp vụ; giữ Admin NV001, cấu hình studio và giao diện. Bản sao lưu Firestore: ' + backupId
     );
     await this.persistToFirestoreNow();
 
+    const quanLyCounts = {
+      hopDong: this.db.QUAN_LY.filter((x) => x.Module === 'HOP_DONG').length,
+      thuChi: this.db.QUAN_LY.filter((x) => x.Module === 'THU_CHI').length,
+      congViec: this.db.QUAN_LY.filter((x) => x.Module === 'CONG_VIEC').length,
+      nghiPhep: this.db.QUAN_LY.filter((x) => x.Module === 'NGHI_PHEP').length,
+    };
     return {
       success: true,
-      message: 'Đã làm sạch dữ liệu nghiệp vụ. Tài khoản Admin và cấu hình studio được giữ lại.',
+      message: 'Đã làm sạch dữ liệu nghiệp vụ và xác minh Firestore. Tài khoản Admin NV001, cấu hình studio và giao diện được giữ lại.',
       backupFile: backup.filename,
       cloudBackupId: backupId,
       remainingAdmin: admin.NhanVienID,
@@ -1974,6 +1997,10 @@ class DatabaseService {
       tamUng: this.db.TAM_UNG.length,
       hoaHong: this.db.HOAHONG.length,
       quanLy: this.db.QUAN_LY.length,
+      hopDong: quanLyCounts.hopDong,
+      thuChi: quanLyCounts.thuChi,
+      congViec: quanLyCounts.congViec,
+      nghiPhep: quanLyCounts.nghiPhep,
     };
   }
   public getQuanLyRecords(module?: QuanLyModule): QuanLyRecord[] {
