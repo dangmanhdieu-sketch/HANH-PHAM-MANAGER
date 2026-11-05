@@ -1047,7 +1047,7 @@ class DatabaseService {
 
     // Vietnam attendance policy: after 08:40 is a late notice; after 09:30 deduct half a day; after 13:00 deduct a full day.
     const currentMinutes = zoned.hour * 60 + zoned.minute;
-    const lateNoticeMinutes = 8 * 60 + 40;
+    const lateNoticeMinutes = 8 * 60 + 30;
     const halfDayDeductionMinutes = 9 * 60 + 30;
     const fullDayAbsenceMinutes = 13 * 60;
     let trangThai: ChamCong['TrangThai'] = 'Có mặt';
