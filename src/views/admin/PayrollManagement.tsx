@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { formatMoney, formatMoneyInput, parseMoneyInput } from '../../utils/format';
 import {
   DollarSign,
@@ -75,6 +75,12 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
       setTamUngLoading(false);
     }
   };
+
+  useEffect(() => {
+    void loadTamUng();
+    // Load pending requests immediately when the admin opens payroll management.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openTamUngModal = (staffId?: string) => {
     setTamUngForm({
