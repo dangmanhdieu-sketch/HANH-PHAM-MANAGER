@@ -321,6 +321,43 @@ function getInitialData(): DatabaseSchema {
   };
 }
 
+function getFreshEmptyData(): DatabaseSchema {
+  const username = String(process.env.INITIAL_ADMIN_USERNAME || 'admin').trim().toLowerCase();
+  const password = String(process.env.INITIAL_ADMIN_PASSWORD || '');
+  if (!password || password.length < 12) {
+    throw new Error('[Firebase] INITIAL_ADMIN_PASSWORD must be configured with at least 12 characters before initializing a new database.');
+  }
+  const admin: NhanVien = {
+    NhanVienID: 'NV001',
+    TenDangNhap: username,
+    HoTen: process.env.INITIAL_ADMIN_NAME || 'Quản trị viên',
+    Email: process.env.INITIAL_ADMIN_EMAIL || 'admin@hanhphambridal.vn',
+    SDT: '',
+    ChucVu: 'Quản trị hệ thống',
+    LuongCoBan: 0,
+    NgayVaoLam: new Date().toISOString().slice(0, 10),
+    TrangThai: 'Đang Làm',
+    AnhNhanVien: '',
+    Quyen: 'Admin',
+    MatKhau: bcrypt.hashSync(password, 12),
+    BiKhoa: false,
+    TaoLuc: new Date().toISOString(),
+  };
+  return {
+    NHANVIEN: [admin],
+    CHAMCONG: [],
+    LUONG: [],
+    TAM_UNG: [],
+    HOAHONG: [],
+    THONGKE: [],
+    AUDIT_LOG: [],
+    NOTIFICATIONS: [],
+    QUAN_LY: [],
+    SYSTEM_CONFIG: { ...DEFAULT_CONFIG },
+    THEME: { ...DEFAULT_THEME },
+  };
+}
+
 /**
  * Firestore rejects undefined values anywhere inside a document. Legacy records
  * may contain optional fields with undefined values, so remove those fields
@@ -506,9 +543,13 @@ class DatabaseService {
 
     try {
       const serviceAccount = JSON.parse(rawCredentials);
+      const expectedProjectId = process.env.FIREBASE_EXPECTED_PROJECT_ID || 'hanhphamnew';
+      if (serviceAccount.project_id !== expectedProjectId) {
+        throw new Error(`[Firebase] Service account project_id mismatch. Expected ${expectedProjectId}, received ${serviceAccount.project_id || 'missing'}.`);
+      }
       const app = getApps().length > 0
         ? getApps()[0]
-        : initializeApp({ credential: cert(serviceAccount) });
+        : initializeApp({ credential: cert(serviceAccount), projectId: expectedProjectId });
 
       this.firestore = getFirestore(app);
       this.firestoreEnabled = true;
@@ -533,13 +574,13 @@ class DatabaseService {
       const rootSnap = await rootRef.get();
 
       if (!rootSnap.exists) {
-        if (process.env.ALLOW_FIRESTORE_BOOTSTRAP_FROM_LOCAL === 'true') {
-          // Explicit one-time migration only. Never bootstrap demo data by default.
-          await this.persistToFirestoreNow();
-          console.log('[Firebase] Đã bootstrap Firestore theo cấu hình cho phép rõ ràng.');
-          return;
+        if (process.env.FIREBASE_ALLOW_EMPTY_INIT !== 'true') {
+          throw new Error('[Firebase] New Firestore is empty. Set FIREBASE_ALLOW_EMPTY_INIT=true for the one-time empty initialization.');
         }
-        throw new Error('[Firebase] Firestore root document không tồn tại. Dừng khởi động để tránh ghi dữ liệu demo mặc định lên cloud.');
+        this.db = getFreshEmptyData();
+        await this.persistToFirestoreNow();
+        console.log('[Firebase] Initialized new Firestore with one admin account and empty business tables.');
+        return;
       }
 
       const rootData = rootSnap.data() || {};
