@@ -272,16 +272,19 @@ app.get('/api/nhanvien/:id', authenticateToken, (req: AuthRequest, res: Response
   return res.json(safe);
 });
 
-app.post('/api/nhanvien', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+app.post('/api/nhanvien', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const created = dbService.createNhanVien(req.body, {
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
+    // Do not tell the UI the employee was created until Firestore confirms the write.
+    await dbService.saveAndVerify();
     const { MatKhau: _, ...safe } = created;
     return res.status(201).json(safe);
   } catch (err: any) {
-    return res.status(400).json({ error: err.message });
+    console.error('[API] Create employee / Firestore persistence failed:', err);
+    return res.status(500).json({ error: err.message || 'Không thể xác nhận lưu nhân viên lên Firebase.' });
   }
 });
 
