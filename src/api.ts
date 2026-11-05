@@ -881,12 +881,21 @@ export const api = {
       success: boolean;
       message: string;
       backupFile: string;
+      cloudBackupId: string;
       remainingAdmin: string;
       nhanVien: number;
       chamCong: number;
       luong: number;
       hoaHong: number;
       notifications: number;
+      removed: {
+        nhanVien: number;
+        chamCong: number;
+        luong: number;
+        tamUng: number;
+        hoaHong: number;
+        quanLy: number;
+      };
     }> {
       return request(
         '/api/admin/reset-demo-data',
