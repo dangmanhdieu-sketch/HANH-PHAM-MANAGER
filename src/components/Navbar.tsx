@@ -45,7 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { theme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
-  const [switchDropdownOpen, setSwitchDropdownOpen] = useState(false);
+  void onQuickSwitchUser;
 
   const unreadCount = notifications.filter((n) => !n.DaDoc).length;
   const isAdmin = currentUser.Quyen === 'Admin';
@@ -96,28 +96,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   const activeTabs = isAdmin ? adminTabs : isFreelancer ? freelancerTabs : isSale ? saleTabs : employeeTabs;
 
   // ============================================================
-  // QUICK USERS
-  // ============================================================
-  const quickUsers = [
-    {
-      name: 'Hạnh Phạm (Admin / Giám Đốc)',
-      email: 'admin@hanhphambridal.vn',
-      role: 'Admin',
-    },
-    {
-      name: 'Đỗ Mai Linh (Nhân viên Tư Vấn)',
-      email: 'linh.mai@hanhphambridal.vn',
-      role: 'Nhân viên',
-    },
-  ];
-
-  // ============================================================
   // CHANGE TAB
   // ============================================================
   const handleTabChange = (tab: string) => {
     onTabChange(tab);
     setMobileMenuOpen(false);
-    setSwitchDropdownOpen(false);
     setNotifDropdownOpen(false);
   };
 
@@ -467,82 +450,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* ACTIONS */}
             <div className="flex items-center gap-2 sm:gap-4">
 
-              {/* ACCOUNT SWITCH */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSwitchDropdownOpen((prev) => !prev);
-                    setNotifDropdownOpen(false);
-                  }}
-                  className="
-                    flex items-center gap-1.5
-                    px-2.5 py-1.5
-                    rounded-lg
-                    border border-[#e7dfd5]
-                    text-[11px]
-                    font-medium
-                    text-stone-700
-                    bg-[#faf8f5]
-                    hover:bg-[#f4eee7]
-                  "
-                >
-                  <ArrowRightLeft className="w-3.5 h-3.5 text-[#bf954f]" />
-
-                  <span>Đổi tài khoản</span>
-
-                  <ChevronDown className="w-3 h-3 text-stone-400" />
-                </button>
-
-                {switchDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-[#e7dfd5] p-2 z-[120]">
-
-                    <p className="text-[10px] uppercase font-bold text-stone-400 px-2 py-1 tracking-wider">
-                      Chuyển đổi tài khoản
-                    </p>
-
-                    <div className="space-y-1">
-                      {quickUsers.map((u) => (
-                        <button
-                          key={u.email}
-                          type="button"
-                          onClick={() => {
-                            setSwitchDropdownOpen(false);
-                            onQuickSwitchUser(u.email);
-                          }}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition ${
-                            currentUser.Email === u.email
-                              ? 'bg-[#f6f1e6] text-stone-900 font-bold border border-[#dfc79f]'
-                              : 'hover:bg-stone-50 text-stone-700'
-                          }`}
-                        >
-                          <div className="truncate">
-                            <p className="truncate">
-                              {u.name}
-                            </p>
-
-                            <p className="text-[10px] text-stone-400 truncate">
-                              {u.email}
-                            </p>
-                          </div>
-
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-stone-100 font-semibold text-stone-600">
-                            {u.role}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* DESKTOP NOTIFICATION */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => {
                     setNotifDropdownOpen((prev) => !prev);
-                    setSwitchDropdownOpen(false);
 
                     if (!notifDropdownOpen && unreadCount > 0) {
                       onMarkReadNotifications();
@@ -869,94 +782,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 })}
 
               </div>
-
-              {/* ACCOUNT SWITCH */}
-              <div className="mt-6">
-
-                <p className="px-2 mb-2 text-[10px] uppercase tracking-[0.18em] font-bold text-stone-400">
-                  Tài khoản
-                </p>
-
-                <div className="rounded-2xl bg-white border border-[#EEE7DE] overflow-hidden">
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSwitchDropdownOpen(
-                        (prev) => !prev
-                      )
-                    }
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
-                  >
-
-                    <span className="w-10 h-10 rounded-xl bg-[#F7F3ED] text-[#a97d3e] flex items-center justify-center">
-                      <ArrowRightLeft className="w-5 h-5" />
-                    </span>
-
-                    <span className="flex-1">
-
-                      <span className="block text-sm font-semibold text-stone-800">
-                        Đổi tài khoản
-                      </span>
-
-                      <span className="block text-[10px] text-stone-400 mt-0.5">
-                        Kiểm thử phân quyền
-                      </span>
-
-                    </span>
-
-                    <ChevronDown
-                      className={`w-4 h-4 text-stone-400 transition-transform ${
-                        switchDropdownOpen
-                          ? 'rotate-180'
-                          : ''
-                      }`}
-                    />
-
-                  </button>
-
-                  {switchDropdownOpen && (
-                    <div className="border-t border-stone-100 p-2">
-
-                      {quickUsers.map((u) => (
-                        <button
-                          key={u.email}
-                          type="button"
-                          onClick={() => {
-                            setSwitchDropdownOpen(false);
-                            onQuickSwitchUser(u.email);
-                          }}
-                          className={`w-full text-left px-3 py-3 rounded-xl flex items-center justify-between ${
-                            currentUser.Email === u.email
-                              ? 'bg-[#F6F1E8]'
-                              : 'hover:bg-stone-50'
-                          }`}
-                        >
-
-                          <div className="min-w-0">
-
-                            <p className="text-xs font-semibold text-stone-800 truncate">
-                              {u.name}
-                            </p>
-
-                            <p className="text-[10px] text-stone-400 truncate mt-0.5">
-                              {u.email}
-                            </p>
-
-                          </div>
-
-                          <span className="ml-2 shrink-0 text-[9px] px-2 py-1 rounded-full bg-stone-100 text-stone-600 font-bold">
-                            {u.role}
-                          </span>
-
-                        </button>
-                      ))}
-
-                    </div>
-                  )}
-                </div>
-              </div>
-</div>
 
             {/* LOGOUT */}
             <div
