@@ -573,6 +573,15 @@ class DatabaseService {
       const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
       const rootSnap = await rootRef.get();
 
+      // Explicit, one-time destructive reset for a newly selected Firebase project.
+      // This is intentionally opt-in and must be disabled immediately after success.
+      if (process.env.FIREBASE_FORCE_FRESH_INIT === 'true') {
+        this.db = getFreshEmptyData();
+        await this.persistToFirestoreNow();
+        console.log('[Firebase] Force-initialized a fresh database: one Admin account and empty business tables.');
+        return;
+      }
+
       if (!rootSnap.exists) {
         if (process.env.FIREBASE_ALLOW_EMPTY_INIT !== 'true') {
           throw new Error('[Firebase] New Firestore is empty. Set FIREBASE_ALLOW_EMPTY_INIT=true for the one-time empty initialization.');
