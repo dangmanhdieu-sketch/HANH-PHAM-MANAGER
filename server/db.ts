@@ -224,6 +224,7 @@ class DatabaseService {
   private firestoreSaveQueued = false;
   private firestore: Firestore | null = null;
   private firestoreEnabled = false;
+  private demoDataPurged = false;
   private readonly firestoreCollection = process.env.FIREBASE_COLLECTION || 'hanh_pham_manager';
   private readonly firestoreDocument = process.env.FIREBASE_DOCUMENT || 'database';
   private readonly firestoreTables = [
@@ -402,6 +403,21 @@ class DatabaseService {
     await this.readyPromise;
   }
 
+  private purgeKnownDemoData() {
+    const id = 'NV002';
+    const email = 'linh.mai@hanhphambridal.vn';
+    const name = 'Đỗ Mai Linh';
+    const linked = (r: any) => r?.NhanVienID === id || r?.NhanVienEmail === email || r?.Email === email || r?.HoTen === name || r?.NhanVien === name || r?.TenNhanVien === name;
+    this.db.NHANVIEN = (this.db.NHANVIEN || []).filter((nv) => !(nv.NhanVienID === id && String(nv.Email || '').toLowerCase() === email && nv.HoTen === name));
+    this.db.CHAMCONG = (this.db.CHAMCONG || []).filter((r) => !linked(r));
+    this.db.LUONG = (this.db.LUONG || []).filter((r) => !linked(r));
+    this.db.TAM_UNG = (this.db.TAM_UNG || []).filter((r) => !linked(r));
+    this.db.HOAHONG = (this.db.HOAHONG || []).filter((r) => !linked(r));
+    this.db.QUAN_LY = (this.db.QUAN_LY || []).filter((r) => !linked(r?.DuLieu));
+    this.db.NOTIFICATIONS = (this.db.NOTIFICATIONS || []).filter((r) => r.NotificationID !== 'TB-001' && r.NhanVienID !== id);
+    this.db.AUDIT_LOG = (this.db.AUDIT_LOG || []).filter((r) => r.LogID !== 'LOG-001');
+  }
+
   private async loadFromFirestore(): Promise<void> {
     if (!this.firestoreEnabled || !this.firestore) return;
 
@@ -422,6 +438,7 @@ class DatabaseService {
       }
 
       const rootData = rootSnap.data() || {};
+      this.demoDataPurged = rootData.__demoDataPurged === true;
       const schemaVersion = Number(rootData.__schemaVersion || 1);
 
       if (schemaVersion >= 2) {
@@ -458,10 +475,11 @@ class DatabaseService {
             THEME: loaded.THEME,
           };
 
+          if (this.demoDataPurged) this.purgeKnownDemoData();
           const migrated = this.applyMigrations();
           this.refreshKPIs();
           this.saveSync();
-          if (migrated) await this.persistToFirestoreNow();
+          if (migrated || this.demoDataPurged) await this.persistToFirestoreNow();
           console.log('[Firebase] Đã tải dữ liệu persistent từ Firestore.');
           console.log('[Firebase] DATA COUNTS:', JSON.stringify({
             NHANVIEN: this.db.NHANVIEN?.length || 0,
@@ -497,6 +515,7 @@ class DatabaseService {
         THEME: legacy.THEME,
       };
 
+      if (this.demoDataPurged) this.purgeKnownDemoData();
       const migrated = this.applyMigrations();
       this.refreshKPIs();
       this.saveSync();
@@ -520,6 +539,7 @@ class DatabaseService {
       // user's Firebase Console remains recoverable.
       batch.set(rootRef, {
         __schemaVersion: 2,
+        ...(this.demoDataPurged ? { __demoDataPurged: true, __demoDataPurgedAt: new Date().toISOString() } : {}),
         __updatedAt: new Date().toISOString(),
         __storage: 'Firestore split tables',
       }, { merge: true });
@@ -1784,19 +1804,8 @@ class DatabaseService {
       quanLy: this.db.QUAN_LY.length,
     };
 
-    this.db.NHANVIEN = this.db.NHANVIEN.filter((nv) => nv.NhanVienID !== demoEmployeeId);
-    this.db.CHAMCONG = this.db.CHAMCONG.filter((record) => !belongsToDemoEmployee(record));
-    this.db.LUONG = this.db.LUONG.filter((record) => !belongsToDemoEmployee(record));
-    this.db.TAM_UNG = this.db.TAM_UNG.filter((record) => !belongsToDemoEmployee(record));
-    this.db.HOAHONG = this.db.HOAHONG.filter((record) => !belongsToDemoEmployee(record));
-    this.db.QUAN_LY = this.db.QUAN_LY.filter((record) => !belongsToDemoEmployee(record?.DuLieu));
-
-    // Remove only exact seed records; preserve all other user-entered history.
-    this.db.NOTIFICATIONS = this.db.NOTIFICATIONS.filter((record) =>
-      record.NotificationID !== 'TB-001' &&
-      record.NhanVienID !== demoEmployeeId
-    );
-    this.db.AUDIT_LOG = this.db.AUDIT_LOG.filter((record) => record.LogID !== 'LOG-001');
+    this.demoDataPurged = true;
+    this.purgeKnownDemoData();
 
     this.refreshKPIs();
     this.saveSync();
