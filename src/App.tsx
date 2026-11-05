@@ -36,6 +36,7 @@ import { MyAttendance } from './views/employee/MyAttendance';
 import { MyPayroll } from './views/employee/MyPayroll';
 import { MyCommissions } from './views/employee/MyCommissions';
 import { MyProfile } from './views/employee/MyProfile';
+import { LeaveRequests } from './views/LeaveRequests';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 
 class AppErrorBoundary extends React.Component<
@@ -413,6 +414,8 @@ function AppContent() {
               />
             )}
 
+            {currentTab === 'nghiphep' && <LeaveRequests currentUser={currentUser} isAdmin onRefresh={refreshAllData} />}
+
             {currentTab === 'chamcong' && (
               <AttendanceManagement
                 attendanceList={attendanceList}
@@ -482,6 +485,8 @@ function AppContent() {
                 isFreelancer={currentUser.Quyen === 'Freelancer'}
               />
             )}
+
+            {currentTab === 'nghiphep_me' && <LeaveRequests currentUser={currentUser} isAdmin={false} onRefresh={refreshAllData} />}
 
             {currentTab === 'chamcong_me' && (
               <MyAttendance attendanceList={attendanceList} />
