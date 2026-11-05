@@ -144,7 +144,32 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
     reader.readAsText(file);
   };
   const handleResetDemoData = async () => {
-    alert('Chức năng xóa dữ liệu demo chưa được kết nối với API. Hãy dùng Khôi phục từ bản backup hoặc quản lý dữ liệu trong từng mục.');
+    const confirmed = window.confirm(
+      'Hệ thống sẽ tạo bản sao lưu đầy đủ trước khi xóa nhân viên demo NV002 và các bản ghi liên quan. Dữ liệu của nhân viên khác, Admin, hợp đồng/thu chi không liên quan, cấu hình studio và giao diện sẽ được giữ lại. Bạn có chắc chắn muốn tiếp tục?'
+    );
+    if (!confirmed) return;
+
+    setResetting(true);
+    try {
+      const result = await api.system.resetDemoData();
+      alert(
+        result.message +
+        '\\n\\nĐã xóa: ' +
+        (result.removed?.nhanVien ?? 0) + ' nhân viên demo, ' +
+        (result.removed?.chamCong ?? 0) + ' chấm công, ' +
+        (result.removed?.luong ?? 0) + ' bảng lương, ' +
+        (result.removed?.tamUng ?? 0) + ' tạm ứng, ' +
+        (result.removed?.hoaHong ?? 0) + ' hoa hồng, ' +
+        (result.removed?.quanLy ?? 0) + ' bản ghi nghiệp vụ.' +
+        '\\n\\nMã backup Firestore: ' + result.cloudBackupId
+      );
+      await loadData();
+      onRefreshAll();
+    } catch (err: any) {
+      alert(err.message || 'Không thể xóa dữ liệu demo. Dữ liệu hiện tại chưa được xác nhận đã thay đổi.');
+    } finally {
+      setResetting(false);
+    }
   };
 
   const filteredLogs = auditLogs.filter((log) => {
