@@ -702,6 +702,7 @@ class DatabaseService {
       await batch.commit();
     } catch (err) {
       console.error('[Firebase] Firestore save error:', err);
+      throw err;
     }
   }
 
