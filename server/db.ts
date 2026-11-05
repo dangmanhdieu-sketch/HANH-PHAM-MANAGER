@@ -221,7 +221,6 @@ function sanitizeFirestoreValue(value: any): any {
 class DatabaseService {
   private db: DatabaseSchema;
   private firestoreSaveQueue: Promise<void> = Promise.resolve();
-  private firestoreSaveQueued = false;
   private firestore: Firestore | null = null;
   private firestoreEnabled = false;
   private demoDataPurged = false;
@@ -407,8 +406,25 @@ class DatabaseService {
     const id = 'NV002';
     const email = 'linh.mai@hanhphambridal.vn';
     const name = 'Đỗ Mai Linh';
-    const linked = (r: any) => r?.NhanVienID === id || r?.NhanVienEmail === email || r?.Email === email || r?.HoTen === name || r?.NhanVien === name || r?.TenNhanVien === name;
-    this.db.NHANVIEN = (this.db.NHANVIEN || []).filter((nv) => !(nv.NhanVienID === id && String(nv.Email || '').toLowerCase() === email && nv.HoTen === name));
+    // Only treat NV002 as a demo ID while the exact seeded demo employee still exists.
+    // After deletion, a real employee may legitimately receive the reused ID NV002.
+    const seededDemoStillExists = (this.db.NHANVIEN || []).some((nv) =>
+      nv.NhanVienID === id &&
+      String(nv.Email || '').toLowerCase() === email &&
+      nv.HoTen === name
+    );
+    const linked = (r: any) =>
+      r?.NhanVienEmail === email ||
+      r?.Email === email ||
+      r?.HoTen === name ||
+      r?.NhanVien === name ||
+      r?.TenNhanVien === name ||
+      (seededDemoStillExists && r?.NhanVienID === id);
+    this.db.NHANVIEN = (this.db.NHANVIEN || []).filter((nv) =>
+      !(nv.NhanVienID === id &&
+        String(nv.Email || '').toLowerCase() === email &&
+        nv.HoTen === name)
+    );
     this.db.CHAMCONG = (this.db.CHAMCONG || []).filter((r) => !linked(r));
     this.db.LUONG = (this.db.LUONG || []).filter((r) => !linked(r));
     this.db.TAM_UNG = (this.db.TAM_UNG || []).filter((r) => !linked(r));
@@ -570,13 +586,10 @@ class DatabaseService {
 
   private queueFirestoreSave() {
     if (!this.firestoreEnabled || !this.firestore) return;
-    this.firestoreSaveQueued = true;
+    // Do not coalesce writes behind a shared boolean: a second edit made
+    // during an in-flight Firestore batch could otherwise be skipped.
     this.firestoreSaveQueue = this.firestoreSaveQueue
-      .then(async () => {
-        if (!this.firestoreSaveQueued) return;
-        this.firestoreSaveQueued = false;
-        await this.persistToFirestoreNow();
-      })
+      .then(() => this.persistToFirestoreNow())
       .catch((err) => {
         console.error('[Firebase] Firestore queued save error:', err);
       });
