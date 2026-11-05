@@ -409,12 +409,12 @@ class DatabaseService {
       const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
       const rootSnap = await rootRef.get();
 
-      // Explicit, one-time destructive reset for a newly selected Firebase project.
-      // This is intentionally opt-in and must be disabled immediately after success.
-      if (process.env.FIREBASE_FORCE_FRESH_INIT === 'true') {
+      // Never overwrite an existing Firestore database during a Render restart or deploy.
+      // This flag is honored only when the target document does not exist yet.
+      if (!rootSnap.exists && process.env.FIREBASE_FORCE_FRESH_INIT === 'true') {
         this.db = getFreshEmptyData();
         await this.persistToFirestoreNow();
-        console.log('[Firebase] Force-initialized a fresh database: one Admin account and empty business tables.');
+        console.log('[Firebase] Initialized a missing Firestore database with one Admin account and empty business tables.');
         return;
       }
 
@@ -1778,7 +1778,9 @@ class DatabaseService {
       record?.NhanVienID === demoEmployeeId ||
       record?.NhanVienEmail === demoEmployeeEmail ||
       record?.Email === demoEmployeeEmail ||
-      record?.HoTen === demoEmployeeName;
+      record?.HoTen === demoEmployeeName ||
+      record?.NhanVien === demoEmployeeName ||
+      record?.TenNhanVien === demoEmployeeName;
 
     const before = {
       nhanVien: this.db.NHANVIEN.length,
