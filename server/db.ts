@@ -562,7 +562,7 @@ class DatabaseService {
           }
         });
 
-        if (loaded.NHANVIEN || loaded.CHAMCONG || loaded.LUONG || loaded.HOAHONG) {
+        { // Schema v2 is authoritative even when a table is empty or missing.
           this.db = {
             ...this.db,
             ...loaded,
