@@ -108,7 +108,7 @@ app.post(
         });
       }
 
-      const result = dbService.resetDemoData({
+      const result = await dbService.resetDemoData({
         HoTen: req.user.HoTen,
         Email: req.user.Email,
       });
