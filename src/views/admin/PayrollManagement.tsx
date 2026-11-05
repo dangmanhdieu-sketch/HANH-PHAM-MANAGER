@@ -66,7 +66,8 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
   const loadTamUng = async () => {
     setTamUngLoading(true);
     try {
-      const data = await api.tamUng.getAll({ thang: selectedMonth || undefined });
+      // Load advance requests across all months so a request is never hidden by the payroll month filter.
+      const data = await api.tamUng.getAll();
       setTamUngList(data);
     } catch (err: any) {
       alert(err.message || 'Không thể tải danh sách tạm ứng');
@@ -250,7 +251,12 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
             className="flex items-center gap-2 px-4 py-2.5 bg-[#a97d3e] hover:bg-[#8f682f] text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition"
           >
             <Wallet className="w-4 h-4" />
-            <span>TẠM ỨNG LƯƠNG</span>
+            <span>DUYỆT / QUẢN LÝ TẠM ỨNG</span>
+            {tamUngList.filter((item) => item.TrangThai === 'Chờ duyệt').length > 0 && (
+              <span className="ml-1 inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-white text-[#8f682f] px-1.5 text-[10px] font-black">
+                {tamUngList.filter((item) => item.TrangThai === 'Chờ duyệt').length}
+              </span>
+            )}
           </button>
 
           <button
@@ -655,7 +661,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
               </form>
               <div className="border border-[#E7DFD5] rounded-xl overflow-hidden">
                 <div className="px-4 py-3 bg-[#FAF8F5] border-b border-[#E7DFD5] flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-stone-700">Lịch sử tạm ứng {selectedMonth ? 'tháng ' + selectedMonth : ''}</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-stone-700">Tất cả yêu cầu ứng lương (mọi tháng)</span>
                   <span className="text-xs font-mono font-bold text-orange-700">
                     Đã duyệt: {tamUngList.filter(item => !item.TrangThai || item.TrangThai === 'Đã duyệt').reduce((sum, item) => sum + Number(item.SoTien || 0), 0).toLocaleString('vi-VN')} đ
                   </span>
