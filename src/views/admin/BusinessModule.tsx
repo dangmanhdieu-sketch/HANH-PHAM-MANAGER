@@ -113,6 +113,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     ''
   ).trim();
   const config = CONFIG[module];
+  const [studioConfig, setStudioConfig] = useState<{ DiaChi: string; Hotline: string } | null>(null);
   const Icon = config.icon;
 
   const [records, setRecords] = useState<QuanLyRecord[]>([]);
@@ -214,6 +215,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   };
 
   useEffect(() => {
+    api.system.getConfig().then(setStudioConfig).catch((error) => console.error('Không tải được thông tin studio:', error));
     void loadRecords();
   }, [module]);
 
@@ -820,6 +822,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                   <div style={{fontSize:'19px',fontWeight:700,letterSpacing:'1.4px'}}>HẠNH PHẠM</div>
                   <div style={{fontSize:'11px',letterSpacing:'3px',color:'#9a763b',fontWeight:700}}>LUXURY BRIDAL</div>
                   <div style={{fontSize:'9px',marginTop:'5px'}}>HỢP ĐỒNG DỊCH VỤ CƯỚI · Mã hợp đồng: {code}</div>
+                  <div style={{fontSize:'9px',marginTop:'3px'}}>{studioConfig?.DiaChi || '321 Lê Quý Đôn, Tân Xuân, Bình Phước, Đồng Nai'} · Hotline: {studioConfig?.Hotline || '0988 123 456'}</div>
                 </div>
                 <div style={{textAlign:'right',fontSize:'9px'}}><b>HỢP ĐỒNG</b><br/>Mã: {code}</div>
               </header>
