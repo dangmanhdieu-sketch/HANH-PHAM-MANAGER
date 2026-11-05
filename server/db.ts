@@ -1058,18 +1058,22 @@ class DatabaseService {
       throw new Error(`Bạn đã Check-in hôm nay lúc ${record.CheckIn}. Không thể Check-in lại!`);
     }
 
-    // Attendance policy: on time through 08:30; late after 08:30; after 13:00 counts as a full-day absence.
+    // Attendance policy: before 08:30 is on time; 08:30-09:30 is late notice only;
+    // after 09:30 through 13:00 deducts half a day; strictly after 13:00 is a full absence.
     const currentMinutes = zoned.hour * 60 + zoned.minute;
-    const morningDeadlineMinutes = 8 * 60 + 30;
-    const afternoonAbsenceMinutes = 13 * 60;
+    const onTimeDeadline = 8 * 60 + 30;
+    const halfDayDeadline = 9 * 60 + 30;
+    const fullDayAbsenceDeadline = 13 * 60;
     let trangThai: ChamCong['TrangThai'] = 'Có mặt';
     let policyNote = '';
-    if (currentMinutes >= afternoonAbsenceMinutes) {
+    if (currentMinutes > fullDayAbsenceDeadline) {
       trangThai = 'Nghỉ';
-      policyNote = 'Check-in sau 13:00: tính nghỉ cả ngày theo quy định chấm công.';
-    } else if (currentMinutes > morningDeadlineMinutes) {
+      policyNote = 'Check-in sau 13:00: tính nghỉ cả ngày.';
+    } else if (currentMinutes >= onTimeDeadline) {
       trangThai = 'Đi trễ';
-      policyNote = 'Check-in sau 08:30: tính nửa ngày công theo quy định chấm công.';
+      policyNote = currentMinutes > halfDayDeadline
+        ? 'Check-in sau 09:30: khấu trừ nửa ngày lương.'
+        : 'Đi trễ: ghi nhận lý do, không khấu trừ lương trong khung 08:30-09:30.';
     }
     const chamCongId = `CC-${todayStr.replace(/-/g, '')}-${user.NhanVienID}`;
 
@@ -1326,18 +1330,51 @@ class DatabaseService {
       const attendance = this.db.CHAMCONG.filter(
         (cc) => cc.NhanVienID === nv.NhanVienID && cc.Ngay.startsWith(monthPrefix)
       );
+      const attendanceByDate = new Map(attendance.map((cc) => [cc.Ngay, cc]));
+      const isHalfDayLate = (cc: ChamCong) => {
+        if (!cc.CheckIn || cc.TrangThai === 'Nghỉ') return false;
+        const [hour, minute] = cc.CheckIn.split(':').map(Number);
+        const minutes = hour * 60 + minute;
+        return minutes > 9 * 60 + 30 && minutes <= 13 * 60;
+      };
       const soNgayCong = attendance.reduce((sum, cc) => {
         if (!cc.CheckIn || cc.TrangThai === 'Nghỉ') return sum;
-        return sum + (cc.TrangThai === 'Đi trễ' || cc.TrangThai === 'Về sớm' ? 0.5 : 1);
+        return sum + (isHalfDayLate(cc) ? 0.5 : 1);
       }, 0);
       const soGioLam = attendance.reduce((sum, cc) => sum + (cc.SoGioLam || 0), 0);
-      const ngayNghi = attendance.filter((cc) => cc.TrangThai === 'Nghỉ' || cc.TrangThai === 'Nghỉ phép').length;
-      const ngayDiTre = attendance.filter((cc) => cc.TrangThai === 'Đi trễ').length;
-      // Studio operates every day; calculate daily deductions using a 30-day month.
+
+      // Only explicitly approved leave requests count as leave. Missing check-ins
+      // without an approved leave or an actual attendance record are not absences.
+      const approvedLeaveDays = new Set<string>();
+      for (const request of this.db.QUAN_LY.filter((item) =>
+        item.Module === 'NGHI_PHEP' &&
+        item.DuLieu?.NhanVienID === nv.NhanVienID &&
+        item.DuLieu?.TrangThai === 'Đã duyệt'
+      )) {
+        const from = String(request.DuLieu?.TuNgay || '');
+        const to = String(request.DuLieu?.DenNgay || '');
+        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(from) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(to) || to < from) continue;
+        const cursor = new Date(from + 'T00:00:00Z');
+        const last = new Date(to + 'T00:00:00Z');
+        while (cursor <= last) {
+          const day = cursor.toISOString().slice(0, 10);
+          if (day.startsWith(monthPrefix) && !attendanceByDate.get(day)?.CheckIn) approvedLeaveDays.add(day);
+          cursor.setUTCDate(cursor.getUTCDate() + 1);
+        }
+      }
+
+      const fullAbsenceDays = new Set<string>(approvedLeaveDays);
+      attendance.forEach((cc) => {
+        if (cc.TrangThai === 'Nghỉ') fullAbsenceDays.add(cc.Ngay);
+      });
+      const ngayNghi = fullAbsenceDays.size;
+      const ngayDiTreKhauTru = attendance.filter(isHalfDayLate).length;
+      // Two full leave/absence days per month are salary-neutral; every further
+      // day is deducted at base salary / 30. Late arrivals after 09:30 add half-day deductions.
       const donGiaNgay = Math.max(0, Number(nv.LuongCoBan || 0)) / 30;
       const ngayNghiVuotMien = Math.max(0, ngayNghi - 2);
       const khauTruNghi = Math.round(ngayNghiVuotMien * donGiaNgay);
-      const khauTruDiTre = Math.round(ngayDiTre * donGiaNgay * 0.5);
+      const khauTruDiTre = Math.round(ngayDiTreKhauTru * donGiaNgay * 0.5);
       const tongKhauTruChamCong = khauTruNghi + khauTruDiTre;
       // Sum approved commissions for this month
       const approvedCommissions = this.db.HOAHONG.filter(
@@ -1366,7 +1403,7 @@ class DatabaseService {
         ThucLanh: 0,
         TrangThai: 'Chờ duyệt',
         NgayTao: new Date().toISOString(),
-        GhiChu: `Bảng lương ${thang} tạo tự động. Khấu trừ chấm công: nghỉ ${ngayNghi} ngày (miễn 2 ngày, trừ ${khauTruNghi.toLocaleString('vi-VN')}đ); đi trễ ${ngayDiTre} lần (trừ ${khauTruDiTre.toLocaleString('vi-VN')}đ).`,
+        GhiChu: `Bảng lương ${thang} tạo tự động. Nghỉ/ phép đã duyệt: ${ngayNghi} ngày (miễn 2 ngày, trừ ${khauTruNghi.toLocaleString('vi-VN')}đ); đi trễ sau 09:30: ${ngayDiTreKhauTru} lần (trừ ${khauTruDiTre.toLocaleString('vi-VN')}đ). Không có bản ghi chấm công không tự động tính nghỉ.`,
       };
 
       this.recalculateLuong(newLuong);
