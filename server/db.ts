@@ -1829,60 +1829,85 @@ class DatabaseService {
     return this.db.SYSTEM_CONFIG;
   }
   // RESET TOÀN BỘ DỮ LIỆU DEMO - GIỮ LẠI ADMIN
-  public resetDemoData(adminUser: { HoTen: string; Email: string }) {
-    // Kiểm tra tài khoản Admin NV001 phải tồn tại
+  public async resetDemoData(adminUser: { HoTen: string; Email: string }) {
+    await this.readyPromise;
+
     const admin = this.db.NHANVIEN.find(
       (nv) => nv.NhanVienID === 'NV001' && nv.Quyen === 'Admin'
     );
-
     if (!admin) {
       throw new Error('Không tìm thấy tài khoản Admin NV001. Không thể reset dữ liệu.');
     }
 
-    // Tạo backup trước khi xóa
+    // Create a local safety copy first.
     const backup = this.backupDatabase();
+    const backupId = new Date().toISOString().replace(/[:.]/g, '-');
 
-    // GIỮ LẠI DUY NHẤT TÀI KHOẢN ADMIN
+    // Firestore is authoritative in production. Do not proceed with deletion
+    // unless a cloud backup of every persisted table has been committed.
+    if (this.firestoreEnabled && this.firestore) {
+      const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+      const backupRef = rootRef.collection('backups').doc(backupId);
+      const batch = this.firestore.batch();
+      batch.set(backupRef, {
+        createdAt: new Date().toISOString(),
+        createdBy: adminUser.HoTen,
+        description: 'Safety backup created before full demo-data reset',
+        tables: [...this.firestoreTables],
+      });
+      for (const table of this.firestoreTables) {
+        const value = (this.db as any)[table];
+        if (value === undefined) continue;
+        batch.set(backupRef.collection('tables').doc(table), {
+          data: sanitizeFirestoreValue(value),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      await batch.commit();
+    } else {
+      throw new Error('Firebase chưa kết nối. Đã dừng thao tác để không xóa dữ liệu khi chưa có bản sao lưu an toàn trên đám mây.');
+    }
+
+    // Keep the existing administrator account and studio configuration/theme.
     this.db.NHANVIEN = [admin];
-
-    // XÓA TOÀN BỘ DỮ LIỆU NGHIỆP VỤ DEMO
     this.db.CHAMCONG = [];
     this.db.LUONG = [];
+    this.db.TAM_UNG = [];
     this.db.HOAHONG = [];
+    this.db.THONGKE = [];
     this.db.NOTIFICATIONS = [];
     this.db.AUDIT_LOG = [];
+    this.db.QUAN_LY = [];
 
-    // Tắt tự động tạo lương trong thời gian nhập dữ liệu mới
     this.db.SYSTEM_CONFIG = {
       ...this.db.SYSTEM_CONFIG,
       AutomationEnabled: false,
       LanChayCuoi: new Date().toISOString(),
     };
 
-    // Tính lại KPI từ database mới
     this.refreshKPIs();
-
-    // Lưu database
-    this.save();
-
-    // Ghi lại một log duy nhất cho thao tác reset
+    this.saveSync();
+    await this.persistToFirestoreNow();
     this.logAudit(
       adminUser.HoTen,
       adminUser.Email,
       'Reset dữ liệu demo',
-      'Đã xóa toàn bộ dữ liệu demo, giữ lại tài khoản Admin và cấu hình hệ thống.'
+      'Đã xóa dữ liệu nghiệp vụ; giữ tài khoản Admin, cấu hình studio và giao diện. Bản sao lưu an toàn đã được lưu trên Firestore.'
     );
+    await this.persistToFirestoreNow();
 
     return {
       success: true,
-      message: 'Đã xóa toàn bộ dữ liệu demo thành công.',
+      message: 'Đã làm sạch dữ liệu nghiệp vụ. Tài khoản Admin và cấu hình studio được giữ lại.',
       backupFile: backup.filename,
+      cloudBackupId: backupId,
       remainingAdmin: admin.NhanVienID,
       nhanVien: this.db.NHANVIEN.length,
       chamCong: this.db.CHAMCONG.length,
       luong: this.db.LUONG.length,
+      tamUng: this.db.TAM_UNG.length,
       hoaHong: this.db.HOAHONG.length,
-      notifications: this.db.NOTIFICATIONS.length,
+      quanLy: this.db.QUAN_LY.length,
     };
   }
   public getQuanLyRecords(module?: QuanLyModule): QuanLyRecord[] {
