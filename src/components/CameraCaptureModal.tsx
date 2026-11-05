@@ -23,6 +23,8 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [ghiChu, setGhiChu] = useState('');
   const [currentTime, setCurrentTime] = useState('');
+  const currentLocalMinutes = (() => { const now = new Date(); return now.getHours() * 60 + now.getMinutes(); })();
+  const reasonRequired = title === 'CHECK-IN' ? currentLocalMinutes >= 8 * 60 + 30 : currentLocalMinutes < 20 * 60 + 30;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -299,6 +301,10 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
       alert('Vui lòng chờ hệ thống lấy tọa độ GPS.');
       return;
     }
+    if (reasonRequired && !ghiChu.trim()) {
+      alert(title === 'CHECK-IN' ? 'Bạn đi trễ, vui lòng nhập lý do để Admin xem xét.' : 'Bạn về trước 20:30, vui lòng nhập lý do để Admin xem xét.');
+      return;
+    }
 
     setSubmitting(true);
 
@@ -509,14 +515,15 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
           {/* Optional Note */}
           <div>
             <label className="block text-xs font-medium text-stone-600 mb-1">
-              Ghi chú công việc (nếu có):
+              {title === 'CHECK-IN' ? 'Lý do đi trễ / ghi chú:' : 'Lý do về sớm / ghi chú:'} {reasonRequired ? <span className="text-rose-600">(Bắt buộc)</span> : '(không bắt buộc)'}
             </label>
 
             <input
               type="text"
               value={ghiChu}
               onChange={(e) => setGhiChu(e.target.value)}
-              placeholder="VD: Đón cô dâu thử váy ca sáng, quay pre-wedding..."
+              required={reasonRequired}
+              placeholder={title === 'CHECK-IN' ? 'VD: Kẹt xe, có việc đột xuất...' : 'VD: Có việc gia đình, cần về sớm...'}
               className="w-full text-xs px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#bf954f]"
             />
           </div>

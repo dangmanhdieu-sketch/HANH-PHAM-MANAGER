@@ -281,7 +281,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                 <th className="px-5 py-3.5 font-semibold">Số Giờ</th>
                 <th className="px-5 py-3.5 font-semibold">Tọa độ GPS</th>
                 <th className="px-5 py-3.5 font-semibold">Trạng Thái</th>
-                <th className="px-5 py-3.5 font-semibold">Ghi Chú</th>
+                <th className="px-5 py-3.5 font-semibold">Lý do / xét duyệt</th>
                 <th className="px-5 py-3.5 font-semibold text-right">Thao tác</th>
               </tr>
             </thead>
@@ -374,8 +374,24 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                         {cc.TrangThai}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-stone-500 italic max-w-[150px] truncate" title={cc.GhiChu}>
-                      {cc.GhiChu || '--'}
+                    <td className="px-5 py-3.5 text-stone-600 max-w-[220px]">
+                      <p className="whitespace-normal break-words" title={cc.GhiChu}>{cc.GhiChu || '--'}</p>
+                      {cc.KetQuaGiaiTrinh && <p className={`mt-1 text-[10px] font-bold ${cc.KetQuaGiaiTrinh === 'Chấp nhận' ? 'text-emerald-700' : 'text-rose-700'}`}>Admin: {cc.KetQuaGiaiTrinh}</p>}
+                      {cc.GhiChuDuyet && <p className="mt-1 text-[10px] text-stone-500 whitespace-normal">Phản hồi: {cc.GhiChuDuyet}</p>}
+                      {((!!cc.CheckIn && cc.CheckIn >= '08:30:00') || (!!cc.CheckOut && cc.CheckOut < '20:30:00')) && !cc.KetQuaGiaiTrinh && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          <button type="button" onClick={async () => {
+                            const note = window.prompt('Ghi chú xét duyệt (không bắt buộc):') || '';
+                            try { await api.attendance.reviewExplanation(cc.ChamCongID, 'Chấp nhận', note); onRefresh(); }
+                            catch (error: any) { alert(error?.message || 'Không thể lưu xét duyệt.'); }
+                          }} className="rounded bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">Chấp nhận</button>
+                          <button type="button" onClick={async () => {
+                            const note = window.prompt('Lý do không chấp nhận (không bắt buộc):') || '';
+                            try { await api.attendance.reviewExplanation(cc.ChamCongID, 'Không chấp nhận', note); onRefresh(); }
+                            catch (error: any) { alert(error?.message || 'Không thể lưu xét duyệt.'); }
+                          }} className="rounded bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-700">Không chấp nhận</button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <button type="button" onClick={() => void handleDeleteAttendance(cc)} className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-rose-700 hover:bg-rose-100 font-semibold" title="Xóa bản ghi chấm công">

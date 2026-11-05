@@ -46,6 +46,10 @@ export interface ChamCong {
   SoGioLam?: number; // Hours (e.g. 8.5)
   TrangThai: TrangThaiChamCong;
   GhiChu?: string;
+  KetQuaGiaiTrinh?: 'Chấp nhận' | 'Không chấp nhận';
+  GhiChuDuyet?: string;
+  NguoiDuyetGiaiTrinh?: string;
+  NgayDuyetGiaiTrinh?: string;
 }
 
 export interface TamUng {
@@ -108,7 +112,7 @@ export interface HoaHong {
   TaoBoi?: 'Admin' | 'Nhân viên';
 }
 
-export type QuanLyModule = 'CONG_VIEC' | 'HOP_DONG' | 'THU_CHI';
+export type QuanLyModule = 'CONG_VIEC' | 'HOP_DONG' | 'THU_CHI' | 'NGHI_PHEP';
 
 export interface QuanLyRecord {
   QuanLyID: string;

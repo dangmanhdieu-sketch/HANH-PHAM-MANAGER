@@ -398,6 +398,20 @@ app.delete('/api/chamcong/:id', authenticateToken, (req: AuthRequest, res: Respo
   }
 });
 
+app.put('/api/chamcong/:id/review-explanation', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const decision = req.body?.decision;
+    if (!['Chấp nhận', 'Không chấp nhận'].includes(decision)) {
+      return res.status(400).json({ error: 'Kết quả xét duyệt không hợp lệ.' });
+    }
+    const record = dbService.reviewChamCong(req.params.id, decision, String(req.body?.note || '').slice(0, 1000), req.user!);
+    if (!record) return res.status(404).json({ error: 'Không tìm thấy bản ghi chấm công.' });
+    return res.json({ message: 'Đã lưu kết quả xét duyệt giải trình.', record });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Không thể duyệt giải trình.' });
+  }
+});
+
 app.get('/api/chamcong/today', authenticateToken, (req: AuthRequest, res: Response) => {
   const user = req.user!;
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -479,13 +493,15 @@ app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => 
   const module = req.query.module as any;
   let records = dbService.getQuanLyRecords(module || undefined);
 
-  // Nhân viên chỉ xem phiếu thu/chi do mình lập và hợp đồng mình phụ trách.
+  // Employees must request a specific module and may only read their own permitted records.
+  if (!module || !['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
+    return res.status(400).json({ error: 'Vui lòng chọn phân hệ dữ liệu hợp lệ.' });
+  }
   if (req.user!.Quyen !== 'Admin') {
-    if (module === 'THU_CHI') {
-      records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
-    } else if (module === 'HOP_DONG') {
-      records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
+    if (!['THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
+      return res.status(403).json({ error: 'Bạn không có quyền xem phân hệ dữ liệu này.' });
     }
+    records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
   }
 
   return res.json(records);
@@ -495,11 +511,34 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
   try {
     const { module, data } = req.body || {};
 
-    if (req.user!.Quyen !== 'Admin' && !['THU_CHI', 'HOP_DONG'].includes(module)) {
+    if (!['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
+      return res.status(400).json({ error: 'Loại dữ liệu không hợp lệ.' });
+    }
+    if (req.user!.Quyen !== 'Admin' && !['THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
       return res.status(403).json({ error: 'Bạn không có quyền tạo dữ liệu nghiệp vụ này.' });
     }
 
     const payload = { ...(data || {}) };
+
+    if (module === 'NGHI_PHEP') {
+      const from = String(payload.TuNgay || '');
+      const to = String(payload.DenNgay || '');
+      const reason = String(payload.LyDo || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from || !reason) {
+        return res.status(400).json({ error: 'Vui lòng chọn ngày nghỉ hợp lệ và nhập lý do.' });
+      }
+      if (req.user!.Quyen !== 'Admin') {
+        payload.NhanVienID = req.user!.NhanVienID;
+        payload.HoTen = req.user!.HoTen;
+        payload.TrangThai = 'Chờ duyệt';
+      } else {
+        payload.NhanVienID = payload.NhanVienID || req.user!.NhanVienID;
+        payload.HoTen = payload.HoTen || req.user!.HoTen;
+        payload.TrangThai = payload.TrangThai || 'Đã duyệt';
+      }
+      payload.NgayGui = new Date().toISOString();
+      payload.LoaiNghi = String(payload.LoaiNghi || 'Nghỉ phép năm');
+    }
 
     if (module === 'HOP_DONG') {
       if (!String(payload.KhachHang || '').trim() || !String(payload.SDT || '').trim() ||
@@ -625,6 +664,21 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       }
     }
 
+    if (current.Module === 'NGHI_PHEP') {
+      const status = changes.TrangThai;
+      if (status && !['Chờ duyệt', 'Đã duyệt', 'Từ chối'].includes(status)) {
+        return res.status(400).json({ error: 'Trạng thái đơn nghỉ phép không hợp lệ.' });
+      }
+      if (status && current.DuLieu?.TrangThai !== 'Chờ duyệt' && status !== current.DuLieu?.TrangThai) {
+        return res.status(409).json({ error: 'Đơn nghỉ phép này đã được xử lý, không thể duyệt lại.' });
+      }
+      if (status && status !== current.DuLieu?.TrangThai) {
+        changes.NgayXuLy = new Date().toISOString();
+        changes.NguoiXuLy = req.user!.HoTen;
+      }
+      if (changes.GhiChuAdmin !== undefined) changes.GhiChuAdmin = String(changes.GhiChuAdmin).slice(0, 1000);
+    }
+
     if (current.Module === 'THU_CHI' && changes.TrangThaiDuyet === 'Đã duyệt' && current.DuLieu?.TrangThaiDuyet !== 'Đã duyệt') {
       changes.NgayDuyet = new Date().toISOString();
       changes.NguoiDuyet = req.user!.HoTen;
@@ -634,6 +688,17 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
+    if (current.Module === 'NGHI_PHEP' && changes.TrangThai && changes.TrangThai !== current.DuLieu?.TrangThai) {
+      const approved = changes.TrangThai === 'Đã duyệt';
+      dbService.addNotification(
+        approved ? 'Đơn nghỉ phép đã được duyệt' : 'Đơn nghỉ phép bị từ chối',
+        approved
+          ? `Đơn nghỉ phép từ ${current.DuLieu?.TuNgay} đến ${current.DuLieu?.DenNgay} đã được duyệt.`
+          : `Đơn nghỉ phép từ ${current.DuLieu?.TuNgay} đến ${current.DuLieu?.DenNgay} bị từ chối. ${changes.GhiChuAdmin || ''}`,
+        approved ? 'success' : 'warning',
+        String(current.DuLieu?.NhanVienID || '')
+      );
+    }
     return res.json(record);
   } catch (err: any) {
     return res.status(400).json({ error: err.message || 'Không thể cập nhật dữ liệu.' });
