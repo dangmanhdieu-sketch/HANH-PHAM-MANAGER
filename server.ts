@@ -481,9 +481,7 @@ app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => 
 
   // Nhân viên chỉ xem phiếu thu/chi do mình lập và hợp đồng mình phụ trách.
   if (req.user!.Quyen !== 'Admin') {
-    if (module === 'THU_CHI') {
-      records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
-    } else if (module === 'HOP_DONG') {
+    if (['THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
       records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
     }
   }
@@ -495,11 +493,34 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
   try {
     const { module, data } = req.body || {};
 
-    if (req.user!.Quyen !== 'Admin' && !['THU_CHI', 'HOP_DONG'].includes(module)) {
+    if (!['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
+      return res.status(400).json({ error: 'Loại dữ liệu không hợp lệ.' });
+    }
+    if (req.user!.Quyen !== 'Admin' && !['THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
       return res.status(403).json({ error: 'Bạn không có quyền tạo dữ liệu nghiệp vụ này.' });
     }
 
     const payload = { ...(data || {}) };
+
+    if (module === 'NGHI_PHEP') {
+      const from = String(payload.TuNgay || '');
+      const to = String(payload.DenNgay || '');
+      const reason = String(payload.LyDo || '').trim();
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(from) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(to) || to < from || !reason) {
+        return res.status(400).json({ error: 'Vui lòng chọn ngày nghỉ hợp lệ và nhập lý do.' });
+      }
+      if (req.user!.Quyen !== 'Admin') {
+        payload.NhanVienID = req.user!.NhanVienID;
+        payload.HoTen = req.user!.HoTen;
+        payload.TrangThai = 'Chờ duyệt';
+      } else {
+        payload.NhanVienID = payload.NhanVienID || req.user!.NhanVienID;
+        payload.HoTen = payload.HoTen || req.user!.HoTen;
+        payload.TrangThai = payload.TrangThai || 'Đã duyệt';
+      }
+      payload.NgayGui = new Date().toISOString();
+      payload.LoaiNghi = String(payload.LoaiNghi || 'Nghỉ phép năm');
+    }
 
     if (module === 'HOP_DONG') {
       if (!String(payload.KhachHang || '').trim() || !String(payload.SDT || '').trim() ||
@@ -623,6 +644,18 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
           { TrangThai: nextStatus, ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen, GhiChu: changes.LyDoTuChoi || changes.LyDoHuy || '' },
         ];
       }
+    }
+
+    if (current.Module === 'NGHI_PHEP') {
+      const status = changes.TrangThai;
+      if (status && !['Chờ duyệt', 'Đã duyệt', 'Từ chối'].includes(status)) {
+        return res.status(400).json({ error: 'Trạng thái đơn nghỉ phép không hợp lệ.' });
+      }
+      if (status && status !== current.DuLieu?.TrangThai) {
+        changes.NgayXuLy = new Date().toISOString();
+        changes.NguoiXuLy = req.user!.HoTen;
+      }
+      if (changes.GhiChuAdmin !== undefined) changes.GhiChuAdmin = String(changes.GhiChuAdmin).slice(0, 1000);
     }
 
     if (current.Module === 'THU_CHI' && changes.TrangThaiDuyet === 'Đã duyệt' && current.DuLieu?.TrangThaiDuyet !== 'Đã duyệt') {
