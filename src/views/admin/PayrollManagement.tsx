@@ -41,7 +41,10 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
   onGenerateMonthlyPayroll,
   initialFilterStatus = 'ALL',
 }) => {
-  const [selectedMonth, setSelectedMonth] = useState<string>('10/2026');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+  });
   const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>(initialFilterStatus);
 
