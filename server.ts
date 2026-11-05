@@ -493,11 +493,15 @@ app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => 
   const module = req.query.module as any;
   let records = dbService.getQuanLyRecords(module || undefined);
 
-  // Nhân viên chỉ xem phiếu thu/chi do mình lập và hợp đồng mình phụ trách.
+  // Employees must request a specific module and may only read their own permitted records.
+  if (!module || !['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
+    return res.status(400).json({ error: 'Vui lòng chọn phân hệ dữ liệu hợp lệ.' });
+  }
   if (req.user!.Quyen !== 'Admin') {
-    if (['THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
-      records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
+    if (!['THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
+      return res.status(403).json({ error: 'Bạn không có quyền xem phân hệ dữ liệu này.' });
     }
+    records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
   }
 
   return res.json(records);
@@ -520,7 +524,7 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       const from = String(payload.TuNgay || '');
       const to = String(payload.DenNgay || '');
       const reason = String(payload.LyDo || '').trim();
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(from) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(to) || to < from || !reason) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from || !reason) {
         return res.status(400).json({ error: 'Vui lòng chọn ngày nghỉ hợp lệ và nhập lý do.' });
       }
       if (req.user!.Quyen !== 'Admin') {
