@@ -281,7 +281,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                 <th className="px-5 py-3.5 font-semibold">Số Giờ</th>
                 <th className="px-5 py-3.5 font-semibold">Tọa độ GPS</th>
                 <th className="px-5 py-3.5 font-semibold">Trạng Thái</th>
-                <th className="px-5 py-3.5 font-semibold">Ghi Chú</th>
+                <th className="px-5 py-3.5 font-semibold">Lý do / xét duyệt</th>
                 <th className="px-5 py-3.5 font-semibold text-right">Thao tác</th>
               </tr>
             </thead>
@@ -378,7 +378,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                       <p className="whitespace-normal break-words" title={cc.GhiChu}>{cc.GhiChu || '--'}</p>
                       {cc.KetQuaGiaiTrinh && <p className={`mt-1 text-[10px] font-bold ${cc.KetQuaGiaiTrinh === 'Chấp nhận' ? 'text-emerald-700' : 'text-rose-700'}`}>Admin: {cc.KetQuaGiaiTrinh}</p>}
                       {cc.GhiChuDuyet && <p className="mt-1 text-[10px] text-stone-500 whitespace-normal">Phản hồi: {cc.GhiChuDuyet}</p>}
-                      {(cc.TrangThai === 'Đi trễ' || cc.TrangThai === 'Về sớm') && !cc.KetQuaGiaiTrinh && (
+                      {((!!cc.CheckIn && cc.CheckIn >= '08:30:00') || (!!cc.CheckOut && cc.CheckOut < '20:30:00')) && !cc.KetQuaGiaiTrinh && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           <button type="button" onClick={async () => {
                             const note = window.prompt('Ghi chú xét duyệt (không bắt buộc):') || '';
