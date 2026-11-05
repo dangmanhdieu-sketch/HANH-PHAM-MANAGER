@@ -100,7 +100,7 @@ app.post(
   '/api/admin/reset-demo-data',
   authenticateToken,
   requireAdmin,
-  (req: AuthRequest, res: Response) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       if (!req.user) {
         return res.status(401).json({
