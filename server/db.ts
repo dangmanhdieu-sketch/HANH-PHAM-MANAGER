@@ -1804,13 +1804,18 @@ class DatabaseService {
     }
     await backupBatch.commit();
 
+    const seededDemoStillExists = this.db.NHANVIEN.some((nv) =>
+      nv.NhanVienID === demoEmployeeId &&
+      String(nv.Email || '').toLowerCase() === demoEmployeeEmail &&
+      nv.HoTen === demoEmployeeName
+    );
     const belongsToDemoEmployee = (record: any) =>
-      record?.NhanVienID === demoEmployeeId ||
       record?.NhanVienEmail === demoEmployeeEmail ||
       record?.Email === demoEmployeeEmail ||
       record?.HoTen === demoEmployeeName ||
       record?.NhanVien === demoEmployeeName ||
-      record?.TenNhanVien === demoEmployeeName;
+      record?.TenNhanVien === demoEmployeeName ||
+      (seededDemoStillExists && record?.NhanVienID === demoEmployeeId);
 
     const before = {
       nhanVien: this.db.NHANVIEN.length,
