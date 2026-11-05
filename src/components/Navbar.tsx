@@ -12,8 +12,6 @@ import {
   Settings,
   Menu,
   X,
-  ArrowRightLeft,
-  ChevronDown,
   Contact,
   CheckSquare,
   FileText,
@@ -109,7 +107,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   // ============================================================
   const handleLogout = () => {
     setMobileMenuOpen(false);
-    setSwitchDropdownOpen(false);
     setNotifDropdownOpen(false);
     onLogout();
   };
@@ -209,7 +206,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 type="button"
                 onClick={() => {
                   setNotifDropdownOpen((prev) => !prev);
-                  setSwitchDropdownOpen(false);
 
                   if (!notifDropdownOpen && unreadCount > 0) {
                     onMarkReadNotifications();
@@ -320,7 +316,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => {
                 setMobileMenuOpen(true);
                 setNotifDropdownOpen(false);
-                setSwitchDropdownOpen(false);
               }}
               className="
                 w-10 h-10
