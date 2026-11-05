@@ -571,6 +571,16 @@ class DatabaseService {
           this.saveSync();
           if (migrated) await this.persistToFirestoreNow();
           console.log('[Firebase] Đã tải dữ liệu persistent từ Firestore.');
+          console.log('[Firebase] DATA COUNTS:', JSON.stringify({
+            NHANVIEN: this.db.NHANVIEN?.length || 0,
+            CHAMCONG: this.db.CHAMCONG?.length || 0,
+            LUONG: this.db.LUONG?.length || 0,
+            TAM_UNG: this.db.TAM_UNG?.length || 0,
+            HOAHONG: this.db.HOAHONG?.length || 0,
+            HOPDONG: (this.db as any).HOPDONG?.length || 0,
+            THU_CHI: (this.db as any).THU_CHI?.length || 0,
+            QUAN_LY: this.db.QUAN_LY?.length || 0,
+          }));
           return;
         }
       }
