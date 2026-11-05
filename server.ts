@@ -398,6 +398,20 @@ app.delete('/api/chamcong/:id', authenticateToken, (req: AuthRequest, res: Respo
   }
 });
 
+app.put('/api/chamcong/:id/review-explanation', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const decision = req.body?.decision;
+    if (!['Chấp nhận', 'Không chấp nhận'].includes(decision)) {
+      return res.status(400).json({ error: 'Kết quả xét duyệt không hợp lệ.' });
+    }
+    const record = dbService.reviewChamCong(req.params.id, decision, String(req.body?.note || '').slice(0, 1000), req.user!);
+    if (!record) return res.status(404).json({ error: 'Không tìm thấy bản ghi chấm công.' });
+    return res.json({ message: 'Đã lưu kết quả xét duyệt giải trình.', record });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Không thể duyệt giải trình.' });
+  }
+});
+
 app.get('/api/chamcong/today', authenticateToken, (req: AuthRequest, res: Response) => {
   const user = req.user!;
   const parts = new Intl.DateTimeFormat('en-CA', {
