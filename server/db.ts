@@ -385,13 +385,23 @@ class DatabaseService {
       this.db = getInitialData();
     }
 
-    this.applyMigrations();
-    if (!Array.isArray(this.db.QUAN_LY)) this.db.QUAN_LY = [];
-    this.refreshKPIs();
-    this.saveSync();
-
     this.initializeFirestore();
-    this.readyPromise = this.loadFromFirestore();
+
+    if (this.firestoreEnabled) {
+      // In production, Firestore is the source of truth. Never write local
+      // demo/default data before the cloud database has been loaded.
+      this.readyPromise = this.loadFromFirestore();
+    } else if (process.env.NODE_ENV === 'production') {
+      this.readyPromise = Promise.reject(
+        new Error('[Firebase] Firestore is required in production. Refusing to start with demo/local data.')
+      );
+    } else {
+      this.applyMigrations();
+      if (!Array.isArray(this.db.QUAN_LY)) this.db.QUAN_LY = [];
+      this.refreshKPIs();
+      this.saveSync();
+      this.readyPromise = Promise.resolve();
+    }
   }
 
   private applyMigrations(): boolean {
@@ -523,10 +533,13 @@ class DatabaseService {
       const rootSnap = await rootRef.get();
 
       if (!rootSnap.exists) {
-        // First-time migration: copy the current local database into Firestore.
-        await this.persistToFirestoreNow();
-        console.log('[Firebase] Firestore document chưa tồn tại. Đã migrate database.json lên Firestore.');
-        return;
+        if (process.env.ALLOW_FIRESTORE_BOOTSTRAP_FROM_LOCAL === 'true') {
+          // Explicit one-time migration only. Never bootstrap demo data by default.
+          await this.persistToFirestoreNow();
+          console.log('[Firebase] Đã bootstrap Firestore theo cấu hình cho phép rõ ràng.');
+          return;
+        }
+        throw new Error('[Firebase] Firestore root document không tồn tại. Dừng khởi động để tránh ghi dữ liệu demo mặc định lên cloud.');
       }
 
       const rootData = rootSnap.data() || {};
@@ -549,21 +562,21 @@ class DatabaseService {
           }
         });
 
-        if (loaded.NHANVIEN || loaded.CHAMCONG || loaded.LUONG || loaded.HOAHONG) {
+        { // Schema v2 is authoritative even when a table is empty or missing.
           this.db = {
             ...this.db,
             ...loaded,
-            NHANVIEN: Array.isArray(loaded.NHANVIEN) ? loaded.NHANVIEN : this.db.NHANVIEN,
-            CHAMCONG: Array.isArray(loaded.CHAMCONG) ? loaded.CHAMCONG : this.db.CHAMCONG,
-            LUONG: Array.isArray(loaded.LUONG) ? loaded.LUONG : this.db.LUONG,
-            TAM_UNG: Array.isArray(loaded.TAM_UNG) ? loaded.TAM_UNG : this.db.TAM_UNG,
-            HOAHONG: Array.isArray(loaded.HOAHONG) ? loaded.HOAHONG : this.db.HOAHONG,
-            THONGKE: Array.isArray(loaded.THONGKE) ? loaded.THONGKE : this.db.THONGKE,
-            AUDIT_LOG: Array.isArray(loaded.AUDIT_LOG) ? loaded.AUDIT_LOG : this.db.AUDIT_LOG,
-            NOTIFICATIONS: Array.isArray(loaded.NOTIFICATIONS) ? loaded.NOTIFICATIONS : this.db.NOTIFICATIONS,
-            QUAN_LY: Array.isArray(loaded.QUAN_LY) ? loaded.QUAN_LY : (this.db.QUAN_LY || []),
-            SYSTEM_CONFIG: loaded.SYSTEM_CONFIG || this.db.SYSTEM_CONFIG,
-            THEME: loaded.THEME || this.db.THEME,
+            NHANVIEN: Array.isArray(loaded.NHANVIEN) ? loaded.NHANVIEN : [],
+            CHAMCONG: Array.isArray(loaded.CHAMCONG) ? loaded.CHAMCONG : [],
+            LUONG: Array.isArray(loaded.LUONG) ? loaded.LUONG : [],
+            TAM_UNG: Array.isArray(loaded.TAM_UNG) ? loaded.TAM_UNG : [],
+            HOAHONG: Array.isArray(loaded.HOAHONG) ? loaded.HOAHONG : [],
+            THONGKE: Array.isArray(loaded.THONGKE) ? loaded.THONGKE : [],
+            AUDIT_LOG: Array.isArray(loaded.AUDIT_LOG) ? loaded.AUDIT_LOG : [],
+            NOTIFICATIONS: Array.isArray(loaded.NOTIFICATIONS) ? loaded.NOTIFICATIONS : [],
+            QUAN_LY: Array.isArray(loaded.QUAN_LY) ? loaded.QUAN_LY : [],
+            SYSTEM_CONFIG: loaded.SYSTEM_CONFIG || DEFAULT_CONFIG,
+            THEME: loaded.THEME,
           };
 
           const migrated = this.applyMigrations();
@@ -592,16 +605,17 @@ class DatabaseService {
       this.db = {
         ...this.db,
         ...legacy,
-        NHANVIEN: Array.isArray(legacy.NHANVIEN) ? legacy.NHANVIEN : this.db.NHANVIEN,
-        CHAMCONG: Array.isArray(legacy.CHAMCONG) ? legacy.CHAMCONG : this.db.CHAMCONG,
-        LUONG: Array.isArray(legacy.LUONG) ? legacy.LUONG : this.db.LUONG,
-        TAM_UNG: Array.isArray(legacy.TAM_UNG) ? legacy.TAM_UNG : this.db.TAM_UNG,
-        HOAHONG: Array.isArray(legacy.HOAHONG) ? legacy.HOAHONG : this.db.HOAHONG,
-        THONGKE: Array.isArray(legacy.THONGKE) ? legacy.THONGKE : this.db.THONGKE,
-        AUDIT_LOG: Array.isArray(legacy.AUDIT_LOG) ? legacy.AUDIT_LOG : this.db.AUDIT_LOG,
-        NOTIFICATIONS: Array.isArray(legacy.NOTIFICATIONS) ? legacy.NOTIFICATIONS : this.db.NOTIFICATIONS,
-        SYSTEM_CONFIG: legacy.SYSTEM_CONFIG || this.db.SYSTEM_CONFIG,
-        THEME: legacy.THEME || this.db.THEME,
+        NHANVIEN: Array.isArray(legacy.NHANVIEN) ? legacy.NHANVIEN : [],
+        CHAMCONG: Array.isArray(legacy.CHAMCONG) ? legacy.CHAMCONG : [],
+        LUONG: Array.isArray(legacy.LUONG) ? legacy.LUONG : [],
+        TAM_UNG: Array.isArray(legacy.TAM_UNG) ? legacy.TAM_UNG : [],
+        HOAHONG: Array.isArray(legacy.HOAHONG) ? legacy.HOAHONG : [],
+        THONGKE: Array.isArray(legacy.THONGKE) ? legacy.THONGKE : [],
+        AUDIT_LOG: Array.isArray(legacy.AUDIT_LOG) ? legacy.AUDIT_LOG : [],
+        NOTIFICATIONS: Array.isArray(legacy.NOTIFICATIONS) ? legacy.NOTIFICATIONS : [],
+        QUAN_LY: Array.isArray(legacy.QUAN_LY) ? legacy.QUAN_LY : [],
+        SYSTEM_CONFIG: legacy.SYSTEM_CONFIG || DEFAULT_CONFIG,
+        THEME: legacy.THEME,
       };
 
       const migrated = this.applyMigrations();
@@ -611,7 +625,8 @@ class DatabaseService {
       if (migrated) console.log('[Firebase] Đã áp dụng migration username/ngân hàng.');
       console.log('[Firebase] Đã đọc database Firestore cũ và nâng cấp sang schema persistent v2.');
     } catch (err) {
-      console.error('[Firebase] Lỗi tải dữ liệu Firestore. Giữ database.json làm fallback:', err);
+      console.error('[Firebase] Lỗi tải dữ liệu Firestore. Dừng xử lý để bảo vệ dữ liệu cloud; không dùng database.json fallback:', err);
+      throw err;
     }
   }
 
