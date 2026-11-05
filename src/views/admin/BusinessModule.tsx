@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
-import { Plus, Search, Trash2, Edit3, Save, X, FileText, CheckSquare, Wallet, Upload, Camera } from 'lucide-react';
+import { Plus, Search, Trash2, Edit3, Save, X, FileText, CheckSquare, Wallet, Upload, Camera, Calendar } from 'lucide-react';
 import { HanhPhamLogo } from '../../components/HanhPhamLogo';
 import type { NhanVien, QuanLyModule, QuanLyRecord } from '../../types';
 import { api } from '../../api';
@@ -85,6 +85,17 @@ const CONFIG: Record<QuanLyModule, ModuleConfig> = {
       { key: 'HopDongID', label: 'Mã hợp đồng liên quan', placeholder: 'Có thể bỏ trống' },
       { key: 'DoiTuong', label: 'Đối tượng' },
       { key: 'GhiChu', label: 'Ghi chú' },
+    ],
+  },
+  NGHI_PHEP: {
+    title: 'Nghỉ phép',
+    icon: Calendar,
+    fields: [
+      { key: 'LoaiNghi', label: 'Loại nghỉ', placeholder: 'Nghỉ phép năm / nghỉ việc riêng' },
+      { key: 'TuNgay', label: 'Từ ngày', type: 'date' },
+      { key: 'DenNgay', label: 'Đến ngày', type: 'date' },
+      { key: 'LyDo', label: 'Lý do' },
+      { key: 'TrangThai', label: 'Trạng thái' },
     ],
   },
 };
