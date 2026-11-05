@@ -610,6 +610,26 @@ class DatabaseService {
     this.queueFirestoreSave();
   }
 
+  /** Persist the current database and verify the cloud write before an API reports success. */
+  public async saveAndVerify(): Promise<void> {
+    await this.readyPromise;
+    if (!this.firestoreEnabled || !this.firestore) {
+      throw new Error('Firebase Firestore chưa kết nối; dữ liệu chưa được xác nhận lưu trên đám mây.');
+    }
+    this.saveSync();
+    this.firestoreSaveQueue = this.firestoreSaveQueue.then(() => this.persistToFirestoreNow());
+    await this.firestoreSaveQueue;
+    const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+    const staffSnap = await rootRef.collection('tables').doc('NHANVIEN').get();
+    const savedStaff = Array.isArray(staffSnap.data()?.data) ? staffSnap.data()!.data : [];
+    const currentIds = new Set(this.db.NHANVIEN.map((nv) => nv.NhanVienID));
+    const missing = [...currentIds].filter((id) => !savedStaff.some((nv: any) => nv.NhanVienID === id));
+    if (missing.length) {
+      throw new Error('Firebase chưa xác nhận lưu đủ nhân viên: ' + missing.join(', '));
+    }
+    console.log('[Firebase] SAVE VERIFIED: NHANVIEN', savedStaff.length);
+  }
+
   public logAudit(nguoiThucHien: string, email: string, hanhDong: string, chiTiet: string, ip?: string) {
     const log: AuditLog = {
       LogID: `LOG-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
