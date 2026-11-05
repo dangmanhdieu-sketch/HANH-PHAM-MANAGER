@@ -334,9 +334,13 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
             className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] bg-white"
           >
             <option value="">Tất cả các tháng</option>
-            <option value="10/2026">Tháng 10/2026 (Hiện tại)</option>
-            <option value="09/2026">Tháng 09/2026</option>
-            <option value="08/2026">Tháng 08/2026</option>
+            {Array.from({ length: 18 }, (_, index) => {
+              const date = new Date();
+              date.setDate(1);
+              date.setMonth(date.getMonth() - index);
+              const month = String(date.getMonth() + 1).padStart(2, '0') + '/' + date.getFullYear();
+              return <option key={month} value={month}>Tháng {month}{index === 0 ? ' (Hiện tại)' : ''}</option>;
+            })}
           </select>
         </div>
 
