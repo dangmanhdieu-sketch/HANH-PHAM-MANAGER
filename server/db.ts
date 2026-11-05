@@ -1048,6 +1048,10 @@ class DatabaseService {
     const zoned = getZonedParts(now, data.deviceTimeZone || DEFAULT_APP_TIMEZONE);
     const todayStr = zoned.date;
     const timeStr = zoned.time; // HH:mm:ss
+    const currentMinutes = zoned.hour * 60 + zoned.minute;
+    if (currentMinutes >= 8 * 60 + 30 && !String(data.ghiChu || '').trim()) {
+      throw new Error('Bạn đi trễ, vui lòng nhập lý do để Admin xem xét trước khi chấm công.');
+    }
 
     // Check if already checked in today
     let record = this.db.CHAMCONG.find(
@@ -1128,6 +1132,11 @@ class DatabaseService {
     const zoned = getZonedParts(now, data.deviceTimeZone || DEFAULT_APP_TIMEZONE);
     const todayStr = zoned.date;
     const timeStr = zoned.time;
+    const currentMinutes = zoned.hour * 60 + zoned.minute;
+    const standardCheckoutMinutes = 20 * 60 + 30;
+    if (currentMinutes < standardCheckoutMinutes && !String(data.ghiChu || '').trim()) {
+      throw new Error('Bạn về trước 20:30, vui lòng nhập lý do để Admin xem xét.');
+    }
 
     const record = this.db.CHAMCONG.find(
       (cc) => cc.NhanVienID === user.NhanVienID && cc.Ngay === todayStr
@@ -1155,12 +1164,9 @@ class DatabaseService {
     const diffHours = Math.max(0, (outTotalSec - inTotalSec) / 3600);
     record.SoGioLam = Math.round(diffHours * 100) / 100;
 
-    // Check early leave if before 17:30
-    const [stdOutH, stdOutM] = this.db.SYSTEM_CONFIG.GioTanCaChuan.split(':').map(Number);
-    const stdOutMinutes = stdOutH * 60 + stdOutM;
-    const currentMinutes = zoned.hour * 60 + zoned.minute;
-
-    if (currentMinutes < stdOutMinutes && record.TrangThai === 'Có mặt') {
+    // 20:30 is the standard reference. Early checkout is recorded for Admin review
+    // and does not independently create a payroll deduction.
+    if (currentMinutes < standardCheckoutMinutes && record.TrangThai !== 'Nghỉ') {
       record.TrangThai = 'Về sớm';
     }
 
@@ -1332,7 +1338,7 @@ class DatabaseService {
       );
       const attendanceByDate = new Map(attendance.map((cc) => [cc.Ngay, cc]));
       const isHalfDayLate = (cc: ChamCong) => {
-        if (!cc.CheckIn || cc.TrangThai === 'Nghỉ') return false;
+        if (!cc.CheckIn || cc.TrangThai === 'Nghỉ' || cc.KetQuaGiaiTrinh === 'Chấp nhận') return false;
         const [hour, minute] = cc.CheckIn.split(':').map(Number);
         const minutes = hour * 60 + minute;
         return minutes > 9 * 60 + 30 && minutes <= 13 * 60;
@@ -1365,7 +1371,7 @@ class DatabaseService {
 
       const fullAbsenceDays = new Set<string>(approvedLeaveDays);
       attendance.forEach((cc) => {
-        if (cc.TrangThai === 'Nghỉ' || cc.TrangThai === 'Nghỉ phép') fullAbsenceDays.add(cc.Ngay);
+        if ((cc.TrangThai === 'Nghỉ' || cc.TrangThai === 'Nghỉ phép') && cc.KetQuaGiaiTrinh !== 'Chấp nhận') fullAbsenceDays.add(cc.Ngay);
       });
       const ngayNghi = fullAbsenceDays.size;
       const ngayDiTreKhauTru = attendance.filter(isHalfDayLate).length;
