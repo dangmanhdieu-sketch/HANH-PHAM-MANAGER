@@ -509,14 +509,14 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
           {/* Optional Note */}
           <div>
             <label className="block text-xs font-medium text-stone-600 mb-1">
-              Ghi chú công việc (nếu có):
+              Lý do đi trễ / về sớm hoặc ghi chú (nếu có):
             </label>
 
             <input
               type="text"
               value={ghiChu}
               onChange={(e) => setGhiChu(e.target.value)}
-              placeholder="VD: Đón cô dâu thử váy ca sáng, quay pre-wedding..."
+              placeholder="VD: Kẹt xe, có việc đột xuất, cần giải trình giờ chấm công..."
               className="w-full text-xs px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#bf954f]"
             />
           </div>
