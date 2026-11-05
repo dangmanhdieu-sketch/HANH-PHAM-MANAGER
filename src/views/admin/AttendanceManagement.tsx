@@ -94,7 +94,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
     rows.push(['XÁC NHẬN ĐỐI CHIẾU', 'Nhân viên và quản lý kiểm tra dữ liệu chấm công, ảnh và GPS gốc trên ứng dụng.']);
     rows.push(['Lưu ý', 'Ngày không có bản ghi check-in không mặc định là ngày nghỉ và không tự động khấu trừ lương.']);
 
-    const csv = '\\uFEFF' + rows.map((row) => row.map(csvCell).join(',')).join('\\r\\n');
+    const csv = '\uFEFF' + rows.map((row) => row.map(csvCell).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
