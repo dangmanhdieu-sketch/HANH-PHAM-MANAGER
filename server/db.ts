@@ -92,10 +92,10 @@ function getZonedParts(date: Date, timeZone: string = DEFAULT_APP_TIMEZONE) {
 }
 
 
-// Studio coordinates: Hanh Pham Bridal - 156 Nam Ky Khoi Nghia, District 1, Ho Chi Minh City
+// Studio address: shared official address for all app modules and printed documents.
 const DEFAULT_CONFIG: SystemConfig = {
   TenStudio: 'HANH PHAM BRIDAL',
-  DiaChi: '156 Nam Kỳ Khởi Nghĩa, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+  DiaChi: '321 Lê Quý Đôn, Tân Xuân, Bình Phước, Đồng Nai',
   Hotline: '0988 123 456',
   ViDoStudio: 10.7769,
   KinhDoStudio: 106.6953,
@@ -1796,6 +1796,11 @@ class DatabaseService {
   }
 
   public getConfig(): SystemConfig {
+    const officialAddress = '321 Lê Quý Đôn, Tân Xuân, Bình Phước, Đồng Nai';
+    if (this.db.SYSTEM_CONFIG.DiaChi !== officialAddress) {
+      this.db.SYSTEM_CONFIG.DiaChi = officialAddress;
+      this.save();
+    }
     return this.db.SYSTEM_CONFIG;
   }
 
