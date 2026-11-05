@@ -118,206 +118,42 @@ function ensureDirs() {
 }
 
 function getInitialData(): DatabaseSchema {
+  // Local-development fallback only: keep the legacy Admin account available,
+  // but never seed sample staff, attendance, payroll, commissions or demo records.
   const salt = bcrypt.genSaltSync(10);
-  const adminHash = bcrypt.hashSync('admin123', salt);
-  const staffHash = bcrypt.hashSync('123456', salt);
-
-  const employees: NhanVien[] = [
-    {
-      NhanVienID: 'NV001',
-      TenDangNhap: 'admin',
-      HoTen: 'Hạnh Phạm',
-      Email: 'admin@hanhphambridal.vn',
-      SDT: '0903888999',
-      ChucVu: 'Giám Đốc Studio',
-      LuongCoBan: 35000000,
-      NgayVaoLam: '2024-01-01',
-      TrangThai: 'Đang Làm',
-      AnhNhanVien: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
-      Quyen: 'Admin',
-      MatKhau: adminHash,
-      MatKhauHienThi: 'admin123',
-      SoTaiKhoan: '0071000888999',
-      NganHang: 'Vietcombank',
-      TenChuTaiKhoan: 'PHAM THI HANH',
-      ChiNhanhNganHang: 'TP. Hồ Chí Minh',
-      BiKhoa: false,
-      GhiChu: 'Quản trị viên tối cao Hanh Pham Bridal',
-      TaoLuc: '2024-01-01T08:00:00Z',
-    },
-    {
-      NhanVienID: 'NV002',
-      TenDangNhap: 'nv002',
-      HoTen: 'Đỗ Mai Linh',
-      Email: 'linh.mai@hanhphambridal.vn',
-      SDT: '0912345678',
-      ChucVu: 'Chuyên Viên Tư Vấn & Stylist Váy Cưới',
-      LuongCoBan: 14000000,
-      NgayVaoLam: '2024-03-01',
-      TrangThai: 'Đang Làm',
-      AnhNhanVien: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
-      Quyen: 'Nhân viên',
-      MatKhau: staffHash,
-      MatKhauHienThi: '123456',
-      SoTaiKhoan: '19036888666011',
-      NganHang: 'Techcombank',
-      TenChuTaiKhoan: 'DO MAI LINH',
-      ChiNhanhNganHang: 'Bến Nghé, Q.1',
-      BiKhoa: false,
-      TaoLuc: '2024-03-01T08:00:00Z',
-    }
-  ];
-
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  const chamcongs: ChamCong[] = [
-    {
-      ChamCongID: `CC-${todayStr.replace(/-/g, '')}-NV002`,
-      NhanVienEmail: 'linh.mai@hanhphambridal.vn',
-      NhanVienID: 'NV002',
-      HoTen: 'Đỗ Mai Linh',
-      Ngay: todayStr,
-      CheckIn: '08:30:00',
-      AnhCheckIn: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
-      GPSCheckIn: '10.7769, 106.6953 (Studio Hanh Pham)',
-      CheckOut: undefined,
-      SoGioLam: 0,
-      TrangThai: 'Có mặt',
-      GhiChu: 'Đón cô dâu thử váy ca sáng',
-    }
-  ];
-
-  const currentMonth = '10/2026';
-  const prevMonth = '09/2026';
-
-  const luongs: Luong[] = [
-    {
-      LuongID: 'L-092026-NV002',
-      NhanVienID: 'NV002',
-      HoTen: 'Đỗ Mai Linh',
-      Thang: prevMonth,
-      LuongCoBan: 14000000,
-      SoNgayCong: 26,
-      SoGioLam: 208,
-      PhuCap: 1500000,
-      Thuong: 2000000,
-      HoaHong: 4500000,
-      Phat: 0,
-      TamUng: 0,
-      TongLuong: 22000000,
-      ThucLanh: 22000000,
-      TrangThai: 'Đã thanh toán',
-      NgayTao: '2026-09-01T00:05:00Z',
-      NgayDuyet: '2026-09-30T10:00:00Z',
-      NguoiDuyet: 'Hạnh Phạm',
-      NgayThanhToan: '2026-10-01T15:30:00Z',
-      NguoiThanhToan: 'Hạnh Phạm',
-      GhiChu: 'Đã thanh toán',
-    },
-    {
-      LuongID: 'L-102026-NV002',
-      NhanVienID: 'NV002',
-      HoTen: 'Đỗ Mai Linh',
-      Thang: currentMonth,
-      LuongCoBan: 14000000,
-      SoNgayCong: 3,
-      SoGioLam: 24,
-      PhuCap: 1500000,
-      Thuong: 1000000,
-      HoaHong: 3200000,
-      Phat: 0,
-      TamUng: 0,
-      TongLuong: 19700000,
-      ThucLanh: 19700000,
-      TrangThai: 'Chờ duyệt',
-      NgayTao: '2026-10-01T00:05:00Z',
-      GhiChu: 'Bảng lương tháng 10/2026',
-    }
-  ];
-
-  const hoahongs: HoaHong[] = [
-    {
-      HoaHongID: 'HH-001',
-      NhanVienID: 'NV002',
-      HoTen: 'Đỗ Mai Linh',
-      Ngay: '2026-10-02',
-      NoiDung: 'Gói Váy Cưới Haute Couture - Cô dâu Thanh Trúc',
-      DoanhThu: 64000000,
-      TyLeHoaHong: 5,
-      SoTienHoaHong: 3200000,
-      TrangThai: 'Đã duyệt',
-      LuongID: 'L-102026-NV002',
-      NgayDuyet: '2026-10-02T16:00:00Z',
-      NguoiDuyet: 'Hạnh Phạm',
-      GhiChu: 'Tư vấn xuất sắc',
-    }
-  ];
-
-  const auditLogs: AuditLog[] = [
-    {
-      LogID: 'LOG-001',
-      NguoiThucHien: 'Hạnh Phạm',
-      Email: 'admin@hanhphambridal.vn',
-      HanhDong: 'Khởi tạo hệ thống',
-      ChiTiet: 'Hệ thống Quản trị Hanh Pham Bridal hoạt động',
-      IP: '127.0.0.1',
-      ThoiGian: '2026-10-01T00:00:00Z',
-    }
-  ];
-
-  const notifications: ThongBao[] = [
-    {
-      NotificationID: 'TB-001',
-      TieuDe: 'Chào mừng bạn đến với Hanh Pham Bridal',
-      NoiDung: 'Hệ thống Quản trị Nhân sự & Chấm công lương chính thức đi vào hoạt động.',
-      Loai: 'success',
-      DaDoc: false,
-      TaoLuc: new Date().toISOString(),
-    }
-  ];
-
-  const thongke: ThongKeKPI[] = [
-    {
-      KPI_ID: 'NV',
-      TieuDe: 'TỔNG NHÂN VIÊN',
-      MoTa: 'Nhân viên đang làm việc',
-      GiaTri: 1,
-      CapNhatLuc: new Date().toISOString(),
-    },
-    {
-      KPI_ID: 'CC',
-      TieuDe: 'CHẤM CÔNG HÔM NAY',
-      MoTa: 'Nhân viên đã check-in',
-      GiaTri: 1,
-      CapNhatLuc: new Date().toISOString(),
-    },
-    {
-      KPI_ID: 'CD',
-      TieuDe: 'LƯƠNG CHỜ DUYỆT',
-      MoTa: 'Lương chờ duyệt',
-      GiaTri: 19700000,
-      CapNhatLuc: new Date().toISOString(),
-    },
-    {
-      KPI_ID: 'TT',
-      TieuDe: 'ĐÃ THANH TOÁN',
-      MoTa: 'Lương đã thanh toán',
-      GiaTri: 22000000,
-      CapNhatLuc: new Date().toISOString(),
-    }
-  ];
+  const admin: NhanVien = {
+    NhanVienID: 'NV001',
+    TenDangNhap: 'admin',
+    HoTen: 'Hạnh Phạm',
+    Email: 'admin@hanhphambridal.vn',
+    SDT: '0903888999',
+    ChucVu: 'Giám Đốc Studio',
+    LuongCoBan: 35000000,
+    NgayVaoLam: '2024-01-01',
+    TrangThai: 'Đang Làm',
+    AnhNhanVien: '',
+    Quyen: 'Admin',
+    MatKhau: bcrypt.hashSync('admin123', salt),
+    SoTaiKhoan: '0071000888999',
+    NganHang: 'Vietcombank',
+    TenChuTaiKhoan: 'PHAM THI HANH',
+    ChiNhanhNganHang: 'TP. Hồ Chí Minh',
+    BiKhoa: false,
+    TaoLuc: '2024-01-01T08:00:00Z',
+  };
 
   return {
-    NHANVIEN: employees,
-    CHAMCONG: chamcongs,
-    LUONG: luongs,
+    NHANVIEN: [admin],
+    CHAMCONG: [],
+    LUONG: [],
     TAM_UNG: [],
-    HOAHONG: hoahongs,
-    THONGKE: thongke,
-    AUDIT_LOG: auditLogs,
-    NOTIFICATIONS: notifications,
+    HOAHONG: [],
+    THONGKE: [],
+    AUDIT_LOG: [],
+    NOTIFICATIONS: [],
     QUAN_LY: [],
-    SYSTEM_CONFIG: DEFAULT_CONFIG,
+    SYSTEM_CONFIG: { ...DEFAULT_CONFIG },
+    THEME: { ...DEFAULT_THEME },
   };
 }
 
@@ -1894,115 +1730,129 @@ class DatabaseService {
     );
     return this.db.SYSTEM_CONFIG;
   }
-  // RESET TOÀN BỘ DỮ LIỆU DEMO - GIỮ LẠI ADMIN
+  // Remove the known seeded demo employee and only records linked to that employee.
+  // All unrelated user-entered data, Admin credentials, studio config and theme are preserved.
   public async resetDemoData(adminUser: { HoTen: string; Email: string }) {
     await this.readyPromise;
+
+    if (!this.firestoreEnabled || !this.firestore) {
+      throw new Error('Firebase chưa kết nối. Đã dừng thao tác để bảo vệ dữ liệu hiện có.');
+    }
+    const demoEmployeeId = 'NV002';
+    const demoEmployeeEmail = 'linh.mai@hanhphambridal.vn';
+    const demoEmployeeName = 'Đỗ Mai Linh';
 
     const admin = this.db.NHANVIEN.find(
       (nv) => nv.NhanVienID === 'NV001' && nv.Quyen === 'Admin'
     );
     if (!admin) {
-      throw new Error('Không tìm thấy tài khoản Admin NV001. Không thể reset dữ liệu.');
+      throw new Error('Không tìm thấy tài khoản Admin NV001. Không thể tiếp tục.');
     }
 
-    // Wait for any previously queued cloud write before taking the backup.
-    // The reset must never race with an older save operation.
-    if (!this.firestoreEnabled || !this.firestore) {
-      throw new Error('Firebase chưa kết nối. Đã dừng thao tác để không xóa dữ liệu khi chưa có bản sao lưu an toàn trên đám mây.');
-    }
     await this.firestoreSaveQueue;
 
-    // Create a local safety copy first, then a complete cloud backup.
+    // Create both local and cloud backups before changing any live record.
     const backup = this.backupDatabase();
     const backupId = new Date().toISOString().replace(/[:.]/g, '-');
     const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
     const backupRef = rootRef.collection('backups').doc(backupId);
-    const batch = this.firestore.batch();
-    batch.set(backupRef, {
+    const backupBatch = this.firestore.batch();
+    backupBatch.set(backupRef, {
       createdAt: new Date().toISOString(),
       createdBy: adminUser.HoTen,
-      description: 'Safety backup created before full business-data reset',
+      description: 'Full safety backup before removing seeded demo employee NV002',
       tables: [...this.firestoreTables],
-      adminIdPreserved: admin.NhanVienID,
+      preservedAdminId: admin.NhanVienID,
     });
     for (const table of this.firestoreTables) {
       const value = (this.db as any)[table];
       if (value === undefined) continue;
-      batch.set(backupRef.collection('tables').doc(table), {
+      backupBatch.set(backupRef.collection('tables').doc(table), {
         data: sanitizeFirestoreValue(value),
         updatedAt: new Date().toISOString(),
       });
     }
-    // If the backup cannot be committed, abort before changing any live data.
-    await batch.commit();
+    await backupBatch.commit();
 
-    // Keep the exact existing Admin credentials, studio configuration and theme.
-    // All contracts, receipts, tasks and leave requests are stored in QUAN_LY,
-    // so clearing this collection removes every business module record.
-    this.db.NHANVIEN = [admin];
-    this.db.CHAMCONG = [];
-    this.db.LUONG = [];
-    this.db.TAM_UNG = [];
-    this.db.HOAHONG = [];
-    this.db.THONGKE = [];
-    this.db.NOTIFICATIONS = [];
-    this.db.AUDIT_LOG = [];
-    this.db.QUAN_LY = [];
+    const belongsToDemoEmployee = (record: any) =>
+      record?.NhanVienID === demoEmployeeId ||
+      record?.NhanVienEmail === demoEmployeeEmail ||
+      record?.Email === demoEmployeeEmail ||
+      record?.HoTen === demoEmployeeName;
 
-    // Disable scheduled demo/automatic generation during the clean start.
-    this.db.SYSTEM_CONFIG = {
-      ...this.db.SYSTEM_CONFIG,
-      AutomationEnabled: false,
-      LanChayCuoi: new Date().toISOString(),
-    };
-
-    this.refreshKPIs();
-    this.saveSync();
-    await this.persistToFirestoreNow();
-
-    // Verify the persisted clean state before reporting success.
-    const verifyAdmin = await rootRef.collection('tables').doc('NHANVIEN').get();
-    const verifyQuanLy = await rootRef.collection('tables').doc('QUAN_LY').get();
-    const persistedStaff = verifyAdmin.data()?.data;
-    const persistedQuanLy = verifyQuanLy.data()?.data;
-    if (!Array.isArray(persistedStaff) || persistedStaff.length !== 1 ||
-        persistedStaff[0]?.NhanVienID !== 'NV001' ||
-        !Array.isArray(persistedQuanLy) || persistedQuanLy.length !== 0) {
-      throw new Error('Reset chưa được xác minh trên Firestore. Bản sao lưu vẫn được giữ tại backups/' + backupId + '.');
-    }
-
-    this.logAudit(
-      adminUser.HoTen,
-      adminUser.Email,
-      'Reset dữ liệu nghiệp vụ',
-      'Đã xóa dữ liệu nghiệp vụ; giữ Admin NV001, cấu hình studio và giao diện. Bản sao lưu Firestore: ' + backupId
-    );
-    await this.persistToFirestoreNow();
-
-    const quanLyCounts = {
-      hopDong: this.db.QUAN_LY.filter((x) => x.Module === 'HOP_DONG').length,
-      thuChi: this.db.QUAN_LY.filter((x) => x.Module === 'THU_CHI').length,
-      congViec: this.db.QUAN_LY.filter((x) => x.Module === 'CONG_VIEC').length,
-      nghiPhep: this.db.QUAN_LY.filter((x) => x.Module === 'NGHI_PHEP').length,
-    };
-    return {
-      success: true,
-      message: 'Đã làm sạch dữ liệu nghiệp vụ và xác minh Firestore. Tài khoản Admin NV001, cấu hình studio và giao diện được giữ lại.',
-      backupFile: backup.filename,
-      cloudBackupId: backupId,
-      remainingAdmin: admin.NhanVienID,
+    const before = {
       nhanVien: this.db.NHANVIEN.length,
       chamCong: this.db.CHAMCONG.length,
       luong: this.db.LUONG.length,
       tamUng: this.db.TAM_UNG.length,
       hoaHong: this.db.HOAHONG.length,
       quanLy: this.db.QUAN_LY.length,
-      hopDong: quanLyCounts.hopDong,
-      thuChi: quanLyCounts.thuChi,
-      congViec: quanLyCounts.congViec,
-      nghiPhep: quanLyCounts.nghiPhep,
+    };
+
+    this.db.NHANVIEN = this.db.NHANVIEN.filter((nv) => nv.NhanVienID !== demoEmployeeId);
+    this.db.CHAMCONG = this.db.CHAMCONG.filter((record) => !belongsToDemoEmployee(record));
+    this.db.LUONG = this.db.LUONG.filter((record) => !belongsToDemoEmployee(record));
+    this.db.TAM_UNG = this.db.TAM_UNG.filter((record) => !belongsToDemoEmployee(record));
+    this.db.HOAHONG = this.db.HOAHONG.filter((record) => !belongsToDemoEmployee(record));
+    this.db.QUAN_LY = this.db.QUAN_LY.filter((record) => !belongsToDemoEmployee(record?.DuLieu));
+
+    // Remove only exact seed records; preserve all other user-entered history.
+    this.db.NOTIFICATIONS = this.db.NOTIFICATIONS.filter((record) =>
+      record.NotificationID !== 'TB-001' &&
+      record.NhanVienID !== demoEmployeeId
+    );
+    this.db.AUDIT_LOG = this.db.AUDIT_LOG.filter((record) => record.LogID !== 'LOG-001');
+
+    this.refreshKPIs();
+    this.saveSync();
+    await this.persistToFirestoreNow();
+
+    const tableNames = ['NHANVIEN', 'CHAMCONG', 'LUONG', 'TAM_UNG', 'HOAHONG', 'QUAN_LY'] as const;
+    const snapshots = await Promise.all(
+      tableNames.map((table) => rootRef.collection('tables').doc(table).get())
+    );
+    const persisted: Record<string, any[]> = {};
+    snapshots.forEach((snap, index) => {
+      persisted[tableNames[index]] = Array.isArray(snap.data()?.data) ? snap.data()!.data : [];
+    });
+    const stillHasDemoEmployee = persisted.NHANVIEN.some((nv) => nv.NhanVienID === demoEmployeeId);
+    const stillHasLinkedDemo = tableNames.slice(1).some((table) =>
+      persisted[table].some((record) => belongsToDemoEmployee(table === 'QUAN_LY' ? record?.DuLieu : record))
+    );
+    if (stillHasDemoEmployee || stillHasLinkedDemo) {
+      throw new Error('Không xác minh được việc xóa dữ liệu demo. Bản sao lưu an toàn vẫn được giữ tại backups/' + backupId + '.');
+    }
+
+    this.logAudit(
+      adminUser.HoTen,
+      adminUser.Email,
+      'Xóa dữ liệu demo',
+      'Đã xóa nhân viên mẫu NV002 và các bản ghi liên quan; giữ nguyên các dữ liệu không liên quan. Backup Firestore: ' + backupId
+    );
+    await this.persistToFirestoreNow();
+
+    return {
+      success: true,
+      message: 'Đã xóa nhân viên demo NV002 và dữ liệu liên quan. Dữ liệu khác, tài khoản Admin, cấu hình studio và giao diện được giữ nguyên.',
+      backupFile: backup.filename,
+      cloudBackupId: backupId,
+      remainingAdmin: admin.NhanVienID,
+      nhanVien: this.db.NHANVIEN.length,
+      chamCong: this.db.CHAMCONG.length,
+      luong: this.db.LUONG.length,
+      hoaHong: this.db.HOAHONG.length,
+      notifications: this.db.NOTIFICATIONS.length,
+      removed: {
+        nhanVien: before.nhanVien - this.db.NHANVIEN.length,
+        chamCong: before.chamCong - this.db.CHAMCONG.length,
+        luong: before.luong - this.db.LUONG.length,
+        tamUng: before.tamUng - this.db.TAM_UNG.length,
+        hoaHong: before.hoaHong - this.db.HOAHONG.length,
+        quanLy: before.quanLy - this.db.QUAN_LY.length,
+      },
     };
   }
+
   public getQuanLyRecords(module?: QuanLyModule): QuanLyRecord[] {
     const list = this.db.QUAN_LY || [];
     return module ? list.filter((x) => x.Module === module) : [...list];
