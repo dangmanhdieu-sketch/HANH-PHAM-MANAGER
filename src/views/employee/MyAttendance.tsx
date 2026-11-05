@@ -135,8 +135,10 @@ export const MyAttendance: React.FC<MyAttendanceProps> = ({ attendanceList }) =>
                         {cc.TrangThai}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-stone-500 italic max-w-[160px] truncate">
-                      {cc.GhiChu || '--'}
+                    <td className="px-5 py-4 text-stone-600 max-w-[220px]">
+                      <p className="whitespace-normal break-words">{cc.GhiChu || '--'}</p>
+                      {cc.KetQuaGiaiTrinh && <p className={`mt-1 text-[10px] font-semibold ${cc.KetQuaGiaiTrinh === 'Chấp nhận' ? 'text-emerald-700' : 'text-rose-700'}`}>Admin: {cc.KetQuaGiaiTrinh}</p>}
+                      {cc.GhiChuDuyet && <p className="mt-1 text-[10px] text-stone-500 whitespace-normal">Phản hồi: {cc.GhiChuDuyet}</p>}
                     </td>
                   </tr>
                 ))
