@@ -290,6 +290,12 @@ export const api = {
     async delete(id: string): Promise<{ message: string }> {
       return request<{ message: string }>(`/api/chamcong/${encodeURIComponent(id)}`, { method: 'DELETE' });
     },
+    async reviewExplanation(id: string, decision: 'Chấp nhận' | 'Không chấp nhận', note?: string): Promise<{ message: string; record: ChamCong }> {
+      return request(`/api/chamcong/${encodeURIComponent(id)}/review-explanation`, {
+        method: 'PUT',
+        body: JSON.stringify({ decision, note }),
+      });
+    },
 
     async getToday(): Promise<
       ChamCong | ChamCong[] | null
