@@ -43,6 +43,69 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
     }
   };
 
+  const exportEmployeeMonthlyAttendance = () => {
+    if (selectedStaffId === 'ALL' || !selectedMonth) {
+      alert('Vui lòng chọn một nhân viên và một tháng trước khi xuất hồ sơ.');
+      return;
+    }
+
+    const staff = staffList.find((item) => item.NhanVienID === selectedStaffId);
+    if (!staff) {
+      alert('Không tìm thấy thông tin nhân viên.');
+      return;
+    }
+
+    const [monthText, yearText] = selectedMonth.split('/');
+    const month = Number(monthText);
+    const year = Number(yearText);
+    if (!month || !year) {
+      alert('Tháng không hợp lệ.');
+      return;
+    }
+
+    const monthRecords = attendanceList
+      .filter((item) => item.NhanVienID === selectedStaffId && item.Ngay.startsWith(`${year}-${String(month).padStart(2, '0')}-`))
+      .sort((a, b) => a.Ngay.localeCompare(b.Ngay));
+
+    const recordsByDate = new Map(monthRecords.map((item) => [item.Ngay, item]));
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const rows: string[][] = [
+      ['HỒ SƠ ĐỐI CHIẾU CHẤM CÔNG THÁNG', selectedMonth],
+      ['Đơn vị', 'HẠNH PHẠM LUXURY BRIDAL'],
+      ['Nhân viên', staff.HoTen],
+      ['Mã nhân viên', staff.NhanVienID],
+      ['Tổng bản ghi chấm công', String(monthRecords.length)],
+      ['Tổng giờ ghi nhận', String(Math.round(monthRecords.reduce((sum, item) => sum + (Number(item.SoGioLam) || 0), 0) * 100) / 100)],
+      [],
+      ['Ngày', 'Thứ', 'Check-in', 'Check-out', 'Số giờ', 'Trạng thái', 'GPS Check-in', 'GPS Check-out', 'Ảnh Check-in', 'Ảnh Check-out', 'Ghi chú', 'Mã bản ghi'],
+    ];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const record = recordsByDate.get(date);
+      const weekday = new Date(year, month - 1, day).toLocaleDateString('vi-VN', { weekday: 'long' });
+      rows.push(record
+        ? [date, weekday, record.CheckIn || '', record.CheckOut || '', String(record.SoGioLam ?? ''), record.TrangThai, record.GPSCheckIn || '', record.GPSCheckOut || '', record.AnhCheckIn ? 'Có ảnh check-in (mở trong ứng dụng)' : 'Không có', record.AnhCheckOut ? 'Có ảnh check-out (mở trong ứng dụng)' : 'Không có', record.GhiChu || '', record.ChamCongID]
+        : [date, weekday, '', '', '', 'Không có bản ghi chấm công - không tự động tính là nghỉ/trừ lương', '', '', 'Không có', 'Không có', '', '']);
+    }
+
+    rows.push([]);
+    rows.push(['XÁC NHẬN ĐỐI CHIẾU', 'Nhân viên và quản lý kiểm tra dữ liệu chấm công, ảnh và GPS gốc trên ứng dụng.']);
+    rows.push(['Lưu ý', 'Ngày không có bản ghi check-in không mặc định là ngày nghỉ và không tự động khấu trừ lương.']);
+
+    const csv = '\\uFEFF' + rows.map((row) => row.map(csvCell).join(',')).join('\\r\\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Doi-chieu-cham-cong-${staff.NhanVienID}-${monthText}-${yearText}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   // Filter attendance records
   const filteredList = attendanceList.filter((cc) => {
     const matchDate = !selectedDate || cc.Ngay === selectedDate;
@@ -99,6 +162,16 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
             <Download className="w-3.5 h-3.5 text-[#bf954f]" />
             <span>Xuất CSV Chấm Công</span>
           </a>
+          <button
+            type="button"
+            onClick={exportEmployeeMonthlyAttendance}
+            disabled={selectedStaffId === 'ALL' || !selectedMonth}
+            title="Chọn một nhân viên và một tháng để tải hồ sơ đối chiếu đầy đủ"
+            className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-xl text-xs font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Download className="w-3.5 h-3.5 text-[#d6b16f]" />
+            <span>Hồ sơ tháng của nhân viên</span>
+          </button>
         </div>
       </div>
 
@@ -128,9 +201,13 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
             className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] bg-white"
           >
             <option value="">Tất cả các tháng</option>
-            <option value="10/2026">Tháng 10/2026</option>
-            <option value="09/2026">Tháng 09/2026</option>
-            <option value="08/2026">Tháng 08/2026</option>
+            {Array.from({ length: 24 }, (_, index) => {
+              const date = new Date();
+              date.setDate(1);
+              date.setMonth(date.getMonth() - index);
+              const value = `${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+              return <option key={value} value={value}>Tháng {value}</option>;
+            })}
           </select>
         </div>
 
