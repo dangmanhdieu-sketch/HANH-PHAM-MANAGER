@@ -409,14 +409,7 @@ class DatabaseService {
       const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
       const rootSnap = await rootRef.get();
 
-      // Never overwrite an existing Firestore database during a Render restart or deploy.
-      // This flag is honored only when the target document does not exist yet.
-      if (!rootSnap.exists && process.env.FIREBASE_FORCE_FRESH_INIT === 'true') {
-        this.db = getFreshEmptyData();
-        await this.persistToFirestoreNow();
-        console.log('[Firebase] Initialized a missing Firestore database with one Admin account and empty business tables.');
-        return;
-      }
+      // Existing Firestore data is always loaded as-is. New databases require the separate, explicit empty-init setting.
 
       if (!rootSnap.exists) {
         if (process.env.FIREBASE_ALLOW_EMPTY_INIT !== 'true') {
