@@ -438,7 +438,9 @@ class DatabaseService {
       }
 
       const rootData = rootSnap.data() || {};
-      this.demoDataPurged = rootData.__demoDataPurged === true;
+      // The owner has explicitly requested permanent removal of the known seeded demo dataset.
+      // Enforce it on every existing-database startup, even if an older deployment rewrote the tables.
+      this.demoDataPurged = true;
       const schemaVersion = Number(rootData.__schemaVersion || 1);
 
       if (schemaVersion >= 2) {
