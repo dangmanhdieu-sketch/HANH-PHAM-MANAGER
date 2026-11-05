@@ -19,7 +19,7 @@ import {
   Trash2,
   Wallet,
 } from 'lucide-react';
-import type { Luong, HoaHong, NhanVien, TamUng } from '../../types';
+import type { Luong, HoaHong, NhanVien, TamUng, SystemConfig } from '../../types';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { api } from '../../api';
 import { CommissionManagement } from './CommissionManagement';
@@ -53,6 +53,11 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
   const [approvingLuong, setApprovingLuong] = useState<Luong | null>(null);
   const [payingLuong, setPayingLuong] = useState<Luong | null>(null);
   const [previewPayslip, setPreviewPayslip] = useState<Luong | null>(null);
+  const [studioConfig, setStudioConfig] = useState<SystemConfig | null>(null);
+
+  useEffect(() => {
+    api.system.getConfig().then(setStudioConfig).catch((error) => console.error('Không tải được thông tin studio:', error));
+  }, []);
 
   const [showTamUngModal, setShowTamUngModal] = useState(false);
   const [tamUngList, setTamUngList] = useState<TamUng[]>([]);
@@ -829,9 +834,9 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                   HANH PHAM BRIDAL
                 </h2>
                 <p className="text-xs text-stone-500 uppercase tracking-widest mt-0.5">
-                  156 Nam Kỳ Khởi Nghĩa, Bến Nghé, Quận 1, TP. Hồ Chí Minh
+                  {studioConfig?.DiaChi || '321 Lê Quý Đôn, Tân Xuân, Bình Phước, Đồng Nai'}
                 </p>
-                <p className="text-xs text-stone-400">Hotline: 0988 123 456</p>
+                <p className="text-xs text-stone-400">Hotline: {studioConfig?.Hotline || '0988 123 456'}</p>
                 <div className="inline-block mt-3 px-4 py-1 bg-[#FAF8F5] rounded-full border border-[#E7DFD5]">
                   <span className="text-xs font-bold font-bridal uppercase text-stone-800">
                     PHIẾU BÁO LƯƠNG THÁNG {previewPayslip.Thang}
