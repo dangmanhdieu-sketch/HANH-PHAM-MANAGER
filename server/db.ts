@@ -530,6 +530,8 @@ class DatabaseService {
 
   private async persistToFirestoreNow(): Promise<void> {
     if (!this.firestoreEnabled || !this.firestore) return;
+    // Once the purge tombstone exists, never allow any later save/restore to reintroduce seeded demo rows.
+    if (this.demoDataPurged) this.purgeKnownDemoData();
     try {
       const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
       const batch = this.firestore.batch();
