@@ -612,8 +612,11 @@ class DatabaseService {
   }
 
   public save() {
+    // API mutation responses are persisted by the server-wide saveAndVerify
+    // barrier exactly once. Queueing a full Firestore write here caused each
+    // route to write once from save() and a second time from the response
+    // barrier, making routine edits and deletes unnecessarily slow.
     this.saveSync();
-    this.queueFirestoreSave();
   }
 
   /** Persist once to Firestore before an API reports a successful mutation. */
