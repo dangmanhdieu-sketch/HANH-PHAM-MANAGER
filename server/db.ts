@@ -202,6 +202,7 @@ function getFreshEmptyData(): DatabaseSchema {
  * Undefined object properties are omitted; undefined array slots become null.
  */
 const FIRESTORE_NESTED_ARRAY_MARKER = '__HANH_PHAM_FIRESTORE_ARRAY_V1__';
+const LEGACY_FIRESTORE_NESTED_ARRAY_MARKER = '__HANH_PHAM_FIRESTORE_NESTED_ARRAY_V1__';
 
 /**
  * Firestore rejects arrays nested directly inside arrays. Encode every JS array
@@ -238,12 +239,15 @@ function restoreFirestoreValue(value: any): any {
   if (Array.isArray(value)) return value.map((item) => restoreFirestoreValue(item));
   if (value && typeof value === 'object' && !(value instanceof Date)) {
     const keys = Object.keys(value);
-    if (
-      keys.length === 1 &&
-      Object.prototype.hasOwnProperty.call(value, FIRESTORE_NESTED_ARRAY_MARKER) &&
-      Array.isArray(value[FIRESTORE_NESTED_ARRAY_MARKER])
-    ) {
-      return value[FIRESTORE_NESTED_ARRAY_MARKER].map((item: any) => restoreFirestoreValue(item));
+    if (keys.length === 1) {
+      const marker = Object.prototype.hasOwnProperty.call(value, FIRESTORE_NESTED_ARRAY_MARKER)
+        ? FIRESTORE_NESTED_ARRAY_MARKER
+        : Object.prototype.hasOwnProperty.call(value, LEGACY_FIRESTORE_NESTED_ARRAY_MARKER)
+          ? LEGACY_FIRESTORE_NESTED_ARRAY_MARKER
+          : null;
+      if (marker && Array.isArray(value[marker])) {
+        return value[marker].map((item: any) => restoreFirestoreValue(item));
+      }
     }
     const result: Record<string, any> = {};
     for (const [key, nestedValue] of Object.entries(value)) {
