@@ -917,18 +917,21 @@ app.post('/api/hoahong', authenticateToken, (req: AuthRequest, res: Response) =>
     const user = req.user!;
     const payload = { ...req.body };
 
-    // Identity guard: never silently move an employee's claim to another staff record.
-    // The submitted staff ID must match the authenticated account exactly.
+    // The authenticated server-side account is the only source of truth for
+    // employee-submitted claims. Never trust a staff ID cached in the browser:
+    // stale tabs/localStorage can otherwise attribute a claim to another person.
     if (user.Quyen !== 'Admin') {
       const submittedEmployeeId = String(payload.NhanVienID || '').trim();
       const authenticatedEmployeeId = String(user.NhanVienID || '').trim();
-      if (!authenticatedEmployeeId || submittedEmployeeId !== authenticatedEmployeeId) {
-        console.error('[HOAHONG] Employee identity mismatch:', {
+      if (!authenticatedEmployeeId) {
+        return res.status(401).json({
+          error: 'Không xác định được mã nhân viên từ phiên đăng nhập. Vui lòng đăng xuất và đăng nhập lại.',
+        });
+      }
+      if (submittedEmployeeId && submittedEmployeeId !== authenticatedEmployeeId) {
+        console.warn('[HOAHONG] Replacing stale client employee ID with authenticated identity:', {
           authenticatedEmployeeId,
           submittedEmployeeId,
-        });
-        return res.status(409).json({
-          error: 'Mã nhân viên trên phiếu không khớp tài khoản đang đăng nhập. Phiếu chưa được lưu. Vui lòng đăng xuất và đăng nhập lại.',
         });
       }
       payload.NhanVienID = authenticatedEmployeeId;
