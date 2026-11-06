@@ -31,6 +31,46 @@ app.use('/api', async (_req: Request, _res: Response, next: NextFunction) => {
   }
 });
 
+// Persistence barrier for every API mutation.
+// Routes may update in-memory data and call save() without awaiting Firestore.
+// Delay every successful mutation response until all Firestore tables have been
+// written and read back successfully. This prevents false "saved" confirmations.
+app.use('/api', (req: Request, res: Response, next: NextFunction) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+
+  const originalSend = res.send.bind(res);
+  let persistenceStarted = false;
+
+  res.send = ((body?: any) => {
+    if (persistenceStarted || res.statusCode < 200 || res.statusCode >= 300) {
+      return originalSend(body);
+    }
+
+    persistenceStarted = true;
+    void dbService.saveAndVerify()
+      .then(() => originalSend(body))
+      .catch((error: any) => {
+        console.error('[API] Mutation blocked because Firestore persistence was not verified:', {
+          method: req.method,
+          path: req.path,
+          error: error?.message || error,
+        });
+        if (!res.headersSent) {
+          res.statusCode = 503;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        }
+        return originalSend(JSON.stringify({
+          error: 'Thao tác chưa được xác nhận lưu vào Firestore. Vui lòng thử lại sau khi kiểm tra kết nối Firebase.',
+          detail: error?.message || 'Firestore persistence verification failed.',
+        }));
+      });
+
+    return res;
+  }) as Response['send'];
+
+  next();
+});
+
 // Helper to create a simple signed token for session
 function createToken(user: NhanVien): string {
   const payload = {
@@ -278,8 +318,6 @@ app.post('/api/nhanvien', authenticateToken, requireAdmin, async (req: AuthReque
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
-    // Do not tell the UI the employee was created until Firestore confirms the write.
-    await dbService.saveAndVerify();
     const { MatKhau: _, ...safe } = created;
     return res.status(201).json(safe);
   } catch (err: any) {
