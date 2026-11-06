@@ -226,6 +226,9 @@ class DatabaseService {
   // claims the Firestore lease; older overlapping instances can no longer write
   // their stale in-memory database over the new instance's data.
   private readonly firestoreWriterId = randomUUID();
+  // Compact per-table fingerprints of the last committed Firestore state.
+  // Mutations only rewrite tables whose content actually changed.
+  private firestorePersistedSnapshots: Partial<Record<(typeof this.firestoreTables)[number], string>> = {};
   private firestore: Firestore | null = null;
   private firestoreEnabled = false;
   private readonly firestoreCollection = process.env.FIREBASE_COLLECTION || 'hanh_pham_manager';
@@ -509,6 +512,7 @@ class DatabaseService {
           const migrated = this.applyMigrations();
           this.refreshKPIs();
           this.saveSync();
+          this.captureFirestoreSnapshots();
           if (migrated) await this.persistToFirestoreNow();
           console.log('[Firebase] Đã tải dữ liệu persistent từ Firestore.');
           console.log('[Firebase] DATA COUNTS:', JSON.stringify({
@@ -556,34 +560,55 @@ class DatabaseService {
     }
   }
 
-  private async persistToFirestoreNow(): Promise<void> {
+  private captureFirestoreSnapshots(): void {
+    for (const table of this.firestoreTables) {
+      this.firestorePersistedSnapshots[table] = JSON.stringify((this.db as any)[table]);
+    }
+  }
+
+  private getChangedFirestoreTables(): (typeof this.firestoreTables)[number][] {
+    return this.firestoreTables.filter((table) => {
+      const current = JSON.stringify((this.db as any)[table]);
+      return current !== this.firestorePersistedSnapshots[table];
+    });
+  }
+
+  private async persistToFirestoreNow(
+    tablesToWrite: readonly (typeof this.firestoreTables)[number][] = this.firestoreTables
+  ): Promise<void> {
     if (!this.firestoreEnabled || !this.firestore) return;
+    if (tablesToWrite.length === 0) return;
     try {
       const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
-      // Use a transaction that reads the active-writer lease before writing.
-      // Firestore serializes this against a new instance claiming the lease, so
-      // an old Render process cannot commit stale arrays after a deployment.
+      const committedAt = new Date().toISOString();
+      // The lease check and changed table writes share one transaction, so an
+      // older overlapping Render instance cannot overwrite current data.
       await this.firestore.runTransaction(async (transaction) => {
         await this.assertFirestoreWriterLease(transaction);
         transaction.set(rootRef, {
           __schemaVersion: 2,
-          __updatedAt: new Date().toISOString(),
+          __updatedAt: committedAt,
           __storage: 'Firestore split tables',
         }, { merge: true });
 
-        for (const table of this.firestoreTables) {
+        for (const table of tablesToWrite) {
           const value = (this.db as any)[table];
           if (value === undefined) continue;
           transaction.set(
             rootRef.collection('tables').doc(table),
             {
               data: sanitizeFirestoreValue(value),
-              updatedAt: new Date().toISOString(),
+              updatedAt: committedAt,
             },
             { merge: false }
           );
         }
       });
+
+      // Update fingerprints only after Firestore confirms the transaction.
+      for (const table of tablesToWrite) {
+        this.firestorePersistedSnapshots[table] = JSON.stringify((this.db as any)[table]);
+      }
     } catch (err) {
       console.error('[Firebase] Firestore save error:', err);
       throw err;
@@ -634,13 +659,17 @@ class DatabaseService {
       .catch((previousError) => {
         console.error('[Firebase] Recovering after previous queued write failure:', previousError);
       })
-      .then(() => this.persistToFirestoreNow());
+      .then(() => {
+        const changedTables = this.getChangedFirestoreTables();
+        if (changedTables.length === 0) return;
+        return this.persistToFirestoreNow(changedTables);
+      });
     this.firestoreSaveQueue = write.catch((err) => {
       console.error('[Firebase] Verified write failed:', err);
     });
     await write;
 
-    console.log('[Firebase] SAVE COMMITTED:', this.firestoreTables.length, 'tables; project',
+    console.log('[Firebase] SAVE COMMITTED:', this.getChangedFirestoreTables().length, 'pending tables; project',
       process.env.FIREBASE_EXPECTED_PROJECT_ID || 'hanhpham-manager-new');
   }
 
