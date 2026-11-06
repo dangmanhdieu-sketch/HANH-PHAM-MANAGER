@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { isDeepStrictEqual } from 'node:util';
 import bcrypt from 'bcryptjs';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
@@ -617,17 +618,34 @@ class DatabaseService {
       throw new Error('Firebase Firestore chưa kết nối; dữ liệu chưa được xác nhận lưu trên đám mây.');
     }
     this.saveSync();
-    this.firestoreSaveQueue = this.firestoreSaveQueue.then(() => this.persistToFirestoreNow());
-    await this.firestoreSaveQueue;
+
+    // Recover the queue after any earlier failed write, then await this exact write.
+    const write = this.firestoreSaveQueue
+      .catch((previousError) => {
+        console.error('[Firebase] Recovering after previous queued write failure:', previousError);
+      })
+      .then(() => this.persistToFirestoreNow());
+    this.firestoreSaveQueue = write.catch((err) => {
+      console.error('[Firebase] Verified write failed:', err);
+    });
+    await write;
+
+    // Read every table back from Firestore and compare it with the in-memory source.
+    // An API mutation is not considered successful unless every table matches.
     const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
-    const staffSnap = await rootRef.collection('tables').doc('NHANVIEN').get();
-    const savedStaff = Array.isArray(staffSnap.data()?.data) ? staffSnap.data()!.data : [];
-    const currentIds = new Set(this.db.NHANVIEN.map((nv) => nv.NhanVienID));
-    const missing = [...currentIds].filter((id) => !savedStaff.some((nv: any) => nv.NhanVienID === id));
-    if (missing.length) {
-      throw new Error('Firebase chưa xác nhận lưu đủ nhân viên: ' + missing.join(', '));
+    const mismatches: string[] = [];
+    for (const table of this.firestoreTables) {
+      const snap = await rootRef.collection('tables').doc(table).get();
+      const cloudValue = snap.exists ? snap.data()?.data : undefined;
+      const localValue = sanitizeFirestoreValue((this.db as any)[table]);
+      if (!snap.exists || !isDeepStrictEqual(cloudValue, localValue)) {
+        mismatches.push(table);
+      }
     }
-    console.log('[Firebase] SAVE VERIFIED: NHANVIEN', savedStaff.length);
+    if (mismatches.length) {
+      throw new Error('Firestore đã ghi nhưng kiểm tra đọc lại không khớp các bảng: ' + mismatches.join(', '));
+    }
+    console.log('[Firebase] SAVE VERIFIED: all tables', this.firestoreTables.length, 'project', process.env.FIREBASE_EXPECTED_PROJECT_ID || 'hanhphamnew');
   }
 
   public logAudit(nguoiThucHien: string, email: string, hanhDong: string, chiTiet: string, ip?: string) {
