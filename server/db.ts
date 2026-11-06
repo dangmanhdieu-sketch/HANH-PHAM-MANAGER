@@ -590,9 +590,15 @@ class DatabaseService {
     // Read every table back from Firestore and compare it with the in-memory source.
     // An API mutation is not considered successful unless every table matches.
     const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+    // Read all table documents concurrently: sequential reads added one network
+    // round-trip per table and made every save/delete feel unusually slow.
+    const snapshots = await Promise.all(
+      this.firestoreTables.map((table) => rootRef.collection('tables').doc(table).get())
+    );
     const mismatches: string[] = [];
-    for (const table of this.firestoreTables) {
-      const snap = await rootRef.collection('tables').doc(table).get();
+    for (let index = 0; index < this.firestoreTables.length; index += 1) {
+      const table = this.firestoreTables[index];
+      const snap = snapshots[index];
       const cloudValue = snap.exists ? snap.data()?.data : undefined;
       const localValue = sanitizeFirestoreValue((this.db as any)[table]);
       if (!snap.exists || !isDeepStrictEqual(cloudValue, localValue)) {
