@@ -201,7 +201,7 @@ function getFreshEmptyData(): DatabaseSchema {
  * reserved map field. The decoder below restores the original JS array shape.
  * Undefined object properties are omitted; undefined array slots become null.
  */
-const FIRESTORE_NESTED_ARRAY_MARKER = '__HANH_PHAM_FIRESTORE_ARRAY_V1__';
+const FIRESTORE_NESTED_ARRAY_MARKER = 'hanhPhamFirestoreArrayMarkerV1';
 const LEGACY_FIRESTORE_NESTED_ARRAY_MARKER = '__HANH_PHAM_FIRESTORE_NESTED_ARRAY_V1__';
 
 /**
