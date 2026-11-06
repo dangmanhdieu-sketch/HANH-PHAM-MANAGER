@@ -20,8 +20,7 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
-// Firebase/Firestore startup gate: wait until dbService has loaded the
-// persistent database from Firestore before any API route reads or writes data.
+// Local database startup gate: wait until the persistent file is ready before API access.
 app.use('/api', async (_req: Request, _res: Response, next: NextFunction) => {
   try {
     await dbService.waitUntilReady();
@@ -29,46 +28,6 @@ app.use('/api', async (_req: Request, _res: Response, next: NextFunction) => {
   } catch (error) {
     next(error);
   }
-});
-
-// Persistence barrier for every API mutation.
-// Routes may update in-memory data and call save() without awaiting Firestore.
-// Delay every successful mutation response until all Firestore tables have been
-// written and read back successfully. This prevents false "saved" confirmations.
-app.use('/api', (req: Request, res: Response, next: NextFunction) => {
-  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
-
-  const originalSend = res.send.bind(res);
-  let persistenceStarted = false;
-
-  res.send = ((body?: any) => {
-    if (persistenceStarted || res.statusCode < 200 || res.statusCode >= 300) {
-      return originalSend(body);
-    }
-
-    persistenceStarted = true;
-    void dbService.saveAndVerify()
-      .then(() => originalSend(body))
-      .catch((error: any) => {
-        console.error('[API] Mutation blocked because Firestore persistence was not verified:', {
-          method: req.method,
-          path: req.path,
-          error: error?.message || error,
-        });
-        if (!res.headersSent) {
-          res.statusCode = 503;
-          res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        }
-        return originalSend(JSON.stringify({
-          error: 'Thao tác chưa được xác nhận lưu vào Firestore. Vui lòng thử lại sau khi kiểm tra kết nối Firebase.',
-          detail: error?.message || 'Firestore persistence verification failed.',
-        }));
-      });
-
-    return res;
-  }) as Response['send'];
-
-  next();
 });
 
 // Helper to create a simple signed token for session
@@ -133,6 +92,8 @@ function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
   }
   next();
 }
+// ==========================================
+// 1. AUTHENTICATION ROUTES
 // ==========================================
 
 app.post('/api/auth/login', (req: Request, res: Response) => {
