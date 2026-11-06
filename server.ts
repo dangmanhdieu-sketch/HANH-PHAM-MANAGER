@@ -114,9 +114,23 @@ function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) 
     return res.status(401).json({ error: 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ.' });
   }
 
-  const user = dbService.findNhanVienById(payload.id);
-  if (!user) {
-    return res.status(401).json({ error: 'Người dùng không tồn tại trong hệ thống.' });
+  // Resolve the authenticated account by its unique login name first.
+  // Looking up by NhanVienID alone can select another employee if legacy data
+  // contains duplicated IDs, causing check-in and commission records to be
+  // attributed to the first matching employee in the array.
+  const user = payload.username
+    ? dbService.findNhanVienByUsername(payload.username)
+    : dbService.findNhanVienById(payload.id);
+
+  if (!user || user.NhanVienID !== payload.id) {
+    console.error('[AUTH] Token identity does not match the employee record:', {
+      tokenId: payload.id,
+      tokenUsername: payload.username || null,
+      matchedId: user?.NhanVienID || null,
+    });
+    return res.status(401).json({
+      error: 'Thông tin nhân viên của phiên đăng nhập không còn khớp dữ liệu hệ thống. Vui lòng đăng xuất và đăng nhập lại.',
+    });
   }
 
   if (user.BiKhoa) {
