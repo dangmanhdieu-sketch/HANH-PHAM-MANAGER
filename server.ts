@@ -20,7 +20,8 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
-// Local database startup gate: wait until the persistent file is ready before API access.
+// Firebase/Firestore startup gate: wait until dbService has loaded the
+// persistent database from Firestore before any API route reads or writes data.
 app.use('/api', async (_req: Request, _res: Response, next: NextFunction) => {
   try {
     await dbService.waitUntilReady();
@@ -28,6 +29,46 @@ app.use('/api', async (_req: Request, _res: Response, next: NextFunction) => {
   } catch (error) {
     next(error);
   }
+});
+
+// Persistence barrier for every API mutation.
+// Routes may update in-memory data and call save() without awaiting Firestore.
+// Delay every successful mutation response until all Firestore tables have been
+// written and read back successfully. This prevents false "saved" confirmations.
+app.use('/api', (req: Request, res: Response, next: NextFunction) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+
+  const originalSend = res.send.bind(res);
+  let persistenceStarted = false;
+
+  res.send = ((body?: any) => {
+    if (persistenceStarted || res.statusCode < 200 || res.statusCode >= 300) {
+      return originalSend(body);
+    }
+
+    persistenceStarted = true;
+    void dbService.saveAndVerify()
+      .then(() => originalSend(body))
+      .catch((error: any) => {
+        console.error('[API] Mutation blocked because Firestore persistence was not verified:', {
+          method: req.method,
+          path: req.path,
+          error: error?.message || error,
+        });
+        if (!res.headersSent) {
+          res.statusCode = 503;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        }
+        return originalSend(JSON.stringify({
+          error: 'Thao tác chưa được xác nhận lưu vào Firestore. Vui lòng thử lại sau khi kiểm tra kết nối Firebase.',
+          detail: error?.message || 'Firestore persistence verification failed.',
+        }));
+      });
+
+    return res;
+  }) as Response['send'];
+
+  next();
 });
 
 // Helper to create a simple signed token for session
@@ -92,6 +133,36 @@ function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
   }
   next();
 }
+// ==========================================
+// RESET DỮ LIỆU DEMO - CHỈ ADMIN
+// ==========================================
+app.post(
+  '/api/admin/reset-demo-data',
+  authenticateToken,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          error: 'Chưa đăng nhập.',
+        });
+      }
+
+      const result = await dbService.resetDemoData({
+        HoTen: req.user.HoTen,
+        Email: req.user.Email,
+      });
+
+      return res.json(result);
+    } catch (err: any) {
+      console.error('Reset dữ liệu demo lỗi:', err);
+
+      return res.status(400).json({
+        error: err?.message || 'Không thể reset dữ liệu demo.',
+      });
+    }
+  }
+);
 // ==========================================
 // 1. AUTHENTICATION ROUTES
 // ==========================================
