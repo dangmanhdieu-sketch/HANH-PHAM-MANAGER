@@ -1770,8 +1770,7 @@ class DatabaseService {
     );
     return this.db.SYSTEM_CONFIG;
   }
-  // Remove the known seeded demo employee and only records linked to that employee.
-  // All unrelated user-entered data, Admin credentials, studio config and theme are preserved.
+
   public async resetDemoData(adminUser: { HoTen: string; Email: string }) {
     await this.readyPromise;
 
