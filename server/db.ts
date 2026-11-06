@@ -431,17 +431,35 @@ class DatabaseService {
           )
         );
 
+        // Schema v2 is only valid when every expected table document exists
+        // and contains its data field. Missing documents must never be treated
+        // as empty arrays: doing so can make a healthy staff list appear erased
+        // after a restart and can later overwrite cloud data with empty values.
+        const missingTables: string[] = [];
         const loaded: Partial<DatabaseSchema> = {};
         tableSnaps.forEach((snap, index) => {
-          if (!snap.exists) return;
           const table = this.firestoreTables[index];
-          const data = snap.data()?.data;
-          if (data !== undefined) {
-            (loaded as any)[table] = data;
+          if (!snap.exists || !Object.prototype.hasOwnProperty.call(snap.data() || {}, 'data')) {
+            missingTables.push(table);
+            return;
           }
+          const data = snap.data()?.data;
+          if (data === undefined || data === null) {
+            missingTables.push(table);
+            return;
+          }
+          (loaded as any)[table] = data;
         });
+        if (missingTables.length > 0) {
+          throw new Error(
+            '[Firebase] Schema v2 is incomplete. Missing/invalid table documents: ' +
+            missingTables.join(', ') +
+            '. Refusing to start with empty data; check Firestore path ' +
+            this.firestoreCollection + '/' + this.firestoreDocument + '/tables.'
+          );
+        }
 
-        { // Schema v2 is authoritative even when a table is empty or missing.
+        { // All schema v2 table documents are present; now load authoritative data.
           this.db = {
             ...this.db,
             ...loaded,
