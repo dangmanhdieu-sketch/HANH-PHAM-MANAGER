@@ -917,9 +917,21 @@ app.post('/api/hoahong', authenticateToken, (req: AuthRequest, res: Response) =>
     const user = req.user!;
     const payload = { ...req.body };
 
-    // Security Check: If non-admin, force NhanVienID to be their own ID
+    // Identity guard: never silently move an employee's claim to another staff record.
+    // The submitted staff ID must match the authenticated account exactly.
     if (user.Quyen !== 'Admin') {
-      payload.NhanVienID = user.NhanVienID;
+      const submittedEmployeeId = String(payload.NhanVienID || '').trim();
+      const authenticatedEmployeeId = String(user.NhanVienID || '').trim();
+      if (!authenticatedEmployeeId || submittedEmployeeId !== authenticatedEmployeeId) {
+        console.error('[HOAHONG] Employee identity mismatch:', {
+          authenticatedEmployeeId,
+          submittedEmployeeId,
+        });
+        return res.status(409).json({
+          error: 'Mã nhân viên trên phiếu không khớp tài khoản đang đăng nhập. Phiếu chưa được lưu. Vui lòng đăng xuất và đăng nhập lại.',
+        });
+      }
+      payload.NhanVienID = authenticatedEmployeeId;
       payload.TaoBoi = 'Nhân viên';
     } else {
       payload.TaoBoi = payload.TaoBoi || 'Admin';
