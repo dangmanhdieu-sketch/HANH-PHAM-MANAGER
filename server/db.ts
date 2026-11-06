@@ -669,7 +669,7 @@ class DatabaseService {
     });
     await write;
 
-    console.log('[Firebase] SAVE COMMITTED:', this.getChangedFirestoreTables().length, 'pending tables; project',
+    console.log('[Firebase] SAVE COMMITTED: changed Firestore tables persisted; project',
       process.env.FIREBASE_EXPECTED_PROJECT_ID || 'hanhpham-manager-new');
   }
 
