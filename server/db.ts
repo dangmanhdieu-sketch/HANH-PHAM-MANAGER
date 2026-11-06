@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { isDeepStrictEqual } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
@@ -617,7 +616,7 @@ class DatabaseService {
     this.queueFirestoreSave();
   }
 
-  /** Persist the current database and verify the cloud write before an API reports success. */
+  /** Persist once to Firestore before an API reports a successful mutation. */
   public async saveAndVerify(): Promise<void> {
     await this.readyPromise;
     if (!this.firestoreEnabled || !this.firestore) {
@@ -625,7 +624,9 @@ class DatabaseService {
     }
     this.saveSync();
 
-    // Recover the queue after any earlier failed write, then await this exact write.
+    // The Firestore transaction commit is the durable-write confirmation.
+    // Avoid an additional 11-document read-back on every small edit/delete:
+    // it added noticeable latency without making the committed transaction safer.
     const write = this.firestoreSaveQueue
       .catch((previousError) => {
         console.error('[Firebase] Recovering after previous queued write failure:', previousError);
@@ -636,28 +637,8 @@ class DatabaseService {
     });
     await write;
 
-    // Read every table back from Firestore and compare it with the in-memory source.
-    // An API mutation is not considered successful unless every table matches.
-    const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
-    // Read all table documents concurrently: sequential reads added one network
-    // round-trip per table and made every save/delete feel unusually slow.
-    const snapshots = await Promise.all(
-      this.firestoreTables.map((table) => rootRef.collection('tables').doc(table).get())
-    );
-    const mismatches: string[] = [];
-    for (let index = 0; index < this.firestoreTables.length; index += 1) {
-      const table = this.firestoreTables[index];
-      const snap = snapshots[index];
-      const cloudValue = snap.exists ? snap.data()?.data : undefined;
-      const localValue = sanitizeFirestoreValue((this.db as any)[table]);
-      if (!snap.exists || !isDeepStrictEqual(cloudValue, localValue)) {
-        mismatches.push(table);
-      }
-    }
-    if (mismatches.length) {
-      throw new Error('Firestore đã ghi nhưng kiểm tra đọc lại không khớp các bảng: ' + mismatches.join(', '));
-    }
-    console.log('[Firebase] SAVE VERIFIED: all tables', this.firestoreTables.length, 'project', process.env.FIREBASE_EXPECTED_PROJECT_ID || 'hanhpham-manager-new');
+    console.log('[Firebase] SAVE COMMITTED:', this.firestoreTables.length, 'tables; project',
+      process.env.FIREBASE_EXPECTED_PROJECT_ID || 'hanhpham-manager-new');
   }
 
   public logAudit(nguoiThucHien: string, email: string, hanhDong: string, chiTiet: string, ip?: string) {
@@ -962,8 +943,8 @@ class DatabaseService {
 
     this.db.NHANVIEN = this.db.NHANVIEN.filter((item) => item.NhanVienID !== id);
     this.refreshKPIs();
-    this.save();
-
+    // logAudit() persists the combined deletion + audit record; avoid queuing
+    // a redundant full-database write before it.
     this.logAudit(
       adminUser.HoTen,
       adminUser.Email,
