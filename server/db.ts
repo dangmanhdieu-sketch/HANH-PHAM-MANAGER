@@ -1,9 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { isDeepStrictEqual } from 'node:util';
 import bcrypt from 'bcryptjs';
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import type {
   NhanVien,
   ChamCong,
@@ -54,8 +51,8 @@ interface DatabaseSchema {
   THEME?: AppDesignTheme;
 }
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
-const DB_FILE = path.resolve(DATA_DIR, 'database.json');
+const DATA_DIR = process.env.DATA_DIR || (process.env.NODE_ENV === 'production' ? '/var/data' : path.resolve(process.cwd(), 'data'));
+const DB_FILE = path.resolve(DATA_DIR, process.env.DATA_FILE || 'database-fresh.json');
 const BACKUP_DIR = path.resolve(DATA_DIR, 'backups');
 
 const DEFAULT_APP_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh';
@@ -119,14 +116,15 @@ function ensureDirs() {
 }
 
 function getInitialData(): DatabaseSchema {
-  // Local-development fallback only: keep the legacy Admin account available,
-  // but never seed sample staff, attendance, payroll, commissions or demo records.
-  const salt = bcrypt.genSaltSync(10);
+  // Start a clean local database with one Admin account and empty business tables.
+  const salt = bcrypt.genSaltSync(12);
+  const adminUsername = String(process.env.INITIAL_ADMIN_USERNAME || 'admin').trim().toLowerCase();
+  const adminPassword = String(process.env.INITIAL_ADMIN_PASSWORD || 'admin123');
   const admin: NhanVien = {
     NhanVienID: 'NV001',
-    TenDangNhap: 'admin',
-    HoTen: 'Hạnh Phạm',
-    Email: 'admin@hanhphambridal.vn',
+    TenDangNhap: adminUsername,
+    HoTen: process.env.INITIAL_ADMIN_NAME || 'Hạnh Phạm',
+    Email: process.env.INITIAL_ADMIN_EMAIL || 'admin@hanhphambridal.vn',
     SDT: '0903888999',
     ChucVu: 'Giám Đốc Studio',
     LuongCoBan: 35000000,
@@ -134,7 +132,7 @@ function getInitialData(): DatabaseSchema {
     TrangThai: 'Đang Làm',
     AnhNhanVien: '',
     Quyen: 'Admin',
-    MatKhau: bcrypt.hashSync('admin123', salt),
+    MatKhau: bcrypt.hashSync(adminPassword, salt),
     SoTaiKhoan: '0071000888999',
     NganHang: 'Vietcombank',
     TenChuTaiKhoan: 'PHAM THI HANH',
@@ -162,7 +160,7 @@ function getFreshEmptyData(): DatabaseSchema {
   const username = String(process.env.INITIAL_ADMIN_USERNAME || 'admin').trim().toLowerCase();
   const password = String(process.env.INITIAL_ADMIN_PASSWORD || '');
   if (!password || password.length < 12) {
-    throw new Error('[Firebase] INITIAL_ADMIN_PASSWORD must be configured with at least 12 characters before initializing a new database.');
+    throw new Error('[DB] INITIAL_ADMIN_PASSWORD must contain at least 12 characters when configured.');
   }
   const admin: NhanVien = {
     NhanVienID: 'NV001',
@@ -196,9 +194,7 @@ function getFreshEmptyData(): DatabaseSchema {
 }
 
 /**
- * Firestore rejects undefined values anywhere inside a document. Legacy records
- * may contain optional fields with undefined values, so remove those fields
- * before writing while preserving the rest of the record and its array order.
+ * Remove undefined values from nested records before JSON persistence.
  */
 function sanitizeFirestoreValue(value: any): any {
   if (value === undefined) return undefined;
@@ -221,60 +217,31 @@ function sanitizeFirestoreValue(value: any): any {
 
 class DatabaseService {
   private db: DatabaseSchema;
-  private firestoreSaveQueue: Promise<void> = Promise.resolve();
-  private firestore: Firestore | null = null;
-  private firestoreEnabled = false;
-  private readonly firestoreCollection = process.env.FIREBASE_COLLECTION || 'hanh_pham_manager';
-  private readonly firestoreDocument = process.env.FIREBASE_DOCUMENT || 'database';
-  private readonly firestoreTables = [
-    'NHANVIEN',
-    'CHAMCONG',
-    'LUONG',
-    'TAM_UNG',
-    'HOAHONG',
-    'THONGKE',
-    'AUDIT_LOG',
-    'NOTIFICATIONS',
-    'QUAN_LY',
-    'SYSTEM_CONFIG',
-    'THEME',
-  ] as const;
   private readyPromise: Promise<void>;
 
   constructor() {
     ensureDirs();
 
-    // Local file is retained only as a fallback/cache. Firestore is the
-    // authoritative persistent database when FIREBASE_SERVICE_ACCOUNT_JSON exists.
     if (fs.existsSync(DB_FILE)) {
       try {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
         this.db = JSON.parse(raw);
       } catch (err) {
-        console.error('Failed reading database.json, initializing defaults:', err);
+        console.error('[DB] Failed reading database.json; initializing defaults:', err);
         this.db = getInitialData();
+        this.saveSync();
       }
     } else {
       this.db = getInitialData();
-    }
-
-    this.initializeFirestore();
-
-    if (this.firestoreEnabled) {
-      // In production, Firestore is the source of truth. Never write local
-      // demo/default data before the cloud database has been loaded.
-      this.readyPromise = this.loadFromFirestore();
-    } else if (process.env.NODE_ENV === 'production') {
-      this.readyPromise = Promise.reject(
-        new Error('[Firebase] Firestore is required in production. Refusing to start with demo/local data.')
-      );
-    } else {
-      this.applyMigrations();
-      if (!Array.isArray(this.db.QUAN_LY)) this.db.QUAN_LY = [];
-      this.refreshKPIs();
       this.saveSync();
-      this.readyPromise = Promise.resolve();
     }
+
+    this.applyMigrations();
+    if (!Array.isArray(this.db.QUAN_LY)) this.db.QUAN_LY = [];
+    this.refreshKPIs();
+    this.saveSync();
+    this.readyPromise = Promise.resolve();
+    console.log(`[DB] Local database enabled: ${DB_FILE}`);
   }
 
   private applyMigrations(): boolean {
@@ -369,203 +336,9 @@ class DatabaseService {
     return hasMigration;
   }
 
-  private initializeFirestore() {
-    const rawCredentials = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-
-    if (!rawCredentials) {
-      console.warn('[Firebase] FIREBASE_SERVICE_ACCOUNT_JSON chưa được cấu hình. Đang dùng database.json làm fallback.');
-      return;
-    }
-
-    try {
-      const serviceAccount = JSON.parse(rawCredentials);
-      const expectedProjectId = process.env.FIREBASE_EXPECTED_PROJECT_ID || 'hanhphamnew';
-      if (serviceAccount.project_id !== expectedProjectId) {
-        throw new Error(`[Firebase] Service account project_id mismatch. Expected ${expectedProjectId}, received ${serviceAccount.project_id || 'missing'}.`);
-      }
-      const app = getApps().length > 0
-        ? getApps()[0]
-        : initializeApp({ credential: cert(serviceAccount), projectId: expectedProjectId });
-
-      this.firestore = getFirestore(app);
-      this.firestoreEnabled = true;
-      console.log(`[Firebase] Firestore enabled: ${this.firestoreCollection}/${this.firestoreDocument}`);
-    } catch (err) {
-      this.firestore = null;
-      this.firestoreEnabled = false;
-      console.error('[Firebase] Không thể khởi tạo Firebase Admin SDK:', err);
-    }
-  }
-
-  /** Wait until the persistent database has been loaded before handling API requests. */
+  /** Local database is immediately ready; no external database is required. */
   public async waitUntilReady(): Promise<void> {
     await this.readyPromise;
-  }
-
-  private async loadFromFirestore(): Promise<void> {
-    if (!this.firestoreEnabled || !this.firestore) return;
-
-    try {
-      const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
-      const rootSnap = await rootRef.get();
-
-      // Existing Firestore data is always loaded as-is. New databases require the separate, explicit empty-init setting.
-
-      if (!rootSnap.exists) {
-        if (process.env.FIREBASE_ALLOW_EMPTY_INIT !== 'true') {
-          throw new Error('[Firebase] New Firestore is empty. Set FIREBASE_ALLOW_EMPTY_INIT=true for the one-time empty initialization.');
-        }
-        this.db = getFreshEmptyData();
-        await this.persistToFirestoreNow();
-        console.log('[Firebase] Initialized new Firestore with one admin account and empty business tables.');
-        return;
-      }
-
-      const rootData = rootSnap.data() || {};
-
-      // Explicit one-time clean initialization requested by the owner.
-      // The marker prevents a still-present environment flag from resetting on every restart.
-      if (process.env.FIREBASE_RESET_TO_DEFAULT === 'true' && rootData.__freshResetApplied !== true) {
-        this.db = getFreshEmptyData();
-        await this.persistToFirestoreNow();
-        await rootRef.set({
-          __freshResetApplied: true,
-          __freshResetAppliedAt: new Date().toISOString(),
-        }, { merge: true });
-        console.log('[Firebase] Fresh default database initialized; all business tables are empty.');
-        return;
-      }
-      const schemaVersion = Number(rootData.__schemaVersion || 1);
-
-      if (schemaVersion >= 2) {
-        const tableSnaps = await Promise.all(
-          this.firestoreTables.map((table) =>
-            rootRef.collection('tables').doc(table).get()
-          )
-        );
-
-        const loaded: Partial<DatabaseSchema> = {};
-        tableSnaps.forEach((snap, index) => {
-          if (!snap.exists) return;
-          const table = this.firestoreTables[index];
-          const data = snap.data()?.data;
-          if (data !== undefined) {
-            (loaded as any)[table] = data;
-          }
-        });
-
-        { // Schema v2 is authoritative even when a table is empty or missing.
-          this.db = {
-            ...this.db,
-            ...loaded,
-            NHANVIEN: Array.isArray(loaded.NHANVIEN) ? loaded.NHANVIEN : [],
-            CHAMCONG: Array.isArray(loaded.CHAMCONG) ? loaded.CHAMCONG : [],
-            LUONG: Array.isArray(loaded.LUONG) ? loaded.LUONG : [],
-            TAM_UNG: Array.isArray(loaded.TAM_UNG) ? loaded.TAM_UNG : [],
-            HOAHONG: Array.isArray(loaded.HOAHONG) ? loaded.HOAHONG : [],
-            THONGKE: Array.isArray(loaded.THONGKE) ? loaded.THONGKE : [],
-            AUDIT_LOG: Array.isArray(loaded.AUDIT_LOG) ? loaded.AUDIT_LOG : [],
-            NOTIFICATIONS: Array.isArray(loaded.NOTIFICATIONS) ? loaded.NOTIFICATIONS : [],
-            QUAN_LY: Array.isArray(loaded.QUAN_LY) ? loaded.QUAN_LY : [],
-            SYSTEM_CONFIG: loaded.SYSTEM_CONFIG || DEFAULT_CONFIG,
-            THEME: loaded.THEME,
-          };
-
-          const migrated = this.applyMigrations();
-          this.refreshKPIs();
-          this.saveSync();
-          if (migrated) await this.persistToFirestoreNow();
-          console.log('[Firebase] Đã tải dữ liệu persistent từ Firestore.');
-          console.log('[Firebase] DATA COUNTS:', JSON.stringify({
-            NHANVIEN: this.db.NHANVIEN?.length || 0,
-            CHAMCONG: this.db.CHAMCONG?.length || 0,
-            LUONG: this.db.LUONG?.length || 0,
-            TAM_UNG: this.db.TAM_UNG?.length || 0,
-            HOAHONG: this.db.HOAHONG?.length || 0,
-            HOPDONG: (this.db as any).HOPDONG?.length || 0,
-            THU_CHI: (this.db as any).THU_CHI?.length || 0,
-            QUAN_LY: this.db.QUAN_LY?.length || 0,
-          }));
-          return;
-        }
-      }
-
-      // Legacy Firestore format: /hanh_pham_manager/database contains all tables
-      // as fields. Read it once, then upgrade to split table documents so the
-      // attendance photo data cannot eventually hit Firestore's 1 MiB document limit.
-      const legacy: Partial<DatabaseSchema> = rootData as any;
-      this.db = {
-        ...this.db,
-        ...legacy,
-        NHANVIEN: Array.isArray(legacy.NHANVIEN) ? legacy.NHANVIEN : [],
-        CHAMCONG: Array.isArray(legacy.CHAMCONG) ? legacy.CHAMCONG : [],
-        LUONG: Array.isArray(legacy.LUONG) ? legacy.LUONG : [],
-        TAM_UNG: Array.isArray(legacy.TAM_UNG) ? legacy.TAM_UNG : [],
-        HOAHONG: Array.isArray(legacy.HOAHONG) ? legacy.HOAHONG : [],
-        THONGKE: Array.isArray(legacy.THONGKE) ? legacy.THONGKE : [],
-        AUDIT_LOG: Array.isArray(legacy.AUDIT_LOG) ? legacy.AUDIT_LOG : [],
-        NOTIFICATIONS: Array.isArray(legacy.NOTIFICATIONS) ? legacy.NOTIFICATIONS : [],
-        QUAN_LY: Array.isArray(legacy.QUAN_LY) ? legacy.QUAN_LY : [],
-        SYSTEM_CONFIG: legacy.SYSTEM_CONFIG || DEFAULT_CONFIG,
-        THEME: legacy.THEME,
-      };
-
-      const migrated = this.applyMigrations();
-      this.refreshKPIs();
-      this.saveSync();
-      await this.persistToFirestoreNow();
-      if (migrated) console.log('[Firebase] Đã áp dụng migration username/ngân hàng.');
-      console.log('[Firebase] Đã đọc database Firestore cũ và nâng cấp sang schema persistent v2.');
-    } catch (err) {
-      console.error('[Firebase] Lỗi tải dữ liệu Firestore. Dừng xử lý để bảo vệ dữ liệu cloud; không dùng database.json fallback:', err);
-      throw err;
-    }
-  }
-
-  private async persistToFirestoreNow(): Promise<void> {
-    if (!this.firestoreEnabled || !this.firestore) return;
-    try {
-      const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
-      const batch = this.firestore.batch();
-
-      // Metadata on the root document. We intentionally keep the existing
-      // document instead of deleting it, so the data already visible in the
-      // user's Firebase Console remains recoverable.
-      batch.set(rootRef, {
-        __schemaVersion: 2,
-        __updatedAt: new Date().toISOString(),
-        __storage: 'Firestore split tables',
-      }, { merge: true });
-
-      for (const table of this.firestoreTables) {
-        const value = (this.db as any)[table];
-        if (value === undefined) continue;
-        batch.set(
-          rootRef.collection('tables').doc(table),
-          {
-            data: sanitizeFirestoreValue(value),
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: false }
-        );
-      }
-
-      await batch.commit();
-    } catch (err) {
-      console.error('[Firebase] Firestore save error:', err);
-      throw err;
-    }
-  }
-
-  private queueFirestoreSave() {
-    if (!this.firestoreEnabled || !this.firestore) return;
-    // Do not coalesce writes behind a shared boolean: a second edit made
-    // during an in-flight Firestore batch could otherwise be skipped.
-    this.firestoreSaveQueue = this.firestoreSaveQueue
-      .then(() => this.persistToFirestoreNow())
-      .catch((err) => {
-        console.error('[Firebase] Firestore queued save error:', err);
-      });
   }
 
   private saveSync() {
@@ -580,44 +353,6 @@ class DatabaseService {
 
   public save() {
     this.saveSync();
-    this.queueFirestoreSave();
-  }
-
-  /** Persist the current database and verify the cloud write before an API reports success. */
-  public async saveAndVerify(): Promise<void> {
-    await this.readyPromise;
-    if (!this.firestoreEnabled || !this.firestore) {
-      throw new Error('Firebase Firestore chưa kết nối; dữ liệu chưa được xác nhận lưu trên đám mây.');
-    }
-    this.saveSync();
-
-    // Recover the queue after any earlier failed write, then await this exact write.
-    const write = this.firestoreSaveQueue
-      .catch((previousError) => {
-        console.error('[Firebase] Recovering after previous queued write failure:', previousError);
-      })
-      .then(() => this.persistToFirestoreNow());
-    this.firestoreSaveQueue = write.catch((err) => {
-      console.error('[Firebase] Verified write failed:', err);
-    });
-    await write;
-
-    // Read every table back from Firestore and compare it with the in-memory source.
-    // An API mutation is not considered successful unless every table matches.
-    const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
-    const mismatches: string[] = [];
-    for (const table of this.firestoreTables) {
-      const snap = await rootRef.collection('tables').doc(table).get();
-      const cloudValue = snap.exists ? snap.data()?.data : undefined;
-      const localValue = sanitizeFirestoreValue((this.db as any)[table]);
-      if (!snap.exists || !isDeepStrictEqual(cloudValue, localValue)) {
-        mismatches.push(table);
-      }
-    }
-    if (mismatches.length) {
-      throw new Error('Firestore đã ghi nhưng kiểm tra đọc lại không khớp các bảng: ' + mismatches.join(', '));
-    }
-    console.log('[Firebase] SAVE VERIFIED: all tables', this.firestoreTables.length, 'project', process.env.FIREBASE_EXPECTED_PROJECT_ID || 'hanhphamnew');
   }
 
   public logAudit(nguoiThucHien: string, email: string, hanhDong: string, chiTiet: string, ip?: string) {
