@@ -201,29 +201,31 @@ function getFreshEmptyData(): DatabaseSchema {
  * reserved map field. The decoder below restores the original JS array shape.
  * Undefined object properties are omitted; undefined array slots become null.
  */
-const FIRESTORE_NESTED_ARRAY_MARKER = '__HANH_PHAM_FIRESTORE_NESTED_ARRAY_V1__';
+const FIRESTORE_NESTED_ARRAY_MARKER = '__HANH_PHAM_FIRESTORE_ARRAY_V1__';
 
-function sanitizeFirestoreValue(value: any, parentIsArray = false): any {
+/**
+ * Firestore rejects arrays nested directly inside arrays. Encode every JS array
+ * as a uniquely marked map whose "items" value is an array. Any array appearing
+ * inside that array is itself encoded as a map, so Firestore never receives an
+ * array as an array element. Decoding restores the exact original JS structure.
+ * Undefined object properties are omitted and undefined array slots become null.
+ */
+function sanitizeFirestoreValue(value: any): any {
   if (value === undefined) return undefined;
 
   if (Array.isArray(value)) {
-    const sanitizedItems = value.map((item) => {
-      if (item === undefined) return null;
-      if (Array.isArray(item)) {
-        return {
-          [FIRESTORE_NESTED_ARRAY_MARKER]: sanitizeFirestoreValue(item, false),
-        };
-      }
-      return sanitizeFirestoreValue(item, true);
-    });
-    return parentIsArray ? sanitizedItems : sanitizedItems;
+    return {
+      [FIRESTORE_NESTED_ARRAY_MARKER]: value.map((item) =>
+        item === undefined ? null : sanitizeFirestoreValue(item)
+      ),
+    };
   }
 
   if (value && typeof value === 'object' && !(value instanceof Date)) {
     const result: Record<string, any> = {};
     for (const [key, nestedValue] of Object.entries(value)) {
       if (nestedValue === undefined) continue;
-      result[key] = sanitizeFirestoreValue(nestedValue, false);
+      result[key] = sanitizeFirestoreValue(nestedValue);
     }
     return result;
   }
@@ -231,7 +233,7 @@ function sanitizeFirestoreValue(value: any, parentIsArray = false): any {
   return value;
 }
 
-/** Restore nested arrays encoded by sanitizeFirestoreValue after Firestore reads. */
+/** Restore arrays encoded by sanitizeFirestoreValue after Firestore reads. */
 function restoreFirestoreValue(value: any): any {
   if (Array.isArray(value)) return value.map((item) => restoreFirestoreValue(item));
   if (value && typeof value === 'object' && !(value instanceof Date)) {
@@ -241,7 +243,7 @@ function restoreFirestoreValue(value: any): any {
       Object.prototype.hasOwnProperty.call(value, FIRESTORE_NESTED_ARRAY_MARKER) &&
       Array.isArray(value[FIRESTORE_NESTED_ARRAY_MARKER])
     ) {
-      return restoreFirestoreValue(value[FIRESTORE_NESTED_ARRAY_MARKER]);
+      return value[FIRESTORE_NESTED_ARRAY_MARKER].map((item: any) => restoreFirestoreValue(item));
     }
     const result: Record<string, any> = {};
     for (const [key, nestedValue] of Object.entries(value)) {
