@@ -141,7 +141,7 @@ function AppContent() {
 
   // Load only the data needed by the active screen. This avoids downloading
   // every business table on login, tab changes, and after small edits.
-  const refreshTabData = useCallback(async (tab: string = currentTab) => {
+  const refreshTabData = useCallback(async (tab: string) => {
     if (!currentUser) return;
 
     const loadNotifications = async () => {
@@ -213,7 +213,7 @@ function AppContent() {
         case 'congviec':
         case 'hopdong':
         case 'thuchi':
-          if (staffList.length === 0) setStaffList(await api.staff.getAll());
+          setStaffList(await api.staff.getAll());
           return;
         default:
           await loadNotifications();
@@ -262,12 +262,12 @@ function AppContent() {
         return;
       case 'thuchi_me':
       case 'hopdong_me':
-        if (staffList.length === 0) setStaffList(await api.staff.getAll());
+        setStaffList(await api.staff.getAll());
         return;
       default:
         await loadNotifications();
     }
-  }, [currentUser, currentTab, staffList.length]);
+  }, [currentUser]);
 
   // Kept for explicit full refresh actions in Settings / recovery workflows.
   const refreshAllData = useCallback(async () => {
