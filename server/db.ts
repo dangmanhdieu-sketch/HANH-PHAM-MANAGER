@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { isDeepStrictEqual } from 'node:util';
+import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
@@ -222,6 +223,10 @@ function sanitizeFirestoreValue(value: any): any {
 class DatabaseService {
   private db: DatabaseSchema;
   private firestoreSaveQueue: Promise<void> = Promise.resolve();
+  // Each Render process gets a unique writer identity. A newly deployed process
+  // claims the Firestore lease; older overlapping instances can no longer write
+  // their stale in-memory database over the new instance's data.
+  private readonly firestoreWriterId = randomUUID();
   private firestore: Firestore | null = null;
   private firestoreEnabled = false;
   private readonly firestoreCollection = process.env.FIREBASE_COLLECTION || 'hanh_pham_manager';
@@ -402,10 +407,37 @@ class DatabaseService {
     await this.readyPromise;
   }
 
+  private async claimFirestoreWriterLease(): Promise<void> {
+    if (!this.firestore) throw new Error('[Firebase] Firestore is not initialized.');
+    const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+    const leaseRef = rootRef.collection('_runtime').doc('activeWriter');
+    await this.firestore.runTransaction(async (transaction) => {
+      transaction.set(leaseRef, {
+        owner: this.firestoreWriterId,
+        claimedAt: new Date().toISOString(),
+      });
+    });
+    console.log('[Firebase] Active writer lease claimed for this server instance.');
+  }
+
+  private async assertFirestoreWriterLease(transaction: FirebaseFirestore.Transaction): Promise<void> {
+    if (!this.firestore) throw new Error('[Firebase] Firestore is not initialized.');
+    const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+    const leaseRef = rootRef.collection('_runtime').doc('activeWriter');
+    const leaseSnap = await transaction.get(leaseRef);
+    const owner = leaseSnap.data()?.owner;
+    if (owner !== this.firestoreWriterId) {
+      throw new Error('[Firebase] This Render instance is no longer the active writer. Refusing stale database write.');
+    }
+  }
+
   private async loadFromFirestore(): Promise<void> {
     if (!this.firestoreEnabled || !this.firestore) return;
 
     try {
+      // Claim before loading. If Render overlaps old/new instances during deploy,
+      // only the newest claimant is allowed to write Firestore.
+      await this.claimFirestoreWriterLease();
       const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
       const rootSnap = await rootRef.get();
 
@@ -529,31 +561,30 @@ class DatabaseService {
     if (!this.firestoreEnabled || !this.firestore) return;
     try {
       const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
-      const batch = this.firestore.batch();
+      // Use a transaction that reads the active-writer lease before writing.
+      // Firestore serializes this against a new instance claiming the lease, so
+      // an old Render process cannot commit stale arrays after a deployment.
+      await this.firestore.runTransaction(async (transaction) => {
+        await this.assertFirestoreWriterLease(transaction);
+        transaction.set(rootRef, {
+          __schemaVersion: 2,
+          __updatedAt: new Date().toISOString(),
+          __storage: 'Firestore split tables',
+        }, { merge: true });
 
-      // Metadata on the root document. We intentionally keep the existing
-      // document instead of deleting it, so the data already visible in the
-      // user's Firebase Console remains recoverable.
-      batch.set(rootRef, {
-        __schemaVersion: 2,
-        __updatedAt: new Date().toISOString(),
-        __storage: 'Firestore split tables',
-      }, { merge: true });
-
-      for (const table of this.firestoreTables) {
-        const value = (this.db as any)[table];
-        if (value === undefined) continue;
-        batch.set(
-          rootRef.collection('tables').doc(table),
-          {
-            data: sanitizeFirestoreValue(value),
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: false }
-        );
-      }
-
-      await batch.commit();
+        for (const table of this.firestoreTables) {
+          const value = (this.db as any)[table];
+          if (value === undefined) continue;
+          transaction.set(
+            rootRef.collection('tables').doc(table),
+            {
+              data: sanitizeFirestoreValue(value),
+              updatedAt: new Date().toISOString(),
+            },
+            { merge: false }
+          );
+        }
+      });
     } catch (err) {
       console.error('[Firebase] Firestore save error:', err);
       throw err;
