@@ -196,23 +196,56 @@ function getFreshEmptyData(): DatabaseSchema {
 }
 
 /**
- * Firestore rejects undefined values anywhere inside a document. Legacy records
- * may contain optional fields with undefined values, so remove those fields
- * before writing while preserving the rest of the record and its array order.
+ * Firestore arrays cannot contain arrays directly. Preserve nested-array data
+ * losslessly by wrapping only an array item that is itself an array in a
+ * reserved map field. The decoder below restores the original JS array shape.
+ * Undefined object properties are omitted; undefined array slots become null.
  */
-function sanitizeFirestoreValue(value: any): any {
+const FIRESTORE_NESTED_ARRAY_MARKER = '__HANH_PHAM_FIRESTORE_NESTED_ARRAY_V1__';
+
+function sanitizeFirestoreValue(value: any, parentIsArray = false): any {
   if (value === undefined) return undefined;
+
   if (Array.isArray(value)) {
-    return value.map((item) => {
-      const sanitized = sanitizeFirestoreValue(item);
-      return sanitized === undefined ? null : sanitized;
+    const sanitizedItems = value.map((item) => {
+      if (item === undefined) return null;
+      if (Array.isArray(item)) {
+        return {
+          [FIRESTORE_NESTED_ARRAY_MARKER]: sanitizeFirestoreValue(item, false),
+        };
+      }
+      return sanitizeFirestoreValue(item, true);
     });
+    return parentIsArray ? sanitizedItems : sanitizedItems;
   }
+
   if (value && typeof value === 'object' && !(value instanceof Date)) {
     const result: Record<string, any> = {};
     for (const [key, nestedValue] of Object.entries(value)) {
       if (nestedValue === undefined) continue;
-      result[key] = sanitizeFirestoreValue(nestedValue);
+      result[key] = sanitizeFirestoreValue(nestedValue, false);
+    }
+    return result;
+  }
+
+  return value;
+}
+
+/** Restore nested arrays encoded by sanitizeFirestoreValue after Firestore reads. */
+function restoreFirestoreValue(value: any): any {
+  if (Array.isArray(value)) return value.map((item) => restoreFirestoreValue(item));
+  if (value && typeof value === 'object' && !(value instanceof Date)) {
+    const keys = Object.keys(value);
+    if (
+      keys.length === 1 &&
+      Object.prototype.hasOwnProperty.call(value, FIRESTORE_NESTED_ARRAY_MARKER) &&
+      Array.isArray(value[FIRESTORE_NESTED_ARRAY_MARKER])
+    ) {
+      return restoreFirestoreValue(value[FIRESTORE_NESTED_ARRAY_MARKER]);
+    }
+    const result: Record<string, any> = {};
+    for (const [key, nestedValue] of Object.entries(value)) {
+      result[key] = restoreFirestoreValue(nestedValue);
     }
     return result;
   }
@@ -482,7 +515,7 @@ class DatabaseService {
             missingTables.push(table);
             return;
           }
-          (loaded as any)[table] = data;
+          (loaded as any)[table] = restoreFirestoreValue(data);
         });
         if (missingTables.length > 0) {
           throw new Error(
@@ -532,7 +565,7 @@ class DatabaseService {
       // Legacy Firestore format: /hanh_pham_manager/database contains all tables
       // as fields. Read it once, then upgrade to split table documents so the
       // attendance photo data cannot eventually hit Firestore's 1 MiB document limit.
-      const legacy: Partial<DatabaseSchema> = rootData as any;
+      const legacy: Partial<DatabaseSchema> = restoreFirestoreValue(rootData) as any;
       this.db = {
         ...this.db,
         ...legacy,
