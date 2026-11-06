@@ -139,119 +139,179 @@ function AppContent() {
     setInitializing(false);
   }, []);
 
-  const refreshAllData = useCallback(async () => {
+  // Load only the data needed by the active screen. This avoids downloading
+  // every business table on login, tab changes, and after small edits.
+  const refreshTabData = useCallback(async (tab: string = currentTab) => {
     if (!currentUser) return;
 
+    const loadNotifications = async () => {
+      try {
+        setNotifications(await api.dashboard.getNotifications());
+      } catch (error) {
+        console.error('Lỗi tải thông báo:', error);
+      }
+    };
+
     if (currentUser.Quyen === 'Admin') {
-      const results = await Promise.allSettled([
-        api.dashboard.getStats(),
-        api.staff.getAll(),
-        api.attendance.getAll(),
-        api.payroll.getAll(),
-        api.commission.getAll(),
-        api.dashboard.getNotifications(),
-      ]);
-
-      const [statsResult, staffResult, attendanceResult, payrollResult, commissionResult, notificationResult] = results;
-
-      if (statsResult.status === 'fulfilled') {
-        const statsData = statsResult.value;
-        setKpis(statsData.kpis || []);
-        setAutomationStatus(statsData.automation || null);
-      } else {
-        console.error('Lỗi tải Dashboard:', statsResult.reason);
-      }
-
-      if (staffResult.status === 'fulfilled') {
-        setStaffList(staffResult.value);
-      } else {
-        console.error('Lỗi tải nhân viên:', staffResult.reason);
-      }
-
-      if (attendanceResult.status === 'fulfilled') {
-        setAttendanceList(attendanceResult.value);
-      } else {
-        console.error('Lỗi tải chấm công:', attendanceResult.reason);
-      }
-
-      if (payrollResult.status === 'fulfilled') {
-        setPayrollList(payrollResult.value);
-      } else {
-        console.error('Lỗi tải lương:', payrollResult.reason);
-      }
-
-      if (commissionResult.status === 'fulfilled') {
-        setCommissionList(commissionResult.value);
-      } else {
-        console.error('Lỗi tải hoa hồng:', commissionResult.reason);
-      }
-
-      if (notificationResult.status === 'fulfilled') {
-        setNotifications(notificationResult.value);
-      } else {
-        console.error('Lỗi tải thông báo:', notificationResult.reason);
-      }
-    } else {
-      const results = await Promise.allSettled([
-        api.dashboard.getStats(),
-        api.attendance.getAll(),
-        api.payroll.getAll(),
-        api.commission.getAll(),
-        api.dashboard.getNotifications(),
-        api.staff.getAll(),
-      ]);
-
-      const [statsResult, attendanceResult, payrollResult, commissionResult, notificationResult, staffResult] = results;
-
-      if (statsResult.status === 'fulfilled') {
-        const statsData = statsResult.value;
-        setTodayAttendanceRecord(statsData.todayRecord || null);
-        setMyTotalCommission(statsData.tongHoaHong || 0);
-        setMyTotalWorkDays(statsData.tongNgayCong || 0);
-      }
-
-      if (attendanceResult.status === 'fulfilled') {
-        setAttendanceList(attendanceResult.value);
-      }
-
-      if (payrollResult.status === 'fulfilled') {
-        setPayrollList(payrollResult.value);
-      }
-
-      if (commissionResult.status === 'fulfilled') {
-        setCommissionList(commissionResult.value);
-      }
-
-      if (notificationResult.status === 'fulfilled') {
-        setNotifications(notificationResult.value);
-      }
-
-      if (staffResult.status === 'fulfilled') {
-        setStaffList(staffResult.value);
-      }
-
-      results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          console.error(`Lỗi tải dữ liệu employee #${index}:`, result.reason);
+      switch (tab) {
+        case 'dashboard': {
+          const results = await Promise.allSettled([
+            api.dashboard.getStats(),
+            api.staff.getAll(),
+            api.payroll.getAll(),
+            api.commission.getAll(),
+            api.dashboard.getNotifications(),
+          ]);
+          const [stats, staff, payroll, commission, notice] = results;
+          if (stats.status === 'fulfilled') {
+            setKpis(stats.value.kpis || []);
+            setAttendanceList(stats.value.todayChamCong || []);
+            setAutomationStatus(stats.value.automation || null);
+          }
+          if (staff.status === 'fulfilled') setStaffList(staff.value);
+          if (payroll.status === 'fulfilled') setPayrollList(payroll.value);
+          if (commission.status === 'fulfilled') setCommissionList(commission.value);
+          if (notice.status === 'fulfilled') setNotifications(notice.value);
+          results.forEach((result, index) => {
+            if (result.status === 'rejected') console.error('Lỗi tải Dashboard mục #' + index, result.reason);
+          });
+          return;
         }
-      });
+        case 'nhanvien':
+        case 'danhba':
+          setStaffList(await api.staff.getAll());
+          return;
+        case 'chamcong': {
+          const [attendance, staff] = await Promise.all([
+            api.attendance.getAll(),
+            api.staff.getAll(),
+          ]);
+          setAttendanceList(attendance);
+          setStaffList(staff);
+          return;
+        }
+        case 'luong':
+        case 'luongchoduyet':
+        case 'dathanhtoan': {
+          const [payroll, commission, staff] = await Promise.all([
+            api.payroll.getAll(),
+            api.commission.getAll(),
+            api.staff.getAll(),
+          ]);
+          setPayrollList(payroll);
+          setCommissionList(commission);
+          setStaffList(staff);
+          return;
+        }
+        case 'thietlap':
+          await Promise.all([api.dashboard.getAuditLogs(), api.automation.getStatus(), api.system.getConfig()]);
+          await loadNotifications();
+          return;
+        case 'nghiphep':
+          await loadNotifications();
+          return;
+        case 'congviec':
+        case 'hopdong':
+        case 'thuchi':
+          if (staffList.length === 0) setStaffList(await api.staff.getAll());
+          return;
+        default:
+          await loadNotifications();
+          return;
+      }
     }
-  }, [currentUser]);
+
+    // Employee/Freelancer/Sale screens only fetch the signed-in employee's
+    // relevant data; server routes enforce employee scoping.
+    switch (tab) {
+      case 'home': {
+        const [stats, notice] = await Promise.all([
+          api.dashboard.getStats(),
+          api.dashboard.getNotifications(),
+        ]);
+        setTodayAttendanceRecord(stats.todayRecord || null);
+        setMyTotalCommission(stats.tongHoaHong || 0);
+        setMyTotalWorkDays(stats.tongNgayCong || 0);
+        setPayrollList(stats.luongGanNhat ? [stats.luongGanNhat] : []);
+        setNotifications(notice);
+        return;
+      }
+      case 'chamcong_me':
+        setAttendanceList(await api.attendance.getAll());
+        return;
+      case 'luong_me': {
+        const [payroll, commission] = await Promise.all([
+          api.payroll.getAll(),
+          api.commission.getAll(),
+        ]);
+        setPayrollList(payroll);
+        setCommissionList(commission);
+        return;
+      }
+      case 'hoahong_me':
+        setCommissionList(await api.commission.getAll());
+        return;
+      case 'danhba_me':
+        setStaffList(await api.staff.getAll());
+        return;
+      case 'profile_me':
+        setStaffList(await api.staff.getAll());
+        return;
+      case 'nghiphep_me':
+        await loadNotifications();
+        return;
+      case 'thuchi_me':
+      case 'hopdong_me':
+        if (staffList.length === 0) setStaffList(await api.staff.getAll());
+        return;
+      default:
+        await loadNotifications();
+    }
+  }, [currentUser, currentTab, staffList.length]);
+
+  // Kept for explicit full refresh actions in Settings / recovery workflows.
+  const refreshAllData = useCallback(async () => {
+    if (!currentUser) return;
+    const tab = currentTab;
+    if (currentUser.Quyen === 'Admin') {
+      const [stats, staff, attendance, payroll, commission, notice] = await Promise.all([
+        api.dashboard.getStats(), api.staff.getAll(), api.attendance.getAll(),
+        api.payroll.getAll(), api.commission.getAll(), api.dashboard.getNotifications(),
+      ]);
+      setKpis(stats.kpis || []);
+      setAttendanceList(attendance);
+      setPayrollList(payroll);
+      setCommissionList(commission);
+      setStaffList(staff);
+      setNotifications(notice);
+      setAutomationStatus(stats.automation || null);
+    } else {
+      await refreshTabData(tab);
+    }
+  }, [currentUser, currentTab, refreshTabData]);
 
   useEffect(() => {
-    if (currentUser) {
-      refreshAllData();
-    }
-  }, [currentUser, refreshAllData]);
+    if (currentUser) void refreshTabData(currentTab);
+  }, [currentUser, currentTab, refreshTabData]);
 
-  // Tự làm mới dữ liệu/thông báo để Admin sớm thấy phiếu cần duyệt.
+  // Lightweight dashboard polling: refresh only summary cards and notifications,
+  // not all attendance/payroll/commission records every minute.
   useEffect(() => {
-    if (!currentUser || currentUser.Quyen !== 'Admin') return;
-    const timer = window.setInterval(() => {
-      void refreshAllData();
+    if (!currentUser || currentUser.Quyen !== 'Admin' || currentTab !== 'dashboard') return;
+    const timer = window.setInterval(async () => {
+      const results = await Promise.allSettled([
+        api.dashboard.getStats(),
+        api.dashboard.getNotifications(),
+      ]);
+      if (results[0].status === 'fulfilled') {
+        setKpis(results[0].value.kpis || []);
+        setAttendanceList(results[0].value.todayChamCong || []);
+        setAutomationStatus(results[0].value.automation || null);
+      }
+      if (results[1].status === 'fulfilled') setNotifications(results[1].value);
     }, 60_000);
     return () => window.clearInterval(timer);
-  }, [currentUser, refreshAllData]);
+  }, [currentUser, currentTab]);
 
   // Handle Login success
   const handleLoginSuccess = (user: NhanVien) => {
@@ -291,14 +351,14 @@ function AppContent() {
   const handleCheckInSubmit = async (data: { anh: string; gps: string; ghiChu?: string }) => {
     const res = await api.attendance.checkIn(data);
     alert(res.message);
-    await refreshAllData();
+    await refreshTabData(currentTab);
   };
 
   // Check-Out Submit Handler (Camera + GPS)
   const handleCheckOutSubmit = async (data: { anh: string; gps: string; ghiChu?: string }) => {
     const res = await api.attendance.checkOut(data);
     alert(res.message);
-    await refreshAllData();
+    await refreshTabData(currentTab);
   };
 
   // Admin: TẠO BẢNG LƯƠNG THÁNG - WITH ANTI-DUPLICATE CHECK
@@ -311,7 +371,7 @@ function AppContent() {
 
       setConfirmGeneratePayrollOpen(false);
       alert(res.message);
-      await refreshAllData();
+      await refreshTabData(currentTab);
     } catch (err: any) {
       alert(err.message || 'Lỗi khi tạo bảng lương tháng');
     } finally {
@@ -324,7 +384,7 @@ function AppContent() {
     try {
       const res = await api.payroll.approve(luongId);
       alert(res.message);
-      await refreshAllData();
+      await refreshTabData(currentTab);
     } catch (err: any) {
       alert(err.message || 'Lỗi khi duyệt lương');
     }
@@ -335,7 +395,7 @@ function AppContent() {
     try {
       const res = await api.automation.triggerNow();
       alert(res.message);
-      await refreshAllData();
+      await refreshTabData(currentTab);
     } catch (err: any) {
       alert(err.message || 'Lỗi khi kích hoạt automation');
     }
@@ -401,7 +461,7 @@ function AppContent() {
             {currentTab === 'nhanvien' && (
               <StaffManagement
                 staffList={staffList}
-                onRefresh={refreshAllData}
+                onRefresh={() => refreshTabData(currentTab)}
                 onNavigateToDirectory={() => setCurrentTab('danhba')}
               />
             )}
@@ -414,13 +474,13 @@ function AppContent() {
               />
             )}
 
-            {currentTab === 'nghiphep' && <LeaveRequests currentUser={currentUser} isAdmin onRefresh={refreshAllData} />}
+            {currentTab === 'nghiphep' && <LeaveRequests currentUser={currentUser} isAdmin onRefresh={() => refreshTabData(currentTab)} />}
 
             {currentTab === 'chamcong' && (
               <AttendanceManagement
                 attendanceList={attendanceList}
                 staffList={staffList}
-                onRefresh={refreshAllData}
+                onRefresh={() => refreshTabData(currentTab)}
               />
             )}
 
@@ -429,7 +489,7 @@ function AppContent() {
                 payrollList={payrollList}
                 commissionList={commissionList}
                 staffList={staffList}
-                onRefresh={refreshAllData}
+                onRefresh={() => refreshTabData(currentTab)}
                 onGenerateMonthlyPayroll={() => setConfirmGeneratePayrollOpen(true)}
               />
             )}
@@ -439,7 +499,7 @@ function AppContent() {
                 payrollList={payrollList}
                 commissionList={commissionList}
                 staffList={staffList}
-                onRefresh={refreshAllData}
+                onRefresh={() => refreshTabData(currentTab)}
                 onGenerateMonthlyPayroll={() => setConfirmGeneratePayrollOpen(true)}
                 initialFilterStatus="Chờ duyệt"
               />
@@ -450,15 +510,15 @@ function AppContent() {
                 payrollList={payrollList}
                 commissionList={commissionList}
                 staffList={staffList}
-                onRefresh={refreshAllData}
+                onRefresh={() => refreshTabData(currentTab)}
                 onGenerateMonthlyPayroll={() => setConfirmGeneratePayrollOpen(true)}
                 initialFilterStatus="Đã thanh toán"
               />
             )}
 
-            {currentTab === 'congviec' && <BusinessModule module="CONG_VIEC" staffList={staffList} onRefresh={refreshAllData} />}
-            {currentTab === 'hopdong' && <BusinessModule module="HOP_DONG" staffList={staffList} currentUser={currentUser} onRefresh={refreshAllData} />}
-            {currentTab === 'thuchi' && <BusinessModule module="THU_CHI" staffList={staffList} currentUser={currentUser} onRefresh={refreshAllData} />}
+            {currentTab === 'congviec' && <BusinessModule module="CONG_VIEC" staffList={staffList} onRefresh={() => refreshTabData(currentTab)} />}
+            {currentTab === 'hopdong' && <BusinessModule module="HOP_DONG" staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
+            {currentTab === 'thuchi' && <BusinessModule module="THU_CHI" staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
             {currentTab === 'thietlap' && (
               <AuditAndAutomation onRefreshAll={refreshAllData} onNavigateToTab={setCurrentTab} />
             )}
@@ -486,7 +546,7 @@ function AppContent() {
               />
             )}
 
-            {currentTab === 'nghiphep_me' && <LeaveRequests currentUser={currentUser} isAdmin={false} onRefresh={refreshAllData} />}
+            {currentTab === 'nghiphep_me' && <LeaveRequests currentUser={currentUser} isAdmin={false} onRefresh={() => refreshTabData(currentTab)} />}
 
             {currentTab === 'chamcong_me' && (
               <MyAttendance attendanceList={attendanceList} />
@@ -507,7 +567,7 @@ function AppContent() {
               <MyCommissions
                 currentUser={currentUser}
                 commissionList={commissionList}
-                onRefresh={refreshAllData}
+                onRefresh={() => refreshTabData(currentTab)}
               />
             )}
 
@@ -516,7 +576,7 @@ function AppContent() {
                 module="THU_CHI"
                 staffList={staffList}
                 currentUser={currentUser}
-                onRefresh={refreshAllData}
+                onRefresh={() => refreshTabData(currentTab)}
               />
             )}
 
@@ -525,12 +585,12 @@ function AppContent() {
                 module="HOP_DONG"
                 staffList={staffList}
                 currentUser={currentUser}
-                onRefresh={refreshAllData}
+                onRefresh={() => refreshTabData(currentTab)}
               />
             )}
 
             {currentTab === 'profile_me' && (
-              <MyProfile currentUser={currentUser} onRefresh={refreshAllData} />
+              <MyProfile currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />
             )}
           </>
         )}
@@ -577,7 +637,7 @@ function AppContent() {
         onSubmit={async (data) => {
           await api.commission.create(data);
           alert('Đã gửi kê khai thành công! Quản trị viên sẽ phê duyệt và cộng vào bảng lương của bạn.');
-          await refreshAllData();
+          await refreshTabData(currentTab);
         }}
       />
 
