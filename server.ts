@@ -133,37 +133,6 @@ function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
   }
   next();
 }
-// ==========================================
-// RESET DỮ LIỆU DEMO - CHỈ ADMIN
-// ==========================================
-app.post(
-  '/api/admin/reset-demo-data',
-  authenticateToken,
-  requireAdmin,
-  async (req: AuthRequest, res: Response) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          error: 'Chưa đăng nhập.',
-        });
-      }
-
-      const result = await dbService.resetDemoData({
-        HoTen: req.user.HoTen,
-        Email: req.user.Email,
-      });
-
-      return res.json(result);
-    } catch (err: any) {
-      console.error('Reset dữ liệu demo lỗi:', err);
-
-      return res.status(400).json({
-        error: err?.message || 'Không thể reset dữ liệu demo.',
-      });
-    }
-  }
-);
-// ==========================================
 // 1. AUTHENTICATION ROUTES
 // ==========================================
 
