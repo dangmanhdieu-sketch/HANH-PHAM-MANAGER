@@ -633,7 +633,22 @@ class DatabaseService {
           this.refreshKPIs();
           this.saveSync();
           this.captureFirestoreSnapshots();
-          if (migrated) await this.persistToFirestoreNow();
+
+          // Upgrade any legacy table document that is already too large for
+          // Firestore before the next user mutation. This migrates the current
+          // employee data in place without deleting or resetting any records.
+          if (migrated) {
+            await this.persistToFirestoreNow();
+          } else {
+            const oversizedTables = this.firestoreTables.filter((table) => {
+              const serialized = JSON.stringify(sanitizeFirestoreValue((this.db as any)[table]));
+              return Buffer.from(serialized, 'utf8').toString('base64').length > 600000;
+            });
+            if (oversizedTables.length > 0) {
+              console.warn('[Firebase] Migrating oversized table documents to chunked storage:', oversizedTables);
+              await this.persistToFirestoreNow(oversizedTables);
+            }
+          }
           console.log('[Firebase] Đã tải dữ liệu persistent từ Firestore.');
           console.log('[Firebase] DATA COUNTS:', JSON.stringify({
             NHANVIEN: this.db.NHANVIEN?.length || 0,
