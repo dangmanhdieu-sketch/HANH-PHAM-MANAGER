@@ -36,6 +36,10 @@ app.use('/api', async (_req: Request, _res: Response, next: NextFunction) => {
 // Delay every successful mutation response until all Firestore tables have been
 // written and read back successfully. This prevents false "saved" confirmations.
 app.use('/api', (req: Request, res: Response, next: NextFunction) => {
+  // Login is an authentication request, not a business-data mutation. Do not
+  // turn a successful credential check into a failed login because an audit
+  // write is temporarily unavailable. The login audit is queued separately.
+  if (req.method === 'POST' && req.path === '/auth/login') return next();
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
 
   const originalSend = res.send.bind(res);
@@ -205,6 +209,12 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
       `Đăng nhập thành công với username: ${user.TenDangNhap}`,
       req.ip
     );
+
+    // Persist login audit asynchronously. Authentication must remain available
+    // even if Firestore is briefly unavailable; failures remain visible in logs.
+    void dbService.saveAndVerify().catch((error: any) => {
+      console.error('[AUTH] Login succeeded but audit log sync failed:', error?.message || error);
+    });
 
     return res.json({
       user: userSafe,
