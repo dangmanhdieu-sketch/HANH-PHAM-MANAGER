@@ -567,18 +567,19 @@ class DatabaseService {
         // after a restart and can later overwrite cloud data with empty values.
         const missingTables: string[] = [];
         const loaded: Partial<DatabaseSchema> = {};
-        tableSnaps.forEach((snap, index) => {
+        for (let index = 0; index < tableSnaps.length; index += 1) {
+          const snap = tableSnaps[index];
           const table = this.firestoreTables[index];
-          if (!snap.exists || !Object.prototype.hasOwnProperty.call(snap.data() || {}, 'data')) {
+          if (!snap.exists) {
             missingTables.push(table);
-            return;
+            continue;
           }
           const tableMeta = snap.data() || {};
           if (tableMeta.storage === 'chunked-json-base64') {
             const chunkCount = Number(tableMeta.chunkCount || 0);
             if (!Number.isInteger(chunkCount) || chunkCount < 1 || chunkCount > 500) {
               missingTables.push(table);
-              return;
+              continue;
             }
             const partSnaps = await Promise.all(
               Array.from({ length: chunkCount }, (_, partIndex) =>
@@ -588,21 +589,21 @@ class DatabaseService {
             );
             if (partSnaps.some((part) => !part.exists || typeof part.data()?.payload !== 'string')) {
               missingTables.push(table);
-              return;
+              continue;
             }
             const encoded = partSnaps.map((part) => String(part.data()?.payload || '')).join('');
             const decoded = Buffer.from(encoded, 'base64').toString('utf8');
             (loaded as any)[table] = restoreFirestoreValue(JSON.parse(decoded));
-            return;
+            continue;
           }
 
           const data = tableMeta.data;
           if (data === undefined || data === null) {
             missingTables.push(table);
-            return;
+            continue;
           }
           (loaded as any)[table] = restoreFirestoreValue(data);
-        });
+        }
         if (missingTables.length > 0) {
           throw new Error(
             '[Firebase] Schema v2 is incomplete. Missing/invalid table documents: ' +
