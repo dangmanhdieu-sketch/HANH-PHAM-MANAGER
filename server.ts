@@ -121,8 +121,12 @@ function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) 
   const user = payload.username
     ? dbService.findNhanVienByUsername(payload.username)
     : dbService.findNhanVienById(payload.id);
+  const matchingEmployeeIds = dbService.getNhanVienList()
+    .filter((employee) => employee.NhanVienID === payload.id).length;
 
-  if (!user || user.NhanVienID !== payload.id) {
+  // A token must resolve to exactly one employee record. Otherwise two people
+  // sharing one legacy ID could write attendance/commission under the same ID.
+  if (!user || user.NhanVienID !== payload.id || matchingEmployeeIds !== 1) {
     console.error('[AUTH] Token identity does not match the employee record:', {
       tokenId: payload.id,
       tokenUsername: payload.username || null,
