@@ -326,6 +326,65 @@ class DatabaseService {
   private applyMigrations(): boolean {
     let hasMigration = false;
 
+    // Migration: repair duplicate employee IDs only when related records can
+    // be attributed safely by a distinct employee name. If names are ambiguous,
+    // leave the records untouched; update APIs will refuse to edit by that ID.
+    if (Array.isArray(this.db.NHANVIEN)) {
+      const groups = new Map<string, NhanVien[]>();
+      for (const staff of this.db.NHANVIEN) {
+        const id = String(staff.NhanVienID || '').trim();
+        if (!id) continue;
+        const group = groups.get(id) || [];
+        group.push(staff);
+        groups.set(id, group);
+      }
+      const usedIds = new Set(this.db.NHANVIEN.map((staff) => String(staff.NhanVienID || '').trim()));
+      const numericIds = this.db.NHANVIEN.map((staff) => {
+        const match = String(staff.NhanVienID || '').match(/\d+/);
+        return match ? Number(match[0]) : 0;
+      });
+      let nextId = Math.max(0, ...numericIds) + 1;
+
+      for (const [duplicateId, group] of groups) {
+        if (group.length < 2) continue;
+        const normalizedNames = group.map((staff) => String(staff.HoTen || '').trim().toLowerCase());
+        const namesAreDistinct = normalizedNames.every(Boolean) &&
+          new Set(normalizedNames).size === normalizedNames.length;
+        if (!namesAreDistinct) {
+          console.error('[DATA INTEGRITY] Duplicate employee ID needs manual review because names are ambiguous:', duplicateId);
+          continue;
+        }
+
+        // The first entry keeps its original ID. Reassign later entries and
+        // move their linked attendance/payroll/commission/advance rows by name.
+        for (let index = 1; index < group.length; index += 1) {
+          const staff = group[index];
+          let newId = `NV${String(nextId++).padStart(3, '0')}`;
+          while (usedIds.has(newId)) newId = `NV${String(nextId++).padStart(3, '0')}`;
+          const employeeName = String(staff.HoTen).trim().toLowerCase();
+
+          for (const tableName of this.firestoreTables) {
+            if (tableName === 'NHANVIEN' || tableName === 'NOTIFICATIONS') continue;
+            const records = (this.db as any)[tableName];
+            if (!Array.isArray(records)) continue;
+            for (const record of records) {
+              if (
+                String(record?.NhanVienID || '') === duplicateId &&
+                String(record?.HoTen || '').trim().toLowerCase() === employeeName
+              ) {
+                record.NhanVienID = newId;
+              }
+            }
+          }
+
+          staff.NhanVienID = newId;
+          usedIds.add(newId);
+          hasMigration = true;
+          console.warn('[DATA INTEGRITY] Reassigned duplicate employee ID', duplicateId, 'to', newId, 'for', staff.HoTen);
+        }
+      }
+    }
+
     // Migration: guarantee unique, normalized usernames. Older imports could
     // contain duplicate/blank usernames; leaving them in place makes login
     // resolve to the first employee and can attribute actions to the wrong person.
