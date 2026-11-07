@@ -423,9 +423,9 @@ HẠNH PHẠM MANAGER`;
                   </td>
                 </tr>
               ) : (
-                filteredStaff.map((nv) => (
+                filteredStaff.map((nv, index) => (
                   <tr
-                    key={nv.NhanVienID}
+                    key={`${nv.NhanVienID || 'NV'}-${nv.TenDangNhap || 'user'}-${index}`}
                     className={`hover:bg-[#FAF8F5]/80 transition ${
                       nv.BiKhoa ? 'bg-rose-50/40 text-stone-400' : ''
                     }`}
