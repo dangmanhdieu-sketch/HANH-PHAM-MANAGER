@@ -469,6 +469,40 @@ class DatabaseService {
       });
     }
 
+    // Non-sensitive startup integrity check for the employee currently reported
+    // by the studio. This helps distinguish a bad NV004 identity from a global
+    // Firestore write failure without exposing passwords or bank details.
+    const targetStaff = this.db.NHANVIEN.filter((staff) =>
+      String(staff.NhanVienID || '').trim().toUpperCase() === 'NV004' ||
+      String(staff.HoTen || '').trim().toLocaleLowerCase('vi') === 'hồ thị bích nguyệt'
+    );
+    if (targetStaff.length > 0) {
+      console.info('[DATA INTEGRITY] NV004 employee diagnostic:', targetStaff.map((staff) => {
+        const id = String(staff.NhanVienID || '');
+        const username = String(staff.TenDangNhap || '').trim().toLowerCase();
+        const countById = this.db.NHANVIEN.filter((item) => item.NhanVienID === id).length;
+        const countByUsername = this.db.NHANVIEN.filter(
+          (item) => String(item.TenDangNhap || '').trim().toLowerCase() === username
+        ).length;
+        const countRefs = (rows: any[]) => rows.filter((row) => row.NhanVienID === id).length;
+        return {
+          employeeId: id,
+          name: staff.HoTen,
+          usernameUnique: Boolean(username) && countByUsername === 1,
+          employeeIdUnique: countById === 1,
+          isLocked: Boolean(staff.BiKhoa),
+          role: staff.Quyen,
+          status: staff.TrangThai,
+          attendanceRecords: countRefs(this.db.CHAMCONG || []),
+          payrollRecords: countRefs(this.db.LUONG || []),
+          advanceRecords: countRefs(this.db.TAM_UNG || []),
+          commissionRecords: countRefs(this.db.HOAHONG || []),
+        };
+      }));
+    } else {
+      console.warn('[DATA INTEGRITY] NV004 / Hồ Thị Bích Nguyệt not found in loaded employee data.');
+    }
+
     return hasMigration;
   }
 
