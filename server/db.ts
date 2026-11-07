@@ -573,7 +573,30 @@ class DatabaseService {
             missingTables.push(table);
             return;
           }
-          const data = snap.data()?.data;
+          const tableMeta = snap.data() || {};
+          if (tableMeta.storage === 'chunked-json-base64') {
+            const chunkCount = Number(tableMeta.chunkCount || 0);
+            if (!Number.isInteger(chunkCount) || chunkCount < 1 || chunkCount > 500) {
+              missingTables.push(table);
+              return;
+            }
+            const partSnaps = await Promise.all(
+              Array.from({ length: chunkCount }, (_, partIndex) =>
+                rootRef.collection('tables').doc(table)
+                  .collection('parts').doc(String(partIndex).padStart(4, '0')).get()
+              )
+            );
+            if (partSnaps.some((part) => !part.exists || typeof part.data()?.payload !== 'string')) {
+              missingTables.push(table);
+              return;
+            }
+            const encoded = partSnaps.map((part) => String(part.data()?.payload || '')).join('');
+            const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+            (loaded as any)[table] = restoreFirestoreValue(JSON.parse(decoded));
+            return;
+          }
+
+          const data = tableMeta.data;
           if (data === undefined || data === null) {
             missingTables.push(table);
             return;
@@ -682,7 +705,7 @@ class DatabaseService {
       await this.firestore.runTransaction(async (transaction) => {
         await this.assertFirestoreWriterLease(transaction);
         transaction.set(rootRef, {
-          __schemaVersion: 2,
+          __schemaVersion: 3,
           __updatedAt: committedAt,
           __storage: 'Firestore split tables',
         }, { merge: true });
@@ -690,14 +713,44 @@ class DatabaseService {
         for (const table of tablesToWrite) {
           const value = (this.db as any)[table];
           if (value === undefined) continue;
-          transaction.set(
-            rootRef.collection('tables').doc(table),
-            {
-              data: sanitizeFirestoreValue(value),
+
+          const tableRef = rootRef.collection('tables').doc(table);
+          const sanitized = sanitizeFirestoreValue(value);
+          const serialized = JSON.stringify(sanitized);
+          const encoded = Buffer.from(serialized, 'utf8').toString('base64');
+
+          // Firestore documents are limited to 1 MiB. Keep each part well
+          // below that limit, even for large base64 profile/check-in images.
+          const PART_SIZE = 600000;
+          if (encoded.length > PART_SIZE) {
+            const parts: string[] = [];
+            for (let offset = 0; offset < encoded.length; offset += PART_SIZE) {
+              parts.push(encoded.slice(offset, offset + PART_SIZE));
+            }
+
+            transaction.set(tableRef, {
+              storage: 'chunked-json-base64',
+              chunkCount: parts.length,
               updatedAt: committedAt,
-            },
-            { merge: false }
-          );
+            }, { merge: false });
+
+            parts.forEach((payload, partIndex) => {
+              transaction.set(
+                tableRef.collection('parts').doc(String(partIndex).padStart(4, '0')),
+                { payload, index: partIndex, updatedAt: committedAt },
+                { merge: false }
+              );
+            });
+          } else {
+            transaction.set(
+              tableRef,
+              {
+                data: sanitized,
+                updatedAt: committedAt,
+              },
+              { merge: false }
+            );
+          }
         }
       });
 
