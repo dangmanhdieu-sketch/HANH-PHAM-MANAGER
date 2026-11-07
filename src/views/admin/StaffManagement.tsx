@@ -124,8 +124,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   };
 
   const generateUsername = () => {
-    const rand = Math.floor(1000 + Math.random() * 9000);
-    return `nv${rand}`;
+    const existing = new Set(staffList.map((staff) => String(staff.TenDangNhap || '').trim().toLowerCase()));
+    let candidate = '';
+    do {
+      candidate = `nv${Math.floor(1000 + Math.random() * 9000)}`;
+    } while (existing.has(candidate));
+    return candidate;
   };
 
   const openCreateModal = () => {
