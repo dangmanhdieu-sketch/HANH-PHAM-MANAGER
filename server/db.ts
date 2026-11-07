@@ -723,9 +723,11 @@ class DatabaseService {
       ThoiGian: new Date().toISOString(),
     };
     this.db.AUDIT_LOG.unshift(log);
-    // Keep max 2000 logs
-    if (this.db.AUDIT_LOG.length > 2000) {
-      this.db.AUDIT_LOG.length = 2000;
+    // Firestore stores each table in one document (1 MiB limit).
+    // Keep the newest 800 audit entries so the audit table cannot block
+    // unrelated operations such as approving payroll/commission.
+    if (this.db.AUDIT_LOG.length > 800) {
+      this.db.AUDIT_LOG.length = 800;
     }
     this.save();
     return log;
@@ -742,6 +744,12 @@ class DatabaseService {
       TaoLuc: new Date().toISOString(),
     };
     this.db.NOTIFICATIONS.unshift(notif);
+    // Notifications are stored in one Firestore table document. Bound the
+    // history to prevent an ever-growing document from exceeding Firestore's
+    // 1 MiB document limit and blocking all subsequent writes.
+    if (this.db.NOTIFICATIONS.length > 800) {
+      this.db.NOTIFICATIONS.length = 800;
+    }
     this.save();
     return notif;
   }
