@@ -906,6 +906,13 @@ class DatabaseService {
   }
 
   public createNhanVien(data: Partial<NhanVien>, adminUser: { HoTen: string; Email: string }): NhanVien {
+    const employeeName = String(data.HoTen || '').trim();
+    if (!employeeName) throw new Error('Vui lòng nhập họ tên nhân viên.');
+    const suppliedEmail = String(data.Email || '').trim().toLowerCase();
+    if (!suppliedEmail) throw new Error('Vui lòng nhập email nhân viên.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(suppliedEmail)) {
+      throw new Error('Email nhân viên không đúng định dạng.');
+    }
     // Generate the next unused employee ID; do not assume max+1 is free.
     const usedIds = new Set(this.db.NHANVIEN.map((nv) => String(nv.NhanVienID || '').trim()));
     const existingNumbers = this.db.NHANVIEN.map((nv) => {
@@ -935,7 +942,7 @@ class DatabaseService {
 
     // Email may be missing in legacy/imported records. Only enforce uniqueness
     // when a non-empty email is supplied.
-    const normalizedEmail = String(data.Email || '').trim().toLowerCase();
+    const normalizedEmail = suppliedEmail;
     if (normalizedEmail && this.findNhanVienByEmail(normalizedEmail)) {
       throw new Error(`Email ${normalizedEmail} đã tồn tại trong hệ thống!`);
     }
