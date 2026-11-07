@@ -304,8 +304,8 @@ app.post('/api/nhanvien', authenticateToken, requireAdmin, async (req: AuthReque
     const { MatKhau: _, ...safe } = created;
     return res.status(201).json(safe);
   } catch (err: any) {
-    console.error('[API] Create employee / Firestore persistence failed:', err);
-    return res.status(500).json({ error: err.message || 'Không thể xác nhận lưu nhân viên lên Firebase.' });
+    console.error('[API] Create employee failed:', err);
+    return res.status(400).json({ error: err.message || 'Không thể tạo nhân viên.' });
   }
 });
 
