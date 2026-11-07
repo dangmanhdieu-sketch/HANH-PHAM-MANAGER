@@ -326,28 +326,26 @@ class DatabaseService {
   private applyMigrations(): boolean {
     let hasMigration = false;
 
-    // Migration: Ensure all staff have a unique username.
+    // Migration: guarantee unique, normalized usernames. Older imports could
+    // contain duplicate/blank usernames; leaving them in place makes login
+    // resolve to the first employee and can attribute actions to the wrong person.
     if (this.db.NHANVIEN && Array.isArray(this.db.NHANVIEN)) {
       const usedUsernames = new Set<string>();
 
-      this.db.NHANVIEN.forEach((nv) => {
-        let username = String(nv.TenDangNhap || '').trim().toLowerCase();
-
-        if (!username) {
-          username = nv.NhanVienID === 'NV001'
-            ? 'admin'
-            : nv.NhanVienID.toLowerCase();
-        }
-
-        if (usedUsernames.has(username)) {
-          username = nv.NhanVienID.toLowerCase();
+      this.db.NHANVIEN.forEach((nv, index) => {
+        const original = String(nv.TenDangNhap || '').trim().toLowerCase();
+        const base = original || (nv.NhanVienID === 'NV001'
+          ? 'admin'
+          : String(nv.NhanVienID || `nv${index + 1}`).trim().toLowerCase());
+        let username = base;
+        let suffix = 2;
+        while (usedUsernames.has(username)) {
+          username = `${base}-${suffix++}`;
         }
 
         if (nv.TenDangNhap !== username) {
           nv.TenDangNhap = username;
           hasMigration = true;
-        } else {
-          nv.TenDangNhap = username;
         }
         usedUsernames.add(username);
       });
