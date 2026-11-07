@@ -826,11 +826,17 @@ class DatabaseService {
   }
 
   public findNhanVienById(id: string): NhanVien | undefined {
-    return this.db.NHANVIEN.find((nv) => nv.NhanVienID === id);
+    const matches = this.db.NHANVIEN.filter((nv) => String(nv.NhanVienID || '') === String(id || ''));
+    // Never silently select the first person when legacy data contains duplicate IDs.
+    return matches.length === 1 ? matches[0] : undefined;
   }
 
   public findNhanVienByEmail(email: string): NhanVien | undefined {
-    return this.db.NHANVIEN.find((nv) => nv.Email.toLowerCase() === email.toLowerCase());
+    const normalized = String(email || '').trim().toLowerCase();
+    if (!normalized) return undefined;
+    return this.db.NHANVIEN.find(
+      (nv) => String(nv.Email || '').trim().toLowerCase() === normalized
+    );
   }
 
   public findNhanVienByUsername(username: string): NhanVien | undefined {
@@ -843,14 +849,18 @@ class DatabaseService {
   }
 
   public createNhanVien(data: Partial<NhanVien>, adminUser: { HoTen: string; Email: string }): NhanVien {
-    // Generate next NhanVienID: NV001, NV002, ...
-    const existingIds = this.db.NHANVIEN.map((nv) => {
-      const match = nv.NhanVienID.match(/\d+/);
+    // Generate the next unused employee ID; do not assume max+1 is free.
+    const usedIds = new Set(this.db.NHANVIEN.map((nv) => String(nv.NhanVienID || '').trim()));
+    const existingNumbers = this.db.NHANVIEN.map((nv) => {
+      const match = String(nv.NhanVienID || '').match(/\d+/);
       return match ? parseInt(match[0], 10) : 0;
     });
-    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-    const nextNum = maxId + 1;
-    const generatedId = `NV${String(nextNum).padStart(3, '0')}`;
+    let nextNum = Math.max(0, ...existingNumbers) + 1;
+    let generatedId = `NV${String(nextNum).padStart(3, '0')}`;
+    while (usedIds.has(generatedId)) {
+      nextNum += 1;
+      generatedId = `NV${String(nextNum).padStart(3, '0')}`;
+    }
 
     const tenDangNhap =
       String(data.TenDangNhap || '').trim().toLowerCase() ||
@@ -866,9 +876,11 @@ class DatabaseService {
       throw new Error(`Tên đăng nhập "${tenDangNhap}" đã tồn tại trong hệ thống!`);
     }
 
-    // Validate email uniqueness
-    if (this.findNhanVienByEmail(data.Email || '')) {
-      throw new Error(`Email ${data.Email} đã tồn tại trong hệ thống!`);
+    // Email may be missing in legacy/imported records. Only enforce uniqueness
+    // when a non-empty email is supplied.
+    const normalizedEmail = String(data.Email || '').trim().toLowerCase();
+    if (normalizedEmail && this.findNhanVienByEmail(normalizedEmail)) {
+      throw new Error(`Email ${normalizedEmail} đã tồn tại trong hệ thống!`);
     }
 
     const salt = bcrypt.genSaltSync(10);
@@ -913,11 +925,16 @@ class DatabaseService {
   }
 
   public updateNhanVien(id: string, updates: Partial<NhanVien>, adminUser: { HoTen: string; Email: string }): NhanVien {
-    const index = this.db.NHANVIEN.findIndex((nv) => nv.NhanVienID === id);
-    if (index === -1) {
+    const matchingIndexes = this.db.NHANVIEN
+      .map((nv, index) => nv.NhanVienID === id ? index : -1)
+      .filter((index) => index >= 0);
+    if (matchingIndexes.length === 0) {
       throw new Error(`Không tìm thấy nhân viên với ID ${id}`);
     }
-
+    if (matchingIndexes.length > 1) {
+      throw new Error(`Phát hiện mã nhân viên ${id} bị trùng. Hệ thống đã chặn cập nhật để tránh sửa nhầm người; cần đối soát dữ liệu trùng mã trước.`);
+    }
+    const index = matchingIndexes[0];
     const current = this.db.NHANVIEN[index];
 
     let tenDangNhap = current.TenDangNhap || current.NhanVienID.toLowerCase();
@@ -937,10 +954,15 @@ class DatabaseService {
       }
     }
 
-    // Check email uniqueness if email changed
-    if (updates.Email && updates.Email.toLowerCase() !== current.Email.toLowerCase()) {
-      if (this.findNhanVienByEmail(updates.Email)) {
-        throw new Error(`Email ${updates.Email} đã được sử dụng bởi nhân viên khác.`);
+    // Check email uniqueness safely; empty emails are not unique identifiers.
+    const nextEmail = updates.Email !== undefined
+      ? String(updates.Email || '').trim().toLowerCase()
+      : String(current.Email || '').trim().toLowerCase();
+    const currentEmail = String(current.Email || '').trim().toLowerCase();
+    if (nextEmail && nextEmail !== currentEmail) {
+      const emailOwner = this.findNhanVienByEmail(nextEmail);
+      if (emailOwner && emailOwner !== current) {
+        throw new Error(`Email ${nextEmail} đã được sử dụng bởi nhân viên khác.`);
       }
     }
 
