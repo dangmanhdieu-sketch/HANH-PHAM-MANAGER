@@ -1562,23 +1562,33 @@ class DatabaseService {
     this.recalculateLuong(luong);
   }
 
-  /** Approved commission ledger is the single source of truth for payroll commission totals. */
-  private syncHoaHongToLuong(luong: Luong): void {
-    const [month, year] = String(luong.Thang || '').split('/');
-    const prefix = month && year ? `${year}-${month.padStart(2, '0')}` : '';
-    if (!prefix) throw new Error(`Kỳ lương không hợp lệ: ${luong.Thang}`);
-    const approved = this.db.HOAHONG.filter((item) =>
-      item.NhanVienID === luong.NhanVienID &&
+  private getApprovedHoaHongForMonth(nhanVienId: string, thang: string): HoaHong[] {
+    const [month, year] = String(thang || '').split('/');
+    if (!month || !year || month.length !== 2 || year.length !== 4) {
+      throw new Error(`Kỳ lương không hợp lệ: ${thang}`);
+    }
+    const prefix = `${year}-${month}`;
+    return this.db.HOAHONG.filter((item) =>
+      item.NhanVienID === nhanVienId &&
       String(item.Ngay || '').startsWith(prefix) &&
       item.TrangThai === 'Đã duyệt'
     );
-    luong.HoaHong = approved.reduce((sum, item) => {
+  }
+
+  private getTongHoaHongDaDuyet(nhanVienId: string, thang: string): number {
+    return this.getApprovedHoaHongForMonth(nhanVienId, thang).reduce((sum, item) => {
       const amount = Number(item.SoTienHoaHong);
       if (!Number.isFinite(amount) || amount < 0) {
         throw new Error(`Hoa hồng ${item.HoaHongID} có số tiền không hợp lệ; cần đối soát trước khi tính lương.`);
       }
       return sum + amount;
     }, 0);
+  }
+
+  /** Approved commission ledger is the single source of truth for payroll commission totals. */
+  private syncHoaHongToLuong(luong: Luong): void {
+    const approved = this.getApprovedHoaHongForMonth(luong.NhanVienID, luong.Thang);
+    luong.HoaHong = this.getTongHoaHongDaDuyet(luong.NhanVienID, luong.Thang);
     approved.forEach((item) => { item.LuongID = luong.LuongID; });
     this.recalculateLuong(luong);
   }
@@ -1997,9 +2007,16 @@ class DatabaseService {
       throw new Error('Số giờ làm phải là số hợp lệ và không âm.');
     }
 
+    // Validate both ledgers before changing the payroll record.
+    const expectedAdvance = this.getTongTamUng(luong.NhanVienID, luong.Thang);
+    const expectedCommission = this.getTongHoaHongDaDuyet(luong.NhanVienID, luong.Thang);
+    const approvedCommissions = this.getApprovedHoaHongForMonth(luong.NhanVienID, luong.Thang);
+
     Object.assign(luong, next);
-    this.syncTamUngToLuong(luong);
-    this.syncHoaHongToLuong(luong);
+    luong.TamUng = expectedAdvance;
+    luong.HoaHong = expectedCommission;
+    approvedCommissions.forEach((item) => { item.LuongID = luong.LuongID; });
+    this.recalculateLuong(luong);
     this.refreshKPIs();
     this.save();
 
