@@ -78,6 +78,7 @@ export const ContractsRevenueAnalytics: React.FC = () => {
     // Build lookup indexes once. The previous implementation filtered the full
     // approved-receipt list for every contract (O(contracts × receipts)).
     const contractsByCode = new Map<string, string[]>();
+    const contractIds = new Set(contracts.map(record => String(record.QuanLyID)));
     for (const record of contracts) {
       const code = String(record.DuLieu?.MaHopDong || record.QuanLyID);
       const ids = contractsByCode.get(code) || [];
@@ -96,7 +97,7 @@ export const ContractsRevenueAnalytics: React.FC = () => {
         for (const id of contractsByCode.get(contractCode) || []) matchedContractIds.add(id);
       }
       const linkedContractId = String(data.HopDongQuanLyID || '');
-      if (linkedContractId && contracts.some(contract => String(contract.QuanLyID) === linkedContractId)) {
+      if (linkedContractId && contractIds.has(linkedContractId)) {
         matchedContractIds.add(linkedContractId);
       }
 
