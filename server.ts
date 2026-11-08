@@ -1436,7 +1436,23 @@ app.get('/api/export/:table', authenticateToken, requireAdmin, (req: AuthRequest
 // VITE / STATIC SERVING
 // ==========================================
 
+// Render health checks must only pass when the persistent database is ready.
+app.get('/healthz', async (_req: Request, res: Response) => {
+  try {
+    await dbService.waitUntilReady();
+    return res.status(200).json({ status: 'ok', database: 'ready' });
+  } catch (error: any) {
+    console.error('[Health] Database readiness check failed:', error);
+    return res.status(503).json({ status: 'unavailable', database: 'not-ready' });
+  }
+});
+
 async function startServer() {
+  // Do not start accepting traffic while Firestore is still loading, or when
+  // its configuration/data is invalid. This prevents Render from serving a
+  // healthy-looking shell while API requests are failing or data is incomplete.
+  await dbService.waitUntilReady();
+
   const isProd = process.env.NODE_ENV === 'production';
 
   if (!isProd) {
@@ -1459,7 +1475,10 @@ async function startServer() {
 }
 
 if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV) {
-  startServer();
+  startServer().catch((error) => {
+    console.error('[SERVER] Startup aborted because persistent storage is not ready:', error);
+    process.exit(1);
+  });
 }
 
 export default app;
