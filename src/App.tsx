@@ -635,9 +635,11 @@ function AppContent() {
         onClose={() => setDailyClaimModalOpen(false)}
         currentUser={currentUser}
         onSubmit={async (data) => {
+          // Chỉ chờ API xác nhận lưu thành công; làm mới dashboard ở nền
+          // để modal không giữ trạng thái gửi trong lúc tải lại nhiều phân hệ.
           await api.commission.create(data);
           alert('Đã gửi kê khai thành công! Quản trị viên sẽ phê duyệt và cộng vào bảng lương của bạn.');
-          await refreshTabData(currentTab);
+          void refreshTabData(currentTab).catch((refreshError) => console.error('Làm mới sau kê khai thất bại:', refreshError));
         }}
       />
 
