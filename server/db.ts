@@ -1064,11 +1064,12 @@ class DatabaseService {
   }
 
   public save() {
-    // API mutation responses are persisted by the server-wide saveAndVerify
-    // barrier exactly once. Queueing a full Firestore write here caused each
-    // route to write once from save() and a second time from the response
-    // barrier, making routine edits and deletes unnecessarily slow.
-    this.saveSync();
+    // In production Firestore is authoritative and every API mutation is
+    // committed by the server-wide saveAndVerify barrier. Avoid synchronously
+    // serializing and writing the entire database.json on every small mutation:
+    // that blocks Node's event loop and makes approvals/forms feel frozen.
+    // Keep the local JSON cache for development only.
+    if (process.env.NODE_ENV !== 'production') this.saveSync();
   }
 
   /** Persist once to Firestore before an API reports a successful mutation. */
@@ -1077,7 +1078,9 @@ class DatabaseService {
     if (!this.firestoreEnabled || !this.firestore) {
       throw new Error('Firebase Firestore chưa kết nối; dữ liệu chưa được xác nhận lưu trên đám mây.');
     }
-    this.saveSync();
+    // Firestore is the production source of truth. Do not write the full
+    // local JSON cache synchronously here; the verified Firestore commit below
+    // is the durability barrier before a successful API response.
 
     // The Firestore transaction commit is the durable-write confirmation.
     // Avoid an additional 11-document read-back on every small edit/delete:
