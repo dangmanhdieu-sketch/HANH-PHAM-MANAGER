@@ -2205,6 +2205,11 @@ class DatabaseService {
     duplicates(this.db.CHAMCONG, (row) => `${row.NhanVienID}|${row.Ngay}`, 'DUPLICATE_ATTENDANCE_DAY', 'Nhân viên/ngày chấm công');
     duplicates(this.db.LUONG, (row) => `${row.NhanVienID}|${row.Thang}`, 'DUPLICATE_PAYROLL_MONTH', 'Nhân viên/kỳ lương');
 
+    if (Math.abs(Number(this.db.SYSTEM_CONFIG?.ViDoStudio || 0) - 10.7769) < 0.0001 &&
+        Math.abs(Number(this.db.SYSTEM_CONFIG?.KinhDoStudio || 0) - 106.6953) < 0.0001) {
+      add('STUDIO_GPS_DEFAULT_COORDINATES', 'warning', 'Tọa độ studio hiện trùng bộ tọa độ mặc định trong mã nguồn (10.7769, 106.6953). Hãy xác nhận lại đúng vị trí studio trước khi bật kiểm tra bán kính GPS.');
+    }
+
     const uniqueStaff = new Set(this.db.NHANVIEN.map((row) => String(row.NhanVienID || '')));
     const checkReferences = (rows: any[], table: string, idField: string) => {
       rows.forEach((row) => {
