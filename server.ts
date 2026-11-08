@@ -987,7 +987,9 @@ app.post('/api/hoahong/:id/duyet', authenticateToken, requireAdmin, (req: AuthRe
       Email: req.user!.Email,
     });
     return res.json({
-      message: dongY !== false ? 'Duyệt hoa hồng thành công và đã cộng vào bảng lương.' : 'Đã từ chối hoa hồng.',
+      message: dongY !== false
+        ? (updated.LuongID ? 'Duyệt hoa hồng thành công và đã đồng bộ vào bảng lương.' : 'Duyệt hoa hồng thành công. Khoản này sẽ được tự động tính khi tạo bảng lương đúng kỳ.')
+        : 'Đã từ chối hoa hồng.',
       hoahong: updated,
     });
   } catch (err: any) {
