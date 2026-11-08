@@ -29,6 +29,7 @@ interface PayrollManagementProps {
   commissionList: HoaHong[];
   staffList: NhanVien[];
   onRefresh: () => void;
+  onCommissionMonthChange: (month: string) => void;
   onGenerateMonthlyPayroll: () => void;
   initialFilterStatus?: string;
 }
@@ -38,6 +39,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
   commissionList,
   staffList,
   onRefresh,
+  onCommissionMonthChange,
   onGenerateMonthlyPayroll,
   initialFilterStatus = 'ALL',
 }) => {
@@ -47,6 +49,12 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
   });
   const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>(initialFilterStatus);
+
+  // The commission ledger can be very large. Load only the selected payroll
+  // month instead of downloading the complete history on every tab open.
+  useEffect(() => {
+    onCommissionMonthChange(selectedMonth);
+  }, [selectedMonth, onCommissionMonthChange]);
 
   // Modals
   const [editingLuong, setEditingLuong] = useState<Luong | null>(null);
