@@ -841,11 +841,22 @@ class DatabaseService {
           .collection('versions').doc(revision);
         const PARTS_PER_TRANSACTION = 25;
 
+        // Write independent immutable chunk batches concurrently. Every batch
+        // still verifies the active Render writer lease before committing, and
+        // the table pointer is switched only after ALL chunks have succeeded.
+        // This reduces the serial network round-trips for large tables while
+        // preserving the previous committed revision if any batch fails.
+        const chunkBatches: Array<{ offset: number; payloads: string[] }> = [];
         for (let offset = 0; offset < parts.length; offset += PARTS_PER_TRANSACTION) {
-          const batchParts = parts.slice(offset, offset + PARTS_PER_TRANSACTION);
-          await this.firestore.runTransaction(async (transaction) => {
+          chunkBatches.push({
+            offset,
+            payloads: parts.slice(offset, offset + PARTS_PER_TRANSACTION),
+          });
+        }
+        await Promise.all(chunkBatches.map(async ({ offset, payloads }) => {
+          await this.firestore!.runTransaction(async (transaction) => {
             await this.assertFirestoreWriterLease(transaction);
-            batchParts.forEach((payload, batchIndex) => {
+            payloads.forEach((payload, batchIndex) => {
               const partIndex = offset + batchIndex;
               transaction.set(
                 versionRef.collection('parts').doc(String(partIndex).padStart(6, '0')),
@@ -854,7 +865,7 @@ class DatabaseService {
               );
             });
           });
-        }
+        }));
 
         await this.firestore.runTransaction(async (transaction) => {
           await this.assertFirestoreWriterLease(transaction);
