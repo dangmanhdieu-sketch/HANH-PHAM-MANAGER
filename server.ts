@@ -1073,7 +1073,10 @@ app.get('/api/audit-log', authenticateToken, requireAdmin, (req: AuthRequest, re
 app.get('/api/notifications', authenticateToken, (req: AuthRequest, res: Response) => {
   const user = req.user!;
   const raw = dbService.getRawData();
-  const list = raw.NOTIFICATIONS.filter((n) => !n.NhanVienID || n.NhanVienID === user.NhanVienID);
+  // Admin xem toàn bộ thông báo; nhân viên chỉ xem thông báo gắn đúng NhanVienID của mình.
+  const list = user.Quyen === 'Admin'
+    ? raw.NOTIFICATIONS
+    : raw.NOTIFICATIONS.filter((n) => Boolean(n.NhanVienID) && n.NhanVienID === user.NhanVienID);
   return res.json(list);
 });
 
@@ -1081,7 +1084,8 @@ app.put('/api/notifications/mark-read', authenticateToken, (req: AuthRequest, re
   const user = req.user!;
   const raw = dbService.getRawData();
   raw.NOTIFICATIONS.forEach((n) => {
-    if (!n.NhanVienID || n.NhanVienID === user.NhanVienID) {
+    // Admin đánh dấu tất cả; nhân viên chỉ đánh dấu các thông báo của chính mình.
+    if (user.Quyen === 'Admin' || (Boolean(n.NhanVienID) && n.NhanVienID === user.NhanVienID)) {
       n.DaDoc = true;
     }
   });
