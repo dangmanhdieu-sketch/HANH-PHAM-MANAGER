@@ -87,17 +87,19 @@ async function request<T>(
   ) {
     data = await res.json();
   } else {
-    data = await res.text();
+    const rawText = await res.text();
+    // Non-JSON responses may contain proxy diagnostics or sensitive provider
+    // output. Never display an unbounded raw response in browser alerts.
+    data = res.ok
+      ? rawText
+      : { error: rawText.length > 500 || /<html|<!doctype/i.test(rawText)
+          ? 'Máy chủ trả về lỗi không đúng định dạng. Vui lòng báo Admin kiểm tra nhật ký Render.'
+          : rawText || 'Yêu cầu thất bại.' };
   }
 
   if (!res.ok) {
-    const errorMsg =
-      data?.error ||
-      (typeof data === 'string'
-        ? data
-        : 'Yêu cầu thất bại');
-
-    throw new Error(errorMsg);
+    const errorMsg = data?.error || 'Yêu cầu thất bại.';
+    throw new Error(String(errorMsg).slice(0, 500));
   }
 
   return data as T;
