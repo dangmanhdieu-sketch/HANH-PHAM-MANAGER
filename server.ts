@@ -370,7 +370,7 @@ app.put('/api/nhanvien/:id', authenticateToken, (req: AuthRequest, res: Response
       HoTen: user.HoTen,
       Email: user.Email,
     });
-    const { MatKhau: _, ...safe } = updated;
+    const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = updated;
     return res.json(safe);
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
@@ -410,7 +410,7 @@ app.post('/api/nhanvien/:id/toggle-lock', authenticateToken, requireAdmin, (req:
       `${newLockState ? 'Khóa' : 'Mở khóa'} tài khoản ${updated.HoTen} (${updated.NhanVienID})`
     );
 
-    const { MatKhau: _, ...safe } = updated;
+    const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = updated;
     return res.json(safe);
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
