@@ -177,18 +177,6 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     });
   };
 
-  const handleSyncCommissions = async (luong: Luong) => {
-    if (luong.TrangThai !== 'Chờ duyệt') return;
-    if (!window.confirm('Đồng bộ hoa hồng của ' + luong.HoTen + ' tháng ' + luong.Thang + ' theo các khoản đã duyệt trong sổ hoa hồng?')) return;
-    try {
-      const result = await api.payroll.syncCommissions(luong.LuongID);
-      window.alert(result.message + '\\nHoa hồng mới: ' + Number(result.luong.HoaHong || 0).toLocaleString('vi-VN') + ' đ');
-      window.location.reload();
-    } catch (error: any) {
-      window.alert(error.message || 'Không thể đồng bộ hoa hồng.');
-    }
-  };
-
   const handleDeleteLuong = async (luong: Luong) => {
     if (luong.TrangThai !== 'Chờ duyệt') {
       alert('Chỉ có thể xóa bảng lương đang Chờ duyệt. Bảng lương đã duyệt hoặc đã thanh toán được giữ để bảo toàn lịch sử.');
@@ -522,14 +510,6 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                         {/* If Chờ duyệt: Can edit & approve */}
                         {l.TrangThai === 'Chờ duyệt' && (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => void handleSyncCommissions(l)}
-                              className="px-2 py-1.5 text-[9px] font-bold text-[#a97d3e] border border-[#a97d3e]/50 rounded-lg hover:bg-stone-100"
-                              title="Đối chiếu và đồng bộ hoa hồng theo sổ đã duyệt"
-                            >
-                              ĐỒNG BỘ
-                            </button>
                             <button
                               type="button"
                               onClick={() => openEditModal(l)}
