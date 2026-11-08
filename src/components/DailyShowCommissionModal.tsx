@@ -28,6 +28,8 @@ interface DailyShowCommissionModalProps {
     SoTienHoaHong: number;
     AnhChungTu?: string;
     GhiChu?: string;
+    TrangThaiThanhToan: 'Đã thanh toán' | 'Chưa thanh toán';
+    PhuongThucThanhToan?: 'Chuyển khoản' | 'Tiền mặt' | '';
   }) => Promise<void>;
 }
 
@@ -53,6 +55,8 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
   // Proof & notes
   const [anhChungTu, setAnhChungTu] = useState<string>('');
   const [ghiChu, setGhiChu] = useState('');
+  const [trangThaiThanhToan, setTrangThaiThanhToan] = useState<'Đã thanh toán' | 'Chưa thanh toán'>('Chưa thanh toán');
+  const [phuongThucThanhToan, setPhuongThucThanhToan] = useState<'Chuyển khoản' | 'Tiền mặt' | ''>('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -132,6 +136,8 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
         SoTienHoaHong: finalAmount,
         AnhChungTu: anhChungTu.trim() || undefined,
         GhiChu: ghiChu.trim() || undefined,
+        TrangThaiThanhToan: trangThaiThanhToan,
+        PhuongThucThanhToan: trangThaiThanhToan === 'Đã thanh toán' ? phuongThucThanhToan : '',
       });
       onClose();
     } catch (err: any) {
@@ -415,6 +421,40 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
               </div>
             </div>
           )}
+
+          {/* Payment status and method */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl border border-stone-200 bg-[#FAF8F5]">
+            <div>
+              <label className="block text-stone-600 font-semibold mb-1.5">Trạng thái thanh toán <span className="text-rose-500">*</span></label>
+              <select
+                value={trangThaiThanhToan}
+                onChange={(e) => {
+                  const value = e.target.value as 'Đã thanh toán' | 'Chưa thanh toán';
+                  setTrangThaiThanhToan(value);
+                  if (value === 'Chưa thanh toán') setPhuongThucThanhToan('');
+                }}
+                className="w-full px-3 py-2.5 border border-stone-200 rounded-lg bg-white focus:ring-1 focus:ring-[#bf954f]"
+              >
+                <option value="Chưa thanh toán">Chưa thanh toán</option>
+                <option value="Đã thanh toán">Đã thanh toán</option>
+              </select>
+            </div>
+            {trangThaiThanhToan === 'Đã thanh toán' && (
+              <div>
+                <label className="block text-stone-600 font-semibold mb-1.5">Phương thức thanh toán <span className="text-rose-500">*</span></label>
+                <select
+                  required
+                  value={phuongThucThanhToan}
+                  onChange={(e) => setPhuongThucThanhToan(e.target.value as 'Chuyển khoản' | 'Tiền mặt' | '')}
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg bg-white focus:ring-1 focus:ring-[#bf954f]"
+                >
+                  <option value="">-- Chọn phương thức --</option>
+                  <option value="Chuyển khoản">Chuyển khoản</option>
+                  <option value="Tiền mặt">Tiền mặt</option>
+                </select>
+              </div>
+            )}
+          </div>
 
           {/* Proof / Image attachment */}
           <div>
