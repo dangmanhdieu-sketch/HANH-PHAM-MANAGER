@@ -591,30 +591,47 @@ app.post('/api/chamcong/checkout', authenticateToken, (req: AuthRequest, res: Re
 // Lightweight report payload: omit receipt photos and unrelated fields so the
 // analytics screen does not download large base64 images for every receipt.
 app.get('/api/reports/contracts-revenue', authenticateToken, requireAdmin, (_req: AuthRequest, res: Response) => {
+  const startedAt = Date.now();
   const records = dbService.getQuanLyRecords();
-  const contracts = records
-    .filter((record) => record.Module === 'HOP_DONG')
-    .map((record) => {
-      const data = record.DuLieu || {};
-      return {
-        QuanLyID: record.QuanLyID,
-        Module: record.Module,
-        TaoLuc: record.TaoLuc,
-        DuLieu: {
-          MaHopDong: data.MaHopDong,
-          KhachHang: data.KhachHang,
-          GoiDichVu: data.GoiDichVu,
-          TenGoi: data.TenGoi,
-          NgayKy: data.NgayKy,
-          NgayTao: data.NgayTao,
-          TongGiaTri: data.TongGiaTri,
-          GiaGoiBanDau: data.GiaGoiBanDau,
-          TrangThai: data.TrangThai,
-        },
-      };
-    });
+  const contractRecords = records.filter((record) => record.Module === 'HOP_DONG');
+  const contractCodes = new Set<string>();
+  const contractIds = new Set<string>();
+
+  const contracts = contractRecords.map((record) => {
+    const data = record.DuLieu || {};
+    const code = String(data.MaHopDong || record.QuanLyID || '');
+    contractIds.add(String(record.QuanLyID));
+    if (code) contractCodes.add(code);
+    return {
+      QuanLyID: record.QuanLyID,
+      Module: record.Module,
+      TaoLuc: record.TaoLuc,
+      DuLieu: {
+        MaHopDong: data.MaHopDong,
+        KhachHang: data.KhachHang,
+        GoiDichVu: data.GoiDichVu,
+        TenGoi: data.TenGoi,
+        NgayKy: data.NgayKy,
+        NgayTao: data.NgayTao,
+        TongGiaTri: data.TongGiaTri,
+        GiaGoiBanDau: data.GiaGoiBanDau,
+        TrangThai: data.TrangThai,
+      },
+    };
+  });
+
+  // Only send receipts linked to one of the contracts in this report.
+  // This avoids transferring unrelated THU_CHI history and all receipt photos.
   const receipts = records
     .filter((record) => record.Module === 'THU_CHI')
+    .filter((record) => {
+      const data = record.DuLieu || {};
+      if (String(data.Loai || '').toUpperCase() !== 'THU') return false;
+      const contractCode = String(data.HopDongID || data.MaHopDong || '');
+      const linkedContractId = String(data.HopDongQuanLyID || '');
+      return (contractCode && contractCodes.has(contractCode)) ||
+        (linkedContractId && contractIds.has(linkedContractId));
+    })
     .map((record) => {
       const data = record.DuLieu || {};
       return {
@@ -631,9 +648,17 @@ app.get('/api/reports/contracts-revenue', authenticateToken, requireAdmin, (_req
           Ngay: data.Ngay,
         },
       };
-    })
-    .filter((record) => String(record.DuLieu.Loai || '').toUpperCase() === 'THU');
+    });
+
+  const elapsedMs = Date.now() - startedAt;
+  console.info('[REPORTS] contracts-revenue', JSON.stringify({
+    elapsedMs,
+    totalRecordsScanned: records.length,
+    contractCount: contracts.length,
+    matchedReceiptCount: receipts.length,
+  }));
   res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('Server-Timing', `report;dur=${elapsedMs}`);
   return res.json({ contracts, receipts });
 });
 
