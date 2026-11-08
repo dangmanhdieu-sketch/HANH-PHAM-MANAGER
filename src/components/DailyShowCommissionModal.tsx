@@ -40,6 +40,7 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
   const [loaiKhoan, setLoaiKhoan] = useState<LoaiKhoanThuNhap>('Tiền Show');
   const [ngay, setNgay] = useState(new Date().toISOString().split('T')[0]);
   const [tenDichVu, setTenDichVu] = useState('');
+  const [showTaskCustom, setShowTaskCustom] = useState(false);
   const [tenKhachHang, setTenKhachHang] = useState('');
 
   // Show fee states
@@ -57,14 +58,21 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
 
   if (!isOpen) return null;
 
-  // Preset quick selections for wedding studio show fees
+  // Bảng giá công việc show thống nhất với màn hình Admin
   const quickShowTypes = [
-    { label: 'Makeup cô dâu tại tiệc sáng', fee: 800000 },
-    { label: 'Makeup cô dâu tiệc tối & dặm phấn', fee: 1000000 },
-    { label: 'Show quay phim / chụp phóng sự tiệc', fee: 1200000 },
-    { label: 'Show chụp ngoại cảnh nguyên ngày', fee: 1500000 },
-    { label: 'May đo & thử váy cô dâu tại gia', fee: 600000 },
-    { label: 'Trợ lý stylist váy cưới sự kiện', fee: 500000 },
+    { label: 'MK đám hỏi, rước dâu, nhà thờ', fee: 800000 },
+    { label: 'MK cô dâu Đám cưới', fee: 1000000 },
+    { label: 'MK chụp cổng 1c', fee: 300000 },
+    { label: 'MK chụp cổng 2c', fee: 500000 },
+    { label: 'MK tiệc tại tiệm', fee: 300000 },
+    { label: 'MK tiệc tại nhà khách', fee: 300000 },
+    { label: 'MK bà sui', fee: 500000 },
+    { label: 'Chụp TT Máy lẻ', fee: 1200000 },
+    { label: 'Chụp TT máy Tặng', fee: 500000 },
+    { label: 'Chụp PS máy Lẻ', fee: 2000000 },
+    { label: 'Chụp PS Kèm Máy TT', fee: 1500000 },
+    { label: 'Quay PS', fee: 3500000 },
+    { label: 'Quay TT', fee: 2500000 },
   ];
 
   // Preset quick selections for commission contracts
@@ -257,37 +265,63 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
             <label className="block text-stone-600 font-semibold mb-1">
               Chi tiết công việc / Tên show <span className="text-rose-500">*</span>
             </label>
-            <input
-              type="text"
-              required
-              value={tenDichVu}
-              onChange={(e) => setTenDichVu(e.target.value)}
-              placeholder={
-                loaiKhoan === 'Tiền Show'
-                  ? 'VD: Makeup cô dâu tiệc cưới tại White Palace'
-                  : 'VD: Tư vấn chốt thuê váy cưới công chúa Royal Lace'
-              }
-              className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f]"
-            />
-
-            {/* Quick Suggestions */}
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              <span className="text-[10px] text-stone-400 self-center">Gợi ý nhanh:</span>
-              {(loaiKhoan === 'Tiền Show' ? quickShowTypes : quickCommissionTypes).map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => {
-                    setTenDichVu(item.label);
-                    if ('fee' in item) setTienShow(item.fee);
-                    if ('rate' in item) setTyLe(item.rate);
+            {loaiKhoan === 'Tiền Show' ? (
+              <>
+                <select
+                  required
+                  value={showTaskCustom ? 'Khác' : tenDichVu}
+                  onChange={(e) => {
+                    const selected = e.target.value;
+                    const preset = quickShowTypes.find((item) => item.label === selected);
+                    setShowTaskCustom(selected === 'Khác');
+                    if (preset) {
+                      setTenDichVu(preset.label);
+                      setTienShow(preset.fee);
+                    } else if (selected === 'Khác') {
+                      setTenDichVu('');
+                    }
                   }}
-                  className="px-2.5 py-1 rounded-full bg-stone-100 hover:bg-[#FAF8F5] hover:border-[#c5a059] border border-transparent text-[10px] text-stone-700 transition"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg bg-white focus:ring-1 focus:ring-[#bf954f]"
                 >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+                  <option value="">-- Chọn công việc và mức giá --</option>
+                  {quickShowTypes.map((item) => (
+                    <option key={item.label} value={item.label}>
+                      {item.label} — {item.fee.toLocaleString('vi-VN')}đ
+                    </option>
+                  ))}
+                  <option value="Khác">Khác (tự nhập nội dung)</option>
+                </select>
+                {showTaskCustom && (
+                  <input
+                    type="text"
+                    required
+                    value={tenDichVu}
+                    onChange={(e) => setTenDichVu(e.target.value)}
+                    placeholder="Nhập nội dung công việc khác"
+                    className="mt-2 w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f]"
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  required
+                  value={tenDichVu}
+                  onChange={(e) => setTenDichVu(e.target.value)}
+                  placeholder="VD: Tư vấn chốt thuê váy cưới công chúa Royal Lace"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f]"
+                />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="text-[10px] text-stone-400 self-center">Gợi ý nhanh:</span>
+                  {quickCommissionTypes.map((item) => (
+                    <button key={item.label} type="button" onClick={() => { setTenDichVu(item.label); setTyLe(item.rate); }} className="px-2.5 py-1 rounded-full bg-stone-100 hover:bg-[#FAF8F5] border border-transparent text-[10px] text-stone-700 transition">
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* SPECIFIC INPUTS DEPENDING ON LOAIKHOAN */}
