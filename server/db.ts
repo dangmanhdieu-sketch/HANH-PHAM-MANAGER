@@ -2225,11 +2225,8 @@ class DatabaseService {
   }
 
   public getConfig(): SystemConfig {
-    const officialAddress = '321 Lê Quý Đôn, Tân Xuân, Bình Phước, Đồng Nai';
-    if (this.db.SYSTEM_CONFIG.DiaChi !== officialAddress) {
-      this.db.SYSTEM_CONFIG.DiaChi = officialAddress;
-      this.save();
-    }
+    // Reading configuration must be side-effect free. The previous hard-coded
+    // address overwrite silently discarded Admin edits whenever Settings loaded.
     return this.db.SYSTEM_CONFIG;
   }
 
