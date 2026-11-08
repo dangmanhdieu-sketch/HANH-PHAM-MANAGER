@@ -1337,6 +1337,12 @@ class DatabaseService {
     });
   }
 
+  public getChamCongPhotos(id: string): Pick<ChamCong, 'AnhCheckIn' | 'AnhCheckOut'> | null {
+    const record = this.db.CHAMCONG.find((item) => item.ChamCongID === id);
+    if (!record) return null;
+    return { AnhCheckIn: record.AnhCheckIn, AnhCheckOut: record.AnhCheckOut };
+  }
+
   public checkIn(
     user: NhanVien,
     data: {
