@@ -1255,9 +1255,17 @@ class DatabaseService {
 
   public deleteNhanVien(id: string, adminUser: { HoTen: string; Email: string }): boolean {
     const nv = this.findNhanVienById(id);
-    if (!nv) throw new Error('Nhân viên không tồn tại');
+    if (!nv) throw new Error('Nhân viên không tồn tại hoặc mã nhân viên bị trùng.');
     if (nv.Quyen === 'Admin' && nv.NhanVienID === 'NV001') {
       throw new Error('Không thể xóa tài khoản Quản trị viên tối cao');
+    }
+    const linkedAttendance = this.db.CHAMCONG.some((item) => item.NhanVienID === id);
+    const linkedPayroll = this.db.LUONG.some((item) => item.NhanVienID === id);
+    const linkedCommission = this.db.HOAHONG.some((item) => item.NhanVienID === id);
+    const linkedAdvance = this.db.TAM_UNG.some((item) => item.NhanVienID === id);
+    const linkedBusiness = this.db.QUAN_LY.some((item) => item.DuLieu?.NhanVienID === id);
+    if (linkedAttendance || linkedPayroll || linkedCommission || linkedAdvance || linkedBusiness) {
+      throw new Error('Nhân viên này đã có lịch sử chấm công, lương, hoa hồng hoặc nghiệp vụ. Không thể xóa để tránh mất dấu vết tài chính; hãy chuyển trạng thái nhân viên sang "Nghỉ" thay vì xóa.');
     }
 
     this.db.NHANVIEN = this.db.NHANVIEN.filter((item) => item.NhanVienID !== id);
@@ -1290,7 +1298,14 @@ class DatabaseService {
   public deleteChamCong(id: string): boolean {
     const index = this.db.CHAMCONG.findIndex((cc) => cc.ChamCongID === id);
     if (index < 0) return false;
-    const deleted = this.db.CHAMCONG.splice(index, 1)[0];
+    const deleted = this.db.CHAMCONG[index];
+    const [year, month] = String(deleted.Ngay || '').split('-');
+    const thang = month && year ? `${month}/${year}` : '';
+    const linkedPayroll = this.db.LUONG.find((item) => item.NhanVienID === deleted.NhanVienID && item.Thang === thang);
+    if (linkedPayroll) {
+      throw new Error('Đã có bảng lương cho kỳ này. Không thể xóa chấm công đã được dùng để tính lương; hãy xử lý bảng lương nháp trước khi điều chỉnh.');
+    }
+    this.db.CHAMCONG.splice(index, 1);
     this.refreshKPIs();
     this.save();
     this.logAudit('Admin', '', 'Xóa chấm công', 'Xóa bản ghi chấm công ' + deleted.HoTen + ' (' + deleted.NhanVienID + ') ngày ' + deleted.Ngay);
@@ -1335,9 +1350,9 @@ class DatabaseService {
       deviceTimeZone?: string;
     }
   ): ChamCong {
-    const now = data.deviceTime ? new Date(data.deviceTime) : new Date();
-    if (Number.isNaN(now.getTime())) throw new Error('Thời gian thiết bị không hợp lệ.');
-    const zoned = getZonedParts(now, data.deviceTimeZone || DEFAULT_APP_TIMEZONE);
+    // Use server time as the source of truth; client clock and timezone can be edited.
+    const now = new Date();
+    const zoned = getZonedParts(now, DEFAULT_APP_TIMEZONE);
     const todayStr = zoned.date;
     const timeStr = zoned.time; // HH:mm:ss
     const currentMinutes = zoned.hour * 60 + zoned.minute;
@@ -1418,9 +1433,9 @@ class DatabaseService {
       deviceTimeZone?: string;
     }
   ): ChamCong {
-    const now = data.deviceTime ? new Date(data.deviceTime) : new Date();
-    if (Number.isNaN(now.getTime())) throw new Error('Thời gian thiết bị không hợp lệ.');
-    const zoned = getZonedParts(now, data.deviceTimeZone || DEFAULT_APP_TIMEZONE);
+    // Use server time as the source of truth; client clock and timezone can be edited.
+    const now = new Date();
+    const zoned = getZonedParts(now, DEFAULT_APP_TIMEZONE);
     const todayStr = zoned.date;
     const timeStr = zoned.time;
     const currentMinutes = zoned.hour * 60 + zoned.minute;
@@ -1757,6 +1772,11 @@ class DatabaseService {
       throw new Error('Chỉ được xóa bảng lương đang Chờ duyệt. Bảng lương đã duyệt hoặc đã thanh toán được giữ để bảo toàn lịch sử.');
     }
     this.db.LUONG.splice(index, 1);
+    // Keep approved commission records intact; only clear the link to the
+    // deleted draft payroll so a regenerated month can attach them again.
+    this.db.HOAHONG.forEach((item) => {
+      if (item.LuongID === luongId) item.LuongID = undefined;
+    });
     this.refreshKPIs();
     this.save();
     this.logAudit(adminUser.HoTen, adminUser.Email, 'Xóa bảng lương', `Xóa bảng lương ${luong.LuongID} của ${luong.HoTen}, kỳ ${luong.Thang}`);
