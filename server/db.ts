@@ -1574,6 +1574,37 @@ class DatabaseService {
   }
 
   // LUONG methods & Anti-duplicate check
+  /** Keep pending payroll commission exactly equal to the approved commission ledger for that employee/month. */
+  public syncHoaHongToLuong(nhanVienId: string, thang: string): Luong | undefined {
+    const luong = this.db.LUONG.find((item) => item.NhanVienID === nhanVienId && item.Thang === thang);
+    if (!luong || luong.TrangThai !== 'Chờ duyệt') return luong;
+    const [month, year] = thang.split('/');
+    const prefix = `${year}-${String(month).padStart(2, '0')}`;
+    const approved = this.db.HOAHONG.filter((item) =>
+      item.NhanVienID === nhanVienId && item.Ngay.startsWith(prefix) && item.TrangThai === 'Đã duyệt'
+    );
+    luong.HoaHong = approved.reduce((sum, item) => sum + (Number(item.SoTienHoaHong) || 0), 0);
+    const approvedIds = new Set(approved.map((item) => item.HoaHongID));
+    this.db.HOAHONG.forEach((item) => {
+      if (item.NhanVienID === nhanVienId && item.Ngay.startsWith(prefix)) {
+        if (approvedIds.has(item.HoaHongID)) item.LuongID = luong.LuongID;
+        else if (item.LuongID === luong.LuongID) delete item.LuongID;
+      }
+    });
+    this.recalculateLuong(luong);
+    return luong;
+  }
+
+  public reconcilePendingPayrollCommissions(luongId: string): Luong {
+    const luong = this.findLuongById(luongId);
+    if (!luong) throw new Error('Không tìm thấy bảng lương.');
+    if (luong.TrangThai !== 'Chờ duyệt') throw new Error('Chỉ được đồng bộ hoa hồng khi bảng lương đang chờ duyệt.');
+    this.syncHoaHongToLuong(luong.NhanVienID, luong.Thang);
+    this.refreshKPIs();
+    this.save();
+    return luong;
+  }
+
   public recalculateLuong(luong: Luong): void {
     const tong =
       (luong.LuongCoBan || 0) +
@@ -2020,9 +2051,8 @@ class DatabaseService {
       );
 
       if (luong && luong.TrangThai === 'Chờ duyệt') {
-        luong.HoaHong = (luong.HoaHong || 0) + hh.SoTienHoaHong;
-        this.recalculateLuong(luong);
-        hh.LuongID = luong.LuongID;
+        // Recompute from the approved ledger instead of adding repeatedly; approval retries stay idempotent.
+        this.syncHoaHongToLuong(hh.NhanVienID, thangStr);
       }
     } else {
       hh.TrangThai = 'Từ chối';
@@ -2030,6 +2060,8 @@ class DatabaseService {
       hh.NguoiDuyet = adminUser.HoTen;
     }
 
+    const [commissionYear, commissionMonth] = hh.Ngay.split('-');
+    this.syncHoaHongToLuong(hh.NhanVienID, `${commissionMonth}/${commissionYear}`);
     this.refreshKPIs();
     this.save();
 
@@ -2054,16 +2086,9 @@ class DatabaseService {
     const hh = this.db.HOAHONG.find((h) => h.HoaHongID === id);
     if (!hh) throw new Error('Hoa hồng không tồn tại');
 
-    // If already linked to a Luong, subtract from Luong if Luong is still Chờ duyệt
-    if (hh.LuongID && hh.TrangThai === 'Đã duyệt') {
-      const luong = this.findLuongById(hh.LuongID);
-      if (luong && luong.TrangThai === 'Chờ duyệt') {
-        luong.HoaHong = Math.max(0, (luong.HoaHong || 0) - hh.SoTienHoaHong);
-        this.recalculateLuong(luong);
-      }
-    }
-
     this.db.HOAHONG = this.db.HOAHONG.filter((h) => h.HoaHongID !== id);
+    const [year, month] = hh.Ngay.split('-');
+    this.syncHoaHongToLuong(hh.NhanVienID, `${month}/${year}`);
     this.refreshKPIs();
     this.save();
 
