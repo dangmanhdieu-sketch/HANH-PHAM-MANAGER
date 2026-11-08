@@ -774,10 +774,20 @@ class DatabaseService {
         if (value === undefined) continue;
         const serialized = JSON.stringify(sanitizeFirestoreValue(value));
         const bytes = Buffer.byteLength(serialized, 'utf8');
-        // Compress large JSON tables before chunking to reduce Firestore writes and latency.
-        // Small tables retain the existing native Firestore representation.
-        const rawEncoded = Buffer.from(serialized, 'utf8').toString('base64');
-        const compressedEncoded = gzipSync(Buffer.from(serialized, 'utf8')).toString('base64');
+        // Small tables are safely below Firestore's document limit. Do not spend
+        // CPU/base64 allocations compressing them: only large tables need chunk
+        // encoding. This keeps routine approval writes lighter on small Render
+        // instances while preserving the exact Firestore schema and data.
+        if (bytes <= 150000) {
+          smallTables.push({ table, data: JSON.parse(serialized), bytes });
+          continue;
+        }
+
+        // Compress only larger JSON tables before chunking to reduce Firestore
+        // writes and network latency. Small tables retain native Firestore data.
+        const buffer = Buffer.from(serialized, 'utf8');
+        const rawEncoded = buffer.toString('base64');
+        const compressedEncoded = gzipSync(buffer).toString('base64');
         const encoded = compressedEncoded.length < rawEncoded.length ? compressedEncoded : rawEncoded;
         const encoding = encoded === compressedEncoded ? 'gzip-base64' : 'base64';
         if (encoded.length <= PART_SIZE) {
