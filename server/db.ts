@@ -596,6 +596,13 @@ class DatabaseService {
       const schemaVersion = Number(rootData.__schemaVersion || 1);
 
       if (schemaVersion >= 2) {
+        // A verified record-level commission store is authoritative. Read its
+        // migration marker before fetching table payloads so we can skip the
+        // legacy 28MB HOAHONG chunk set entirely on every subsequent startup.
+        const hoaHongMarkerSnap = await rootRef.collection('meta').doc('HOAHONG_RECORDS').get();
+        const hasVerifiedHoaHongRecords =
+          hoaHongMarkerSnap.exists && hoaHongMarkerSnap.data()?.version === 1;
+
         const tableSnaps = await Promise.all(
           this.firestoreTables.map((table) =>
             rootRef.collection('tables').doc(table).get()
@@ -616,6 +623,12 @@ class DatabaseService {
             continue;
           }
           const tableMeta = snap.data() || {};
+          if (table === 'HOAHONG' && hasVerifiedHoaHongRecords) {
+            // The verified hoaHongRecords collection replaces this legacy
+            // table for reads. Do not fetch/decompress its large chunk payload.
+            (loaded as any).HOAHONG = [];
+            continue;
+          }
           if (tableMeta.storage === 'chunked-json-base64') {
             const chunkCount = Number(tableMeta.chunkCount || 0);
             if (!Number.isInteger(chunkCount) || chunkCount < 1 || chunkCount > 500) {
@@ -784,8 +797,9 @@ class DatabaseService {
     if (markerSnap.exists && markerSnap.data()?.version === 1) {
       const snapshot = await recordsRef.get();
       const records = snapshot.docs.map((doc) => restoreFirestoreValue(doc.data().record));
-      if (records.length !== this.db.HOAHONG.length) {
-        throw new Error(`[Firebase] HOAHONG record count mismatch: legacy=${this.db.HOAHONG.length}, records=${records.length}. Refusing unsafe startup.`);
+      const expectedCount = Number(markerSnap.data()?.recordCount);
+      if (!Number.isInteger(expectedCount) || expectedCount < 0 || records.length !== expectedCount) {
+        throw new Error(`[Firebase] HOAHONG record count mismatch: marker=${expectedCount}, records=${records.length}. Refusing unsafe startup.`);
       }
       this.db.HOAHONG = records as HoaHong[];
       this.hoaHongRecordStorageEnabled = true;
