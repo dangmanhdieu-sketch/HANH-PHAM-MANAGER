@@ -2231,6 +2231,8 @@ class DatabaseService {
     duplicates(this.db.CHAMCONG, (row) => row.ChamCongID, 'DUPLICATE_ATTENDANCE_ID', 'Mã chấm công');
     duplicates(this.db.HOAHONG, (row) => row.HoaHongID, 'DUPLICATE_COMMISSION_ID', 'Mã hoa hồng');
     duplicates(this.db.LUONG, (row) => row.LuongID, 'DUPLICATE_PAYROLL_ID', 'Mã bảng lương');
+    duplicates(this.db.TAM_UNG, (row) => row.TamUngID, 'DUPLICATE_ADVANCE_ID', 'Mã tạm ứng');
+    duplicates(this.db.QUAN_LY || [], (row) => row.QuanLyID, 'DUPLICATE_BUSINESS_RECORD_ID', 'Mã dữ liệu nghiệp vụ');
     duplicates(this.db.CHAMCONG, (row) => `${row.NhanVienID}|${row.Ngay}`, 'DUPLICATE_ATTENDANCE_DAY', 'Nhân viên/ngày chấm công');
     duplicates(this.db.LUONG, (row) => `${row.NhanVienID}|${row.Thang}`, 'DUPLICATE_PAYROLL_MONTH', 'Nhân viên/kỳ lương');
 
