@@ -725,6 +725,14 @@ export const api = {
       );
     },
 
+    async getDataIntegrityReport(): Promise<{
+      generatedAt: string;
+      summary: { employees: number; attendance: number; commissions: number; payrolls: number; advances: number; critical: number; warning: number; totalIssues: number };
+      issues: Array<{ code: string; severity: 'critical' | 'warning'; message: string; records?: string[] }>;
+    }> {
+      return request('/api/admin/data-integrity');
+    },
+
     // -------------------------------------------------------
     // CẬP NHẬT THÔNG TIN STUDIO
     // -------------------------------------------------------
