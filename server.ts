@@ -1165,6 +1165,13 @@ app.get('/api/thongke', authenticateToken, (req: AuthRequest, res: Response) => 
       todayChamCong: raw.CHAMCONG.filter((cc) => cc.Ngay === new Date().toISOString().split('T')[0]),
       pendingLuong: raw.LUONG.filter((l) => l.TrangThai === 'Chờ duyệt'),
       paidLuong: raw.LUONG.filter((l) => l.TrangThai === 'Đã thanh toán'),
+      // Dashboard needs aggregate commission/payroll figures, not the full
+      // commission ledger with receipt photos. Keep the 28MB ledger off the
+      // initial dashboard network response.
+      approvedCommissionTotal: raw.HOAHONG.reduce((sum, item) =>
+        item.TrangThai === 'Đã duyệt' ? sum + (Number(item.SoTienHoaHong) || 0) : sum, 0),
+      pendingPayrollTotal: raw.LUONG.reduce((sum, item) =>
+        item.TrangThai === 'Chờ duyệt' ? sum + (Number(item.ThucLanh) || 0) : sum, 0),
       automation: automationManager.getStatus(),
     });
   } else {
