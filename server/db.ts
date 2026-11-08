@@ -1288,8 +1288,17 @@ class DatabaseService {
 
   // Admin reviews the employee's explanation for a late arrival or early checkout.
   public reviewChamCong(id: string, decision: 'Chấp nhận' | 'Không chấp nhận', note: string, admin: NhanVien): ChamCong | null {
-    const record = this.db.CHAMCONG.find((item) => item.ChamCongID === id);
-    if (!record) return null;
+    const matches = this.db.CHAMCONG.filter((item) => item.ChamCongID === id);
+    if (matches.length !== 1) {
+      if (matches.length > 1) throw new Error('Mã chấm công bị trùng; đã chặn duyệt để tránh sửa nhầm người.');
+      return null;
+    }
+    const record = matches[0];
+    const [year, month] = String(record.Ngay || '').split('-');
+    const thang = month && year ? `${month}/${year}` : '';
+    if (this.db.LUONG.some((item) => item.NhanVienID === record.NhanVienID && item.Thang === thang)) {
+      throw new Error('Kỳ này đã có bảng lương. Không thể sửa kết quả giải trình sau khi dữ liệu đã được dùng để tính lương; hãy xử lý bảng lương nháp trước.');
+    }
     record.KetQuaGiaiTrinh = decision;
     record.GhiChuDuyet = note;
     record.NguoiDuyetGiaiTrinh = admin.HoTen;
@@ -1357,6 +1366,13 @@ class DatabaseService {
       deviceTimeZone?: string;
     }
   ): ChamCong {
+    const gpsParts = String(data.gps || '').trim().split(/[ ,]+/);
+    const latitude = Number(gpsParts[0]);
+    const longitude = Number(gpsParts[1]);
+    if (gpsParts.length < 2 || !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+        latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      throw new Error('Tọa độ GPS không hợp lệ. Vui lòng lấy lại vị trí trước khi chấm công.');
+    }
     // Use server time as the source of truth; client clock and timezone can be edited.
     const now = new Date();
     const zoned = getZonedParts(now, DEFAULT_APP_TIMEZONE);
@@ -1444,6 +1460,13 @@ class DatabaseService {
       deviceTimeZone?: string;
     }
   ): ChamCong {
+    const gpsParts = String(data.gps || '').trim().split(/[ ,]+/);
+    const latitude = Number(gpsParts[0]);
+    const longitude = Number(gpsParts[1]);
+    if (gpsParts.length < 2 || !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+        latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      throw new Error('Tọa độ GPS không hợp lệ. Vui lòng lấy lại vị trí trước khi chấm công.');
+    }
     // Use server time as the source of truth; client clock and timezone can be edited.
     const now = new Date();
     const zoned = getZonedParts(now, DEFAULT_APP_TIMEZONE);
