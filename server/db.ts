@@ -1723,6 +1723,9 @@ class DatabaseService {
     if (new Set(activeIds).size !== activeIds.length) {
       throw new Error('Phát hiện mã nhân viên đang làm bị trùng. Hệ thống đã dừng tạo lương để tránh cộng sai người; hãy chạy Kiểm tra toàn vẹn dữ liệu.');
     }
+    // Parse month prefix before validating the complete batch.
+    const [m, y] = thang.split('/');
+    const monthPrefix = `${y}-${m.padStart(2, '0')}`;
     const pendingGenerationStaff = activeStaff.filter((nv) =>
       !this.db.LUONG.some((row) => row.NhanVienID === nv.NhanVienID && row.Thang === thang)
     );
@@ -1763,10 +1766,6 @@ class DatabaseService {
     let skippedCount = 0;
     const createdItems: string[] = [];
     const skippedItems: string[] = [];
-
-    // Parse month prefix to calculate real hours and days from CHAMCONG
-    const [m, y] = thang.split('/');
-    const monthPrefix = `${y}-${m.padStart(2, '0')}`;
 
     for (const nv of activeStaff) {
       // CHỐNG TRÙNG: Kiểm tra đã có bảng lương của nhân viên trong tháng này chưa
