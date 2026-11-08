@@ -757,8 +757,8 @@ class DatabaseService {
     const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
     const committedAt = new Date().toISOString();
     const PART_SIZE = 200000;
-    const smallTables: Array<{ table: (typeof this.firestoreTables)[number]; data: any; bytes: number }> = [];
-    const largeTables: Array<{ table: (typeof this.firestoreTables)[number]; encoded: string; bytes: number }> = [];
+    const smallTables: Array<{ table: string; data: any; bytes: number }> = [];
+    const largeTables: Array<{ table: string; encoded: string; bytes: number }> = [];
 
     try {
       // Prepare changed tables once. Small tables are committed together in one
