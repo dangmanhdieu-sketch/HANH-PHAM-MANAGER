@@ -673,6 +673,7 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       if (!Number.isFinite(amount) || amount <= 0) {
         return res.status(400).json({ error: 'Số tiền phải là số hợp lệ và lớn hơn 0.' });
       }
+      payload.SoTien = Math.round(amount);
 
       if (payload.Loai === 'THU' && (payload.HopDongQuanLyID || payload.HopDongID || payload.MaHopDong)) {
         const contractId = String(payload.HopDongQuanLyID || '');
@@ -865,6 +866,7 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       if (!['THU', 'CHI'].includes(cashflowType) || !Number.isFinite(cashflowAmount) || cashflowAmount <= 0) {
         return res.status(400).json({ error: 'Loại phiếu và số tiền thu/chi không hợp lệ.' });
       }
+      changes.SoTien = Math.round(cashflowAmount);
       const cashflowDate = String(mergedCashflow.Ngay || '');
       const dateParts = cashflowDate.split('-');
       const parsedCashflowDate = new Date(cashflowDate + 'T00:00:00Z');
