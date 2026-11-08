@@ -699,7 +699,9 @@ class DatabaseService {
           };
           const migrated = this.applyMigrations();
           this.refreshKPIs();
-          this.saveSync();
+          // Firestore is authoritative in production. Do not synchronously
+          // stringify/write the entire local database cache (including the
+          // large commission ledger) before the API becomes ready.
           // Keep startup focused on loading the existing authoritative table
           // documents. Never scan/migrate the entire hoaHongRecords collection
           // while the API readiness gate is closed: that collection can be very
