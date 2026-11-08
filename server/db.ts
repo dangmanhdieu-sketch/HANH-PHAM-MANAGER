@@ -274,6 +274,10 @@ class DatabaseService {
   // HOAHONG uses record-level Firestore documents so approving one item never
   // rewrites/recompresses the entire commission history.
   private hoaHongPersistedSnapshots = new Map<string, string>();
+  // Record-level dirty tracking avoids serializing the entire commission
+  // history for every approval/create/delete operation.
+  private hoaHongDirtyIds = new Set<string>();
+  private hoaHongDeletedIds = new Set<string>();
   private hoaHongRecordStorageEnabled = false;
   private firestore: Firestore | null = null;
   private firestoreEnabled = false;
@@ -845,6 +849,8 @@ class DatabaseService {
 
   private captureHoaHongRecordSnapshots(): void {
     this.hoaHongPersistedSnapshots.clear();
+    this.hoaHongDirtyIds.clear();
+    this.hoaHongDeletedIds.clear();
     for (const record of this.db.HOAHONG || []) {
       if (record.HoaHongID) {
         this.hoaHongPersistedSnapshots.set(String(record.HoaHongID), JSON.stringify(record));
@@ -858,18 +864,13 @@ class DatabaseService {
     }
     const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
     const recordsRef = rootRef.collection('hoaHongRecords');
-    const current = new Map<string, HoaHong>();
-    for (const record of this.db.HOAHONG || []) {
-      if (!record.HoaHongID) throw new Error('[Firebase] HOAHONG record missing HoaHongID; refusing partial write.');
-      current.set(String(record.HoaHongID), record);
-    }
     const writes: Array<{ id: string; record?: HoaHong }> = [];
-    for (const [id, record] of current) {
-      if (this.hoaHongPersistedSnapshots.get(id) !== JSON.stringify(record)) writes.push({ id, record });
+    for (const id of this.hoaHongDirtyIds) {
+      const record = this.db.HOAHONG.find((item) => String(item.HoaHongID) === id);
+      if (!record) throw new Error(`[Firebase] Dirty HOAHONG record ${id} is missing; refusing partial write.`);
+      writes.push({ id, record });
     }
-    for (const id of this.hoaHongPersistedSnapshots.keys()) {
-      if (!current.has(id)) writes.push({ id });
-    }
+    for (const id of this.hoaHongDeletedIds) writes.push({ id });
     if (writes.length === 0) return;
 
     const batchSize = 350;
@@ -890,10 +891,12 @@ class DatabaseService {
         }
       });
     }
-    this.hoaHongPersistedSnapshots.clear();
-    for (const [id, record] of current) {
-      this.hoaHongPersistedSnapshots.set(id, JSON.stringify(record));
+    for (const item of writes) {
+      if (item.record) this.hoaHongPersistedSnapshots.set(item.id, JSON.stringify(item.record));
+      else this.hoaHongPersistedSnapshots.delete(item.id);
     }
+    this.hoaHongDirtyIds.clear();
+    this.hoaHongDeletedIds.clear();
     console.log('[Firebase] HOAHONG record changes committed:', writes.length);
   }
 
@@ -906,15 +909,7 @@ class DatabaseService {
   private getChangedFirestoreTables(): (typeof this.firestoreTables)[number][] {
     return this.firestoreTables.filter((table) => {
       if (table === 'HOAHONG' && this.hoaHongRecordStorageEnabled) {
-        const current = new Map<string, string>();
-        for (const record of this.db.HOAHONG || []) {
-          if (record.HoaHongID) current.set(String(record.HoaHongID), JSON.stringify(record));
-        }
-        if (current.size !== this.hoaHongPersistedSnapshots.size) return true;
-        for (const [id, value] of current) {
-          if (this.hoaHongPersistedSnapshots.get(id) !== value) return true;
-        }
-        return false;
+        return this.hoaHongDirtyIds.size > 0 || this.hoaHongDeletedIds.size > 0;
       }
       const current = JSON.stringify((this.db as any)[table]);
       return current !== this.firestorePersistedSnapshots[table];
@@ -1811,8 +1806,15 @@ class DatabaseService {
     const approvedIds = new Set(approved.map((item) => item.HoaHongID));
     this.db.HOAHONG.forEach((item) => {
       if (item.NhanVienID === nhanVienId && item.Ngay.startsWith(prefix)) {
-        if (approvedIds.has(item.HoaHongID)) item.LuongID = luong.LuongID;
-        else if (item.LuongID === luong.LuongID) delete item.LuongID;
+        if (approvedIds.has(item.HoaHongID)) {
+          if (item.LuongID !== luong.LuongID) {
+            item.LuongID = luong.LuongID;
+            if (this.hoaHongRecordStorageEnabled) this.hoaHongDirtyIds.add(item.HoaHongID);
+          }
+        } else if (item.LuongID === luong.LuongID) {
+          delete item.LuongID;
+          if (this.hoaHongRecordStorageEnabled) this.hoaHongDirtyIds.add(item.HoaHongID);
+        }
       }
     });
     this.recalculateLuong(luong);
@@ -2237,6 +2239,7 @@ class DatabaseService {
     };
 
     this.db.HOAHONG.unshift(newHoaHong);
+    if (this.hoaHongRecordStorageEnabled) this.hoaHongDirtyIds.add(newHoaHong.HoaHongID);
     this.save();
 
     this.logAudit(
@@ -2273,6 +2276,7 @@ class DatabaseService {
     hh.TrangThai = nextStatus;
     hh.NgayDuyet = new Date().toISOString();
     hh.NguoiDuyet = adminUser.HoTen;
+    if (this.hoaHongRecordStorageEnabled) this.hoaHongDirtyIds.add(hh.HoaHongID);
 
     // Chỉ đồng bộ bảng lương một lần cho mỗi lần đổi trạng thái.
     // Trước đây nhánh duyệt gọi syncHoaHongToLuong rồi đoạn phía dưới gọi lại lần hai.
@@ -2303,6 +2307,10 @@ class DatabaseService {
     if (!hh) throw new Error('Hoa hồng không tồn tại');
 
     this.db.HOAHONG = this.db.HOAHONG.filter((h) => h.HoaHongID !== id);
+    if (this.hoaHongRecordStorageEnabled) {
+      this.hoaHongDirtyIds.delete(id);
+      this.hoaHongDeletedIds.add(id);
+    }
     const [year, month] = hh.Ngay.split('-');
     this.syncHoaHongToLuong(hh.NhanVienID, `${month}/${year}`);
     this.refreshKPIs();
