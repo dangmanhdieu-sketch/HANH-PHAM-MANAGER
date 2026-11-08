@@ -2131,6 +2131,104 @@ class DatabaseService {
     return true;
   }
 
+  /** Read-only financial and identity integrity scan. Never repairs or mutates production data. */
+  public getDataIntegrityReport() {
+    const issues: Array<{ code: string; severity: 'critical' | 'warning'; message: string; records?: string[] }> = [];
+    const add = (code: string, severity: 'critical' | 'warning', message: string, records?: string[]) => {
+      issues.push({ code, severity, message, ...(records?.length ? { records } : {}) });
+    };
+    const duplicates = (rows: any[], keyOf: (row: any) => string, code: string, label: string) => {
+      const groups = new Map<string, any[]>();
+      rows.forEach((row) => {
+        const key = String(keyOf(row) || '').trim();
+        if (!key) return;
+        const group = groups.get(key) || [];
+        group.push(row);
+        groups.set(key, group);
+      });
+      groups.forEach((group, key) => {
+        if (group.length > 1) add(code, 'critical', `${label} "${key}" bị trùng ${group.length} bản ghi.`, group.map((row) => String(row.NhanVienID || row.HoaHongID || row.LuongID || row.ChamCongID || key)));
+      });
+    };
+
+    duplicates(this.db.NHANVIEN, (row) => row.NhanVienID, 'DUPLICATE_STAFF_ID', 'Mã nhân viên');
+    duplicates(this.db.NHANVIEN, (row) => String(row.TenDangNhap || '').toLowerCase(), 'DUPLICATE_USERNAME', 'Tên đăng nhập');
+    duplicates(this.db.NHANVIEN, (row) => String(row.Email || '').trim().toLowerCase(), 'DUPLICATE_EMAIL', 'Email');
+    duplicates(this.db.CHAMCONG, (row) => row.ChamCongID, 'DUPLICATE_ATTENDANCE_ID', 'Mã chấm công');
+    duplicates(this.db.HOAHONG, (row) => row.HoaHongID, 'DUPLICATE_COMMISSION_ID', 'Mã hoa hồng');
+    duplicates(this.db.LUONG, (row) => row.LuongID, 'DUPLICATE_PAYROLL_ID', 'Mã bảng lương');
+    duplicates(this.db.CHAMCONG, (row) => `${row.NhanVienID}|${row.Ngay}`, 'DUPLICATE_ATTENDANCE_DAY', 'Nhân viên/ngày chấm công');
+    duplicates(this.db.LUONG, (row) => `${row.NhanVienID}|${row.Thang}`, 'DUPLICATE_PAYROLL_MONTH', 'Nhân viên/kỳ lương');
+
+    const uniqueStaff = new Set(this.db.NHANVIEN.map((row) => String(row.NhanVienID || '')));
+    const checkReferences = (rows: any[], table: string, idField: string) => {
+      rows.forEach((row) => {
+        const id = String(row.NhanVienID || '');
+        if (!id || !uniqueStaff.has(id) || this.db.NHANVIEN.filter((staff) => staff.NhanVienID === id).length !== 1) {
+          add('ORPHAN_OR_AMBIGUOUS_EMPLOYEE', 'critical', `${table} ${row[idField] || '(không mã)'} không tham chiếu duy nhất tới một nhân viên.`, [String(row[idField] || id || table)]);
+        }
+      });
+    };
+    checkReferences(this.db.CHAMCONG, 'Chấm công', 'ChamCongID');
+    checkReferences(this.db.HOAHONG, 'Hoa hồng', 'HoaHongID');
+    checkReferences(this.db.LUONG, 'Bảng lương', 'LuongID');
+    checkReferences(this.db.TAM_UNG, 'Tạm ứng', 'TamUngID');
+
+    this.db.HOAHONG.forEach((item) => {
+      const amount = Number(item.SoTienHoaHong);
+      if (!Number.isFinite(amount) || amount < 0) add('INVALID_COMMISSION_AMOUNT', 'critical', `Hoa hồng ${item.HoaHongID} có số tiền không hợp lệ.`, [item.HoaHongID]);
+      if (item.TrangThai === 'Đã duyệt' && item.LuongID) {
+        const payroll = this.db.LUONG.find((row) => row.LuongID === item.LuongID);
+        if (!payroll || payroll.NhanVienID !== item.NhanVienID) {
+          add('BROKEN_COMMISSION_PAYROLL_LINK', 'critical', `Hoa hồng ${item.HoaHongID} liên kết sai hoặc thiếu bảng lương.`, [item.HoaHongID, item.LuongID]);
+        } else if (payroll.Thang !== `${String(item.Ngay).slice(5, 7)}/${String(item.Ngay).slice(0, 4)}`) {
+          add('COMMISSION_WRONG_PAYROLL_PERIOD', 'critical', `Hoa hồng ${item.HoaHongID} đang liên kết sai kỳ lương.`, [item.HoaHongID, payroll.LuongID]);
+        }
+      }
+    });
+
+    this.db.LUONG.forEach((payroll) => {
+      const monthPrefix = (() => {
+        const [month, year] = String(payroll.Thang || '').split('/');
+        return month && year ? `${year}-${month.padStart(2, '0')}` : '';
+      })();
+      const expectedCommission = this.db.HOAHONG
+        .filter((item) => item.NhanVienID === payroll.NhanVienID && String(item.Ngay || '').startsWith(monthPrefix) && item.TrangThai === 'Đã duyệt')
+        .reduce((sum, item) => sum + (Number(item.SoTienHoaHong) || 0), 0);
+      if (Math.round(Number(payroll.HoaHong || 0)) !== Math.round(expectedCommission)) {
+        add('PAYROLL_COMMISSION_MISMATCH', 'critical', `Bảng lương ${payroll.LuongID} lệch hoa hồng: trên lương ${Number(payroll.HoaHong || 0)}, sổ hoa hồng đã duyệt ${expectedCommission}.`, [payroll.LuongID, payroll.NhanVienID]);
+      }
+      const expectedAdvance = this.getTongTamUng(payroll.NhanVienID, payroll.Thang);
+      if (Math.round(Number(payroll.TamUng || 0)) !== Math.round(expectedAdvance)) {
+        add('PAYROLL_ADVANCE_MISMATCH', 'warning', `Bảng lương ${payroll.LuongID} lệch tạm ứng: trên lương ${Number(payroll.TamUng || 0)}, sổ tạm ứng đã duyệt ${expectedAdvance}.`, [payroll.LuongID, payroll.NhanVienID]);
+      }
+      const expectedNet = Math.max(0,
+        Number(payroll.LuongCoBan || 0) + Number(payroll.PhuCap || 0) +
+        Number(payroll.Thuong || 0) + Number(payroll.HoaHong || 0) -
+        Number(payroll.Phat || 0) - Number(payroll.TamUng || 0)
+      );
+      if (Math.round(Number(payroll.TongLuong || 0)) !== Math.round(expectedNet) ||
+          Math.round(Number(payroll.ThucLanh || 0)) !== Math.round(expectedNet)) {
+        add('PAYROLL_TOTAL_MISMATCH', 'critical', `Bảng lương ${payroll.LuongID} có tổng lương/thực lãnh không khớp công thức.`, [payroll.LuongID, payroll.NhanVienID]);
+      }
+    });
+
+    return {
+      generatedAt: new Date().toISOString(),
+      summary: {
+        employees: this.db.NHANVIEN.length,
+        attendance: this.db.CHAMCONG.length,
+        commissions: this.db.HOAHONG.length,
+        payrolls: this.db.LUONG.length,
+        advances: this.db.TAM_UNG.length,
+        critical: issues.filter((item) => item.severity === 'critical').length,
+        warning: issues.filter((item) => item.severity === 'warning').length,
+        totalIssues: issues.length,
+      },
+      issues,
+    };
+  }
+
   public getConfig(): SystemConfig {
     const officialAddress = '321 Lê Quý Đôn, Tân Xuân, Bình Phước, Đồng Nai';
     if (this.db.SYSTEM_CONFIG.DiaChi !== officialAddress) {
