@@ -56,7 +56,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   // Dedicated "CẤP TÀI KHOẢN ĐĂNG NHẬP" Modal state
   const [credentialModalStaff, setCredentialModalStaff] = useState<NhanVien | null>(null);
-  const [credentialPassword, setCredentialPassword] = useState<string>('123456');
+  const [credentialPassword, setCredentialPassword] = useState<string>('');
   const [copiedCredential, setCopiedCredential] = useState(false);
   const [showPasswordInModal, setShowPasswordInModal] = useState(true);
 
@@ -183,7 +183,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   const handleOpenCredentialModal = (staff: NhanVien) => {
     setCredentialModalStaff(staff);
-    setCredentialPassword(staff.MatKhauHienThi || '123456');
+    setCredentialPassword('');
     setCopiedCredential(false);
   };
 
@@ -202,10 +202,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       setModalOpen(false);
       onRefresh();
 
-      // Show credential modal immediately when new staff is created
-      if (!editingStaff && savedStaff) {
+      // Show credentials only when a password was just set in this form.
+      // Existing passwords are never retrievable from the server.
+      if (savedStaff && formData.MatKhau.trim()) {
         setCredentialModalStaff(savedStaff);
-        setCredentialPassword(formData.MatKhau || '123456');
+        setCredentialPassword(formData.MatKhau.trim());
         setCopiedCredential(false);
       }
     } catch (err: any) {
@@ -955,17 +956,22 @@ HẠNH PHẠM MANAGER`;
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="text-stone-400 text-[10px] uppercase block">Mật khẩu đăng nhập</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowPasswordInModal(!showPasswordInModal)}
-                      className="text-[10px] text-[#dfc79f] hover:underline"
-                    >
-                      {showPasswordInModal ? 'Ẩn' : 'Hiện'}
-                    </button>
+                    {credentialPassword && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswordInModal(!showPasswordInModal)}
+                        className="text-[10px] text-[#dfc79f] hover:underline"
+                      >
+                        {showPasswordInModal ? 'Ẩn' : 'Hiện'}
+                      </button>
+                    )}
                   </div>
                   <span className="font-mono font-bold text-[#f3dfa2] text-base tracking-wider select-all">
-                    {showPasswordInModal ? credentialPassword : '••••••••'}
+                    {credentialPassword
+                      ? (showPasswordInModal ? credentialPassword : '••••••••')
+                      : 'Không thể xem lại mật khẩu cũ'}
                   </span>
+                  {!credentialPassword && <p className="text-[10px] text-amber-200 mt-1">Muốn cấp lại tài khoản, hãy mở Chỉnh sửa nhân viên, nhập mật khẩu mới và lưu.</p>}
                 </div>
 
                 <div>
@@ -993,7 +999,8 @@ HẠNH PHẠM MANAGER`;
               <button
                 type="button"
                 onClick={handleCopyCredentials}
-                className="flex-1 py-3 bg-stone-900 hover:bg-black text-[#f3dfa2] text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-md"
+                disabled={!credentialPassword}
+                className="flex-1 py-3 bg-stone-900 hover:bg-black text-[#f3dfa2] text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {copiedCredential ? (
                   <>
