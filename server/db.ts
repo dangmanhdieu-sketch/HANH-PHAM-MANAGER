@@ -1637,10 +1637,12 @@ class DatabaseService {
     createdItems: string[];
     skippedItems: string[];
   } {
-    if (!/^\\d{2}\\/\\d{4}$/.test(String(thang || ''))) {
+    const monthParts = String(thang || '').split('/');
+    if (monthParts.length !== 2 || monthParts[0].length !== 2 || monthParts[1].length !== 4 ||
+        !Number.isInteger(Number(monthParts[0])) || !Number.isInteger(Number(monthParts[1]))) {
       throw new Error('Kỳ lương phải có định dạng MM/YYYY.');
     }
-    const [monthNumber, yearNumber] = thang.split('/').map(Number);
+    const [monthNumber, yearNumber] = monthParts.map(Number);
     if (monthNumber < 1 || monthNumber > 12 || yearNumber < 2000) {
       throw new Error('Tháng/năm tạo bảng lương không hợp lệ.');
     }
