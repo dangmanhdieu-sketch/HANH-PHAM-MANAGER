@@ -63,9 +63,11 @@ app.use('/api', (req: Request, res: Response, next: NextFunction) => {
           res.statusCode = 503;
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
         }
+        // Never send raw infrastructure errors, credentials, or provider response
+        // bodies to employee browsers. Keep diagnostics in protected server logs.
         return originalSend(JSON.stringify({
-          error: 'Thao tác chưa được xác nhận lưu vào Firestore. Vui lòng thử lại sau khi kiểm tra kết nối Firebase.',
-          detail: error?.message || 'Firestore persistence verification failed.',
+          error: 'Máy chủ chưa xác nhận lưu dữ liệu lên Firebase. Vui lòng thử lại sau ít phút hoặc báo Admin kiểm tra nhật ký Render.',
+          code: 'FIRESTORE_SAVE_NOT_VERIFIED',
         }));
       });
 
