@@ -36,12 +36,15 @@ class AutomationManager {
    * Check schedule in GMT+7 (Vietnam Time)
    */
   public async checkScheduledJobs() {
-    const config = dbService.getConfig();
-    if (!config.AutomationEnabled || this.isRunning) {
-      return;
-    }
+    if (this.isRunning) return;
 
     try {
+      // Do not inspect default/local data while Firestore is still loading.
+      // The scheduler starts during module initialization, before HTTP startup.
+      await dbService.waitUntilReady();
+      const config = dbService.getConfig();
+      if (!config.AutomationEnabled) return;
+
       // Calculate Vietnam Time (UTC+7)
       const nowUtc = new Date();
       const vnTime = new Date(nowUtc.getTime() + 7 * 60 * 60 * 1000);
