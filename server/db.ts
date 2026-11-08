@@ -683,11 +683,18 @@ class DatabaseService {
           const migrated = this.applyMigrations();
           this.refreshKPIs();
           this.saveSync();
-          // Emergency stability rollback: keep the legacy HOAHONG table authoritative.
-          // The record-level collection migration currently performs a full collection
-          // scan during startup and can block the entire API from becoming ready.
-          // Legacy HOAHONG data is retained in Firestore and remains the safe source.
-          this.hoaHongRecordStorageEnabled = false;
+          // Use record-level commission persistence only when a previously completed,
+          // verified migration marker exists. Never start a full migration implicitly:
+          // that can delay API readiness on large commission histories.
+          const rootRef = this.firestore!.collection(this.firestoreCollection).doc(this.firestoreDocument);
+          const hoaHongMarker = await rootRef.collection('meta').doc('HOAHONG_RECORDS').get();
+          if (hoaHongMarker.exists && hoaHongMarker.data()?.version === 1) {
+            await this.initializeHoaHongRecordStorage(rootRef);
+            console.log('[Firebase] HOAHONG incremental persistence enabled from verified marker.');
+          } else {
+            this.hoaHongRecordStorageEnabled = false;
+            console.warn('[Firebase] HOAHONG incremental persistence is not enabled; keeping legacy table as source of truth.');
+          }
           this.captureFirestoreSnapshots();
 
           // Upgrade any legacy table document that is already too large for
