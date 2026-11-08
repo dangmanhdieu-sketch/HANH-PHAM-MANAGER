@@ -1070,7 +1070,7 @@ class DatabaseService {
       .catch((previousError) => {
         console.error('[Firebase] Recovering after previous queued write failure:', previousError);
       })
-      .then(() => {
+      .then(async () => {
         const changedTables = this.getChangedFirestoreTables();
         const hoaHongChanged = changedTables.includes('HOAHONG');
         const otherChangedTables = changedTables.filter((table) => table !== 'HOAHONG');
