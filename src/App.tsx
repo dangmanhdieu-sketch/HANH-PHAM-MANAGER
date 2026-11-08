@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type {
   NhanVien,
   ChamCong,
@@ -117,6 +117,8 @@ function AppContent() {
 
   // Daily Show & Commission Modal for Employee
   const [dailyClaimModalOpen, setDailyClaimModalOpen] = useState(false);
+  // Prevent slower responses from an old tab overwriting data for the active tab.
+  const refreshSequenceRef = useRef(0);
 
   // Handle unauthorized event
   useEffect(() => {
@@ -143,12 +145,15 @@ function AppContent() {
   // every business table on login, tab changes, and after small edits.
   const refreshTabData = useCallback(async (tab: string) => {
     if (!currentUser) return;
+    const requestSequence = ++refreshSequenceRef.current;
+    const isLatestRequest = () => requestSequence === refreshSequenceRef.current;
 
     const loadNotifications = async () => {
       try {
-        setNotifications(await api.dashboard.getNotifications());
+        const data = await api.dashboard.getNotifications();
+        if (isLatestRequest()) setNotifications(data);
       } catch (error) {
-        console.error('Lỗi tải thông báo:', error);
+        if (isLatestRequest()) console.error('Lỗi tải thông báo:', error);
       }
     };
 
@@ -162,6 +167,7 @@ function AppContent() {
             api.commission.getAll(),
             api.dashboard.getNotifications(),
           ]);
+          if (!isLatestRequest()) return;
           const [stats, staff, payroll, commission, notice] = results;
           if (stats.status === 'fulfilled') {
             setKpis(stats.value.kpis || []);
@@ -178,14 +184,17 @@ function AppContent() {
           return;
         }
         case 'nhanvien':
-        case 'danhba':
-          setStaffList(await api.staff.getAll());
+        case 'danhba': {
+          const staff = await api.staff.getAll();
+          if (isLatestRequest()) setStaffList(staff);
           return;
+        }
         case 'chamcong': {
           const [attendance, staff] = await Promise.all([
             api.attendance.getAll(),
             api.staff.getAll(),
           ]);
+          if (!isLatestRequest()) return;
           setAttendanceList(attendance);
           setStaffList(staff);
           return;
@@ -198,6 +207,7 @@ function AppContent() {
             api.commission.getAll(),
             api.staff.getAll(),
           ]);
+          if (!isLatestRequest()) return;
           setPayrollList(payroll);
           setCommissionList(commission);
           setStaffList(staff);
@@ -212,9 +222,11 @@ function AppContent() {
           return;
         case 'congviec':
         case 'hopdong':
-        case 'thuchi':
-          setStaffList(await api.staff.getAll());
+        case 'thuchi': {
+          const staff = await api.staff.getAll();
+          if (isLatestRequest()) setStaffList(staff);
           return;
+        }
         default:
           await loadNotifications();
           return;
@@ -229,6 +241,7 @@ function AppContent() {
           api.dashboard.getStats(),
           api.dashboard.getNotifications(),
         ]);
+        if (!isLatestRequest()) return;
         setTodayAttendanceRecord(stats.todayRecord || null);
         setMyTotalCommission(stats.tongHoaHong || 0);
         setMyTotalWorkDays(stats.tongNgayCong || 0);
@@ -236,34 +249,41 @@ function AppContent() {
         setNotifications(notice);
         return;
       }
-      case 'chamcong_me':
-        setAttendanceList(await api.attendance.getAll());
+      case 'chamcong_me': {
+        const attendance = await api.attendance.getAll();
+        if (isLatestRequest()) setAttendanceList(attendance);
         return;
+      }
       case 'luong_me': {
         const [payroll, commission] = await Promise.all([
           api.payroll.getAll(),
           api.commission.getAll(),
         ]);
+        if (!isLatestRequest()) return;
         setPayrollList(payroll);
         setCommissionList(commission);
         return;
       }
-      case 'hoahong_me':
-        setCommissionList(await api.commission.getAll());
+      case 'hoahong_me': {
+        const commissions = await api.commission.getAll();
+        if (isLatestRequest()) setCommissionList(commissions);
         return;
+      }
       case 'danhba_me':
-        setStaffList(await api.staff.getAll());
+      case 'profile_me': {
+        const staff = await api.staff.getAll();
+        if (isLatestRequest()) setStaffList(staff);
         return;
-      case 'profile_me':
-        setStaffList(await api.staff.getAll());
-        return;
+      }
       case 'nghiphep_me':
         await loadNotifications();
         return;
       case 'thuchi_me':
-      case 'hopdong_me':
-        setStaffList(await api.staff.getAll());
+      case 'hopdong_me': {
+        const staff = await api.staff.getAll();
+        if (isLatestRequest()) setStaffList(staff);
         return;
+      }
       default:
         await loadNotifications();
     }
@@ -272,12 +292,14 @@ function AppContent() {
   // Kept for explicit full refresh actions in Settings / recovery workflows.
   const refreshAllData = useCallback(async () => {
     if (!currentUser) return;
+    const requestSequence = ++refreshSequenceRef.current;
     const tab = currentTab;
     if (currentUser.Quyen === 'Admin') {
       const [stats, staff, attendance, payroll, commission, notice] = await Promise.all([
         api.dashboard.getStats(), api.staff.getAll(), api.attendance.getAll(),
         api.payroll.getAll(), api.commission.getAll(), api.dashboard.getNotifications(),
       ]);
+      if (requestSequence !== refreshSequenceRef.current) return;
       setKpis(stats.kpis || []);
       setAttendanceList(attendance);
       setPayrollList(payroll);
@@ -299,10 +321,12 @@ function AppContent() {
   useEffect(() => {
     if (!currentUser || currentUser.Quyen !== 'Admin' || currentTab !== 'dashboard') return;
     const timer = window.setInterval(async () => {
+      const requestSequence = refreshSequenceRef.current;
       const results = await Promise.allSettled([
         api.dashboard.getStats(),
         api.dashboard.getNotifications(),
       ]);
+      if (requestSequence !== refreshSequenceRef.current || currentTab !== 'dashboard') return;
       if (results[0].status === 'fulfilled') {
         setKpis(results[0].value.kpis || []);
         setAttendanceList(results[0].value.todayChamCong || []);
