@@ -700,24 +700,17 @@ class DatabaseService {
           const migrated = this.applyMigrations();
           this.refreshKPIs();
           this.saveSync();
-          // Use record-level commission persistence only when a previously completed,
-          // verified migration marker exists. Never start a full migration implicitly:
-          // that can delay API readiness on large commission histories.
-          const rootRef = this.firestore!.collection(this.firestoreCollection).doc(this.firestoreDocument);
-          const hoaHongMarker = await rootRef.collection('meta').doc('HOAHONG_RECORDS').get();
-          if (hoaHongMarker.exists && hoaHongMarker.data()?.version === 1) {
-            await this.initializeHoaHongRecordStorage(rootRef);
-            console.log('[Firebase] HOAHONG incremental persistence enabled from verified marker.');
-          } else {
-            // The API readiness gate is still closed while loadFromFirestore runs.
-            // Complete the one-time record migration here so the first commission
-            // approval does not rewrite the entire 28MB legacy HOAHONG table.
-            // The legacy table remains untouched as a rollback copy; the marker is
-            // published only after all records have been copied and count-verified.
-            console.warn('[Firebase] HOAHONG record migration required; starting one-time verified migration before API readiness.');
-            await this.initializeHoaHongRecordStorage(rootRef);
-            console.log('[Firebase] HOAHONG incremental persistence enabled after verified migration.');
-          }
+          // Keep startup focused on loading the existing authoritative table
+          // documents. Never scan/migrate the entire hoaHongRecords collection
+          // while the API readiness gate is closed: that collection can be very
+          // large and would make every Render cold start wait for a full scan.
+          // The legacy HOAHONG table remains authoritative until a separately
+          // scheduled, verified migration can run without blocking app startup.
+          this.hoaHongRecordStorageEnabled = false;
+          this.hoaHongPersistedSnapshots.clear();
+          this.hoaHongDirtyIds.clear();
+          this.hoaHongDeletedIds.clear();
+          console.warn('[Firebase] HOAHONG record-store scan deferred; startup uses existing Firestore table snapshot.');
           this.captureFirestoreSnapshots();
 
           // Upgrade any legacy table document that is already too large for
