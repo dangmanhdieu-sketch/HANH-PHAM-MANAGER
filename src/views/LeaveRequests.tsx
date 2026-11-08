@@ -56,9 +56,11 @@ export const LeaveRequests: React.FC<LeaveRequestsProps> = ({ currentUser, isAdm
       });
       setLyDo('');
       setGhiChu('');
-      await load();
-      await onRefresh();
-      alert('Đã gửi đơn nghỉ phép. Đơn đang chờ Admin xét duyệt.');
+      setSaving(false);
+      alert('Đã gửi đơn nghỉ phép thành công. Đơn đang chờ Admin xét duyệt.');
+      // Tải lại lịch sử và KPI ở nền; không giữ nút gửi ở trạng thái chờ vì refresh.
+      void load();
+      void onRefresh().catch((refreshError) => console.error('Làm mới sau gửi đơn nghỉ phép thất bại:', refreshError));
     } catch (error: any) {
       alert(error?.message || 'Không gửi được đơn nghỉ phép.');
     } finally {
