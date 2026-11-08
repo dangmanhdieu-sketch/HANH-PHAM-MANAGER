@@ -112,6 +112,8 @@ export interface HoaHong {
   NguoiDuyet?: string;
   GhiChu?: string;
   TaoBoi?: 'Admin' | 'Nhân viên';
+  TrangThaiThanhToan?: 'Đã thanh toán' | 'Chưa thanh toán';
+  PhuongThucThanhToan?: 'Chuyển khoản' | 'Tiền mặt' | '';
 }
 
 export type QuanLyModule = 'CONG_VIEC' | 'HOP_DONG' | 'THU_CHI' | 'NGHI_PHEP';
