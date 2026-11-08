@@ -95,13 +95,15 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
 
   // Form state
   const [formData, setFormData] = useState({
-    NhanVienID: staffList[0]?.NhanVienID || 'NV002',
+    // Admin must explicitly choose the beneficiary; never silently attribute income
+    // to the first employee in a list that may arrive asynchronously or be reordered.
+    NhanVienID: '',
     Ngay: new Date().toISOString().split('T')[0],
     NoiDung: '',
     LoaiKhoan: 'Hoa Hồng' as LoaiKhoanThuNhap,
-    DoanhThu: 20000000,
-    TyLeHoaHong: 5,
-    SoTienHoaHong: 1000000,
+    DoanhThu: 0,
+    TyLeHoaHong: 0,
+    SoTienHoaHong: 0,
     AnhChungTu: '',
     GhiChu: '',
   });
@@ -138,8 +140,16 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.NhanVienID || !staffList.some((staff) => staff.NhanVienID === formData.NhanVienID)) {
+      setFormError('Vui lòng chọn đúng nhân viên thụ hưởng từ danh sách hiện tại.');
+      return;
+    }
     if (!formData.NoiDung.trim()) {
       setFormError('Vui lòng nhập nội dung hợp đồng hoặc dịch vụ.');
+      return;
+    }
+    if (!Number.isFinite(computedAmount) || computedAmount <= 0) {
+      setFormError('Số tiền thu nhập phải lớn hơn 0. Vui lòng kiểm tra doanh thu, tỷ lệ hoặc số tiền show.');
       return;
     }
     setSaving(true);
@@ -220,13 +230,14 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
             type="button"
             onClick={() => {
               setFormData({
-                NhanVienID: staffList[0]?.NhanVienID || 'NV002',
+                // Require an explicit beneficiary every time the form is opened.
+                NhanVienID: '',
                 Ngay: new Date().toISOString().split('T')[0],
                 NoiDung: '',
                 LoaiKhoan: 'Tiền Show',
-                DoanhThu: 20000000,
-                TyLeHoaHong: 5,
-                SoTienHoaHong: 800000,
+                DoanhThu: 0,
+                TyLeHoaHong: 0,
+                SoTienHoaHong: 0,
                 AnhChungTu: '',
                 GhiChu: '',
               });
@@ -528,10 +539,12 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                     Nhân viên thụ hưởng <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    required
                     value={formData.NhanVienID}
                     onChange={(e) => setFormData({ ...formData, NhanVienID: e.target.value })}
                     className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] bg-white"
                   >
+                    <option value="">-- Chọn nhân viên thụ hưởng --</option>
                     {staffList.map((s) => (
                       <option key={s.NhanVienID} value={s.NhanVienID}>
                         {s.HoTen} - {s.ChucVu} ({s.NhanVienID})
