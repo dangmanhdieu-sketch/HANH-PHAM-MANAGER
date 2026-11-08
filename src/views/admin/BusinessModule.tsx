@@ -539,15 +539,22 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const downloadContractJpeg = async () => {
     const article = contractPrintRef.current;
     if (!article || downloadingJpeg) return;
+
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    // Mở cửa sổ ngay trong thao tác chạm/click để tránh trình duyệt di động chặn popup
+    // sau khi quá trình dựng ảnh bất đồng bộ hoàn tất.
+    const previewWindow = isMobile ? window.open('about:blank', '_blank') : null;
     let exportNode: HTMLElement | null = null;
+    let objectUrl = '';
+
     try {
       setDownloadingJpeg(true);
-      // Bản in bị ẩn trên màn hình; chụp một bản sao hiển thị ngoài vùng nhìn thấy.
       exportNode = article.cloneNode(true) as HTMLElement;
       Object.assign(exportNode.style, {
         display: 'block',
-        position: 'fixed',
-        left: '-10000px',
+        position: 'absolute',
+        left: '0',
         top: '0',
         width: '794px',
         minWidth: '794px',
@@ -561,12 +568,15 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         color: '#202020',
         fontSize: '12px',
         lineHeight: '1.35',
+        zIndex: '-1',
+        pointerEvents: 'none',
       });
       exportNode.style.setProperty('display', 'block', 'important');
       document.body.appendChild(exportNode);
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
       const canvas = await html2canvas(exportNode, {
-        scale: 2,
+        scale: isMobile ? 1 : 2,
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false,
@@ -576,20 +586,43 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         scrollY: 0,
       });
       if (!canvas.width || !canvas.height) throw new Error('Không tạo được ảnh hợp đồng.');
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Không thể tạo tệp JPEG.')), 'image/jpeg', 0.95);
+
+      let blob: Blob | null = await new Promise((resolve) => {
+        if (typeof canvas.toBlob !== 'function') return resolve(null);
+        canvas.toBlob((result) => resolve(result), 'image/jpeg', 0.92);
       });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      // Safari/iOS cũ có thể không trả Blob từ canvas.toBlob.
+      if (!blob) {
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const response = await fetch(dataUrl);
+        blob = await response.blob();
+      }
+      if (!blob || blob.size === 0) throw new Error('Ảnh hợp đồng tạo ra bị rỗng.');
+
+      objectUrl = URL.createObjectURL(blob);
       const contractData = selectedContract?.DuLieu || {};
-      link.download = `Hop-dong-${String(contractData.MaHopDong || selectedContract?.QuanLyID || 'cuoi').replace(/[^a-zA-Z0-9_-]/g, '-')}.jpg`;
-      link.href = url;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+      const fileName = `Hop-dong-${String(contractData.MaHopDong || selectedContract?.QuanLyID || 'cuoi').replace(/[^a-zA-Z0-9_-]/g, '-')}.jpg`;
+
+      if (isMobile) {
+        if (!previewWindow || previewWindow.closed) {
+          throw new Error('Trình duyệt đã chặn cửa sổ ảnh. Hãy cho phép mở cửa sổ bật lên rồi thử lại.');
+        }
+        previewWindow.document.title = fileName;
+        previewWindow.document.body.style.cssText = 'margin:0;background:#222;display:flex;align-items:center;justify-content:center;min-height:100vh;';
+        previewWindow.location.href = objectUrl;
+        // Không thu hồi Blob URL quá sớm trên điện thoại; người dùng cần thời gian lưu ảnh.
+      } else {
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = objectUrl;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+      }
     } catch (error) {
-      alert('Chưa thể tạo ảnh JPEG. Hãy thử lại; nếu vẫn lỗi, vui lòng báo Admin kiểm tra.');
+      if (previewWindow && !previewWindow.closed) previewWindow.close();
+      alert(error instanceof Error ? error.message : 'Chưa thể tạo ảnh hợp đồng. Hãy thử lại.');
       console.error('Lỗi xuất JPEG hợp đồng:', error);
     } finally {
       exportNode?.remove();
