@@ -2342,7 +2342,7 @@ class DatabaseService {
     }
     const now = new Date().toISOString();
     const record: QuanLyRecord = {
-      QuanLyID: `QL-${module}-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`,
+      QuanLyID: `QL-${module}-${randomUUID()}`,
       Module: module,
       DuLieu: data || {},
       TaoLuc: now,
@@ -2356,8 +2356,11 @@ class DatabaseService {
   }
 
   public updateQuanLyRecord(id: string, data: Record<string, any>, adminUser: { HoTen: string; Email: string }): QuanLyRecord {
-    const record = (this.db.QUAN_LY || []).find((x) => x.QuanLyID === id);
-    if (!record) throw new Error('Không tìm thấy dữ liệu nghiệp vụ.');
+    const matches = (this.db.QUAN_LY || []).filter((item) => item.QuanLyID === id);
+    if (matches.length !== 1) {
+      throw new Error(matches.length ? 'Mã dữ liệu nghiệp vụ bị trùng; không thể cập nhật an toàn.' : 'Không tìm thấy dữ liệu nghiệp vụ.');
+    }
+    const record = matches[0];
     record.DuLieu = { ...record.DuLieu, ...(data || {}) };
     record.CapNhatLuc = new Date().toISOString();
     this.save();
@@ -2366,8 +2369,26 @@ class DatabaseService {
   }
 
   public deleteQuanLyRecord(id: string, adminUser: { HoTen: string; Email: string }) {
-    const index = (this.db.QUAN_LY || []).findIndex((x) => x.QuanLyID === id);
-    if (index < 0) throw new Error('Không tìm thấy dữ liệu nghiệp vụ.');
+    const matches = (this.db.QUAN_LY || []).map((item, index) => ({ item, index })).filter(({ item }) => item.QuanLyID === id);
+    if (matches.length !== 1) {
+      throw new Error(matches.length ? 'Mã dữ liệu nghiệp vụ bị trùng; không thể xóa an toàn.' : 'Không tìm thấy dữ liệu nghiệp vụ.');
+    }
+    const { item: target, index } = matches[0];
+    if (target.Module === 'THU_CHI' && ['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(target.DuLieu?.TrangThaiDuyet || ''))) {
+      throw new Error('Phiếu thu/chi đã được duyệt hoặc thanh toán. Không thể xóa khỏi sổ tài chính; hãy tạo phiếu điều chỉnh/hoàn tiền riêng.');
+    }
+    if (target.Module === 'HOP_DONG') {
+      const code = String(target.DuLieu?.MaHopDong || target.QuanLyID);
+      const linkedReceipts = (this.db.QUAN_LY || []).filter((record) =>
+        record.Module === 'THU_CHI' &&
+        String(record.DuLieu?.Loai || '').toUpperCase() === 'THU' &&
+        (String(record.DuLieu?.HopDongQuanLyID || '') === target.QuanLyID ||
+         String(record.DuLieu?.HopDongID || record.DuLieu?.MaHopDong || '') === code)
+      );
+      if (linkedReceipts.length > 0) {
+        throw new Error('Hợp đồng đã có phiếu thu liên kết. Không thể xóa để tránh làm mất lịch sử công nợ; hãy chuyển trạng thái hợp đồng sang Đã hủy và giữ nguyên phiếu thu.');
+      }
+    }
     const [removed] = this.db.QUAN_LY.splice(index, 1);
     this.save();
     this.logAudit(adminUser.HoTen, adminUser.Email, `Xóa ${removed.Module}`, id);
