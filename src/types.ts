@@ -42,6 +42,8 @@ export interface ChamCong {
   GPSCheckIn?: string; // "Lat, Lng (Address)"
   CheckOut?: string; // HH:mm:ss
   AnhCheckOut?: string;
+  HasCheckInPhoto?: boolean;
+  HasCheckOutPhoto?: boolean;
   GPSCheckOut?: string;
   SoGioLam?: number; // Hours (e.g. 8.5)
   TrangThai: TrangThaiChamCong;
