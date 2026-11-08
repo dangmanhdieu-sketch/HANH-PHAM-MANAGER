@@ -31,6 +31,24 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
   const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [viewPhoto, setViewPhoto] = useState<{ url: string; title: string } | null>(null);
+  const [loadingPhotoId, setLoadingPhotoId] = useState<string | null>(null);
+
+  const openAttendancePhoto = async (record: ChamCong, kind: 'checkin' | 'checkout') => {
+    setLoadingPhotoId(record.ChamCongID);
+    try {
+      const photos = await api.attendance.getPhotos(record.ChamCongID);
+      const url = kind === 'checkin' ? photos.AnhCheckIn : photos.AnhCheckOut;
+      if (!url) {
+        alert('Bản ghi này không có ảnh.');
+        return;
+      }
+      setViewPhoto({ url, title: `${kind === 'checkin' ? 'Check-in' : 'Check-out'}: ${record.HoTen} lúc ${kind === 'checkin' ? record.CheckIn : record.CheckOut}` });
+    } catch (error: any) {
+      alert(error?.message || 'Không tải được ảnh chấm công.');
+    } finally {
+      setLoadingPhotoId(null);
+    }
+  };
 
   const handleDeleteAttendance = async (record: ChamCong) => {
     const dateLabel = new Date(record.Ngay).toLocaleDateString('vi-VN');
@@ -86,7 +104,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
       const record = recordsByDate.get(date);
       const weekday = new Date(year, month - 1, day).toLocaleDateString('vi-VN', { weekday: 'long' });
       rows.push(record
-        ? [date, weekday, record.CheckIn || '', record.CheckOut || '', String(record.SoGioLam ?? ''), record.TrangThai, record.GPSCheckIn || '', record.GPSCheckOut || '', record.AnhCheckIn ? 'Có ảnh check-in (mở trong ứng dụng)' : 'Không có', record.AnhCheckOut ? 'Có ảnh check-out (mở trong ứng dụng)' : 'Không có', record.GhiChu || '', record.ChamCongID]
+        ? [date, weekday, record.CheckIn || '', record.CheckOut || '', String(record.SoGioLam ?? ''), record.TrangThai, record.GPSCheckIn || '', record.GPSCheckOut || '', (record.HasCheckInPhoto || record.AnhCheckIn) ? 'Có ảnh check-in (mở trong ứng dụng)' : 'Không có', (record.HasCheckOutPhoto || record.AnhCheckOut) ? 'Có ảnh check-out (mở trong ứng dụng)' : 'Không có', record.GhiChu || '', record.ChamCongID]
         : [date, weekday, '', '', '', 'Không có bản ghi chấm công - không tự động tính là nghỉ/trừ lương', '', '', 'Không có', 'Không có', '', '']);
     }
 
@@ -306,13 +324,13 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                       {cc.CheckIn || '--:--:--'}
                     </td>
                     <td className="px-5 py-3.5">
-                      {cc.AnhCheckIn ? (
+                      {(cc.HasCheckInPhoto || cc.AnhCheckIn) ? (
                         <button
                           type="button"
-                          onClick={() => setViewPhoto({ url: cc.AnhCheckIn!, title: `Check-in: ${cc.HoTen} lúc ${cc.CheckIn}` })}
+                          onClick={() => void openAttendancePhoto(cc, 'checkin')}
                           className="relative group w-8 h-8 rounded-lg overflow-hidden border border-stone-200"
                         >
-                          <img src={cc.AnhCheckIn} alt="CheckIn" className="w-full h-full object-cover" />
+                          <Eye className="w-3 h-3 text-stone-600" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center">
                             <Eye className="w-3 h-3 text-white" />
                           </div>
@@ -325,13 +343,13 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                       {cc.CheckOut || '--:--:--'}
                     </td>
                     <td className="px-5 py-3.5">
-                      {cc.AnhCheckOut ? (
+                      {(cc.HasCheckOutPhoto || cc.AnhCheckOut) ? (
                         <button
                           type="button"
-                          onClick={() => setViewPhoto({ url: cc.AnhCheckOut!, title: `Check-out: ${cc.HoTen} lúc ${cc.CheckOut}` })}
+                          onClick={() => void openAttendancePhoto(cc, 'checkout')}
                           className="relative group w-8 h-8 rounded-lg overflow-hidden border border-stone-200"
                         >
-                          <img src={cc.AnhCheckOut} alt="CheckOut" className="w-full h-full object-cover" />
+                          <Eye className="w-3 h-3 text-stone-600" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center">
                             <Eye className="w-3 h-3 text-white" />
                           </div>
