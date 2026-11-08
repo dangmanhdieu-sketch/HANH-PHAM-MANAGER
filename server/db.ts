@@ -887,11 +887,11 @@ class DatabaseService {
   }
 
   public save() {
-    // API mutation responses are persisted by the server-wide saveAndVerify
-    // barrier exactly once. Queueing a full Firestore write here caused each
-    // route to write once from save() and a second time from the response
-    // barrier, making routine edits and deletes unnecessarily slow.
-    this.saveSync();
+    // Firestore is authoritative in production. API mutations are committed by
+    // the saveAndVerify response barrier, so do not synchronously serialize the
+    // entire photo-heavy database to Render's ephemeral disk on every helper call.
+    // Local-only development still writes its JSON database synchronously.
+    if (!this.firestoreEnabled) this.saveSync();
   }
 
   /** Persist once to Firestore before an API reports a successful mutation. */
@@ -900,9 +900,8 @@ class DatabaseService {
     if (!this.firestoreEnabled || !this.firestore) {
       throw new Error('Firebase Firestore chưa kết nối; dữ liệu chưa được xác nhận lưu trên đám mây.');
     }
-    this.saveSync();
-
     // The Firestore transaction commit is the durable-write confirmation.
+    // Do not write the same full database to ephemeral local disk first.
     // Avoid an additional 11-document read-back on every small edit/delete:
     // it added noticeable latency without making the committed transaction safer.
     const write = this.firestoreSaveQueue
