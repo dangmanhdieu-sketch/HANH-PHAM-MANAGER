@@ -1132,7 +1132,6 @@ class DatabaseService {
         }
         if (hoaHongChanged && this.hoaHongRecordStorageEnabled) {
           await this.persistHoaHongRecordChanges();
-          this.firestorePersistedSnapshots.HOAHONG = JSON.stringify(this.db.HOAHONG);
         } else if (hoaHongChanged) {
           // Safe fallback until the record collection migration is verified.
           await this.persistToFirestoreNow(['HOAHONG']);
