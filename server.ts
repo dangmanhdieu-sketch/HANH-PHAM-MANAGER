@@ -706,6 +706,41 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
+
+    // Create the initial deposit receipt in the same API mutation as the contract.
+    // Both records live in QUAN_LY, so the Firestore persistence barrier commits
+    // them together; the client cannot accidentally save only half the operation.
+    if (module === 'HOP_DONG') {
+      const installments = Array.isArray(payload.LichThanhToan) ? payload.LichThanhToan : [];
+      const deposit = Math.max(0, Number(payload.TienDatCoc || installments[0]?.SoTienDuKien || 0));
+      if (deposit > 0) {
+        const contractCode = String(payload.MaHopDong || record.QuanLyID);
+        const contractName = String(payload.KhachHang || '');
+        dbService.createQuanLyRecord('THU_CHI', {
+          Ngay: String(payload.NgayTao || new Date().toISOString()).slice(0, 10),
+          Loai: 'THU',
+          DanhMuc: `Thu tiền cọc · ${contractCode} · ${contractName}`,
+          NoiDungThu: `Thu tiền cọc hợp đồng ${contractCode} - ${contractName}`,
+          SoTien: deposit,
+          HopDongID: contractCode,
+          MaHopDong: contractCode,
+          TenHopDong: contractName,
+          DoiTuong: contractName,
+          NhanVienID: req.user!.NhanVienID,
+          NhanVien: req.user!.HoTen,
+          NguoiTao: req.user!.HoTen,
+          NguoiTaoID: req.user!.NhanVienID,
+          PhuongThucThanhToan: payload.PhuongThucThanhToan || 'Tiền mặt',
+          TrangThaiDuyet: 'Chờ Admin duyệt',
+          GhiChu: `Phiếu thu tự tạo từ hợp đồng ${contractCode} - ${contractName}`,
+          NguonTao: 'TIEN_COC_HOP_DONG',
+          HopDongQuanLyID: record.QuanLyID,
+        }, {
+          HoTen: req.user!.HoTen,
+          Email: req.user!.Email,
+        });
+      }
+    }
     return res.status(201).json(record);
   } catch (err: any) {
     return res.status(400).json({ error: err.message || 'Không thể tạo dữ liệu.' });
