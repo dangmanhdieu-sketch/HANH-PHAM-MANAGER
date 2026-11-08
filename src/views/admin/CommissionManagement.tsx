@@ -649,10 +649,41 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
+                          const input = e.currentTarget;
+                          if (!file.type.startsWith('image/')) {
+                            setFormError('Vui lòng chọn tệp hình ảnh hợp lệ.');
+                            input.value = '';
+                            return;
+                          }
                           const reader = new FileReader();
-                          reader.onload = () => setFormData((prev) => ({ ...prev, AnhChungTu: String(reader.result || '') }));
+                          reader.onload = () => {
+                            const image = new Image();
+                            image.onload = () => {
+                              // Resize both camera captures and uploaded files so
+                              // new Base64 proofs remain lightweight for Firestore.
+                              const maxSize = 960;
+                              const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+                              const canvas = document.createElement('canvas');
+                              canvas.width = Math.max(1, Math.round(image.width * scale));
+                              canvas.height = Math.max(1, Math.round(image.height * scale));
+                              const context = canvas.getContext('2d');
+                              if (!context) {
+                                setFormError('Không thể xử lý ảnh. Vui lòng chọn ảnh khác.');
+                                return;
+                              }
+                              context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                              setFormData((prev) => ({
+                                ...prev,
+                                AnhChungTu: canvas.toDataURL('image/jpeg', 0.62),
+                              }));
+                              setFormError(null);
+                            };
+                            image.onerror = () => setFormError('Không thể đọc ảnh. Vui lòng chọn ảnh khác.');
+                            image.src = String(reader.result || '');
+                          };
+                          reader.onerror = () => setFormError('Không thể tải ảnh lên. Vui lòng thử lại.');
                           reader.readAsDataURL(file);
-                          e.currentTarget.value = '';
+                          input.value = '';
                         }}
                       />
                     </label>
