@@ -1044,6 +1044,10 @@ app.get('/api/audit-log', authenticateToken, requireAdmin, (req: AuthRequest, re
   return res.json(raw.AUDIT_LOG);
 });
 
+app.get('/api/admin/data-integrity', authenticateToken, requireAdmin, (_req: AuthRequest, res: Response) => {
+  return res.json(dbService.getDataIntegrityReport());
+});
+
 app.get('/api/notifications', authenticateToken, (req: AuthRequest, res: Response) => {
   const user = req.user!;
   const raw = dbService.getRawData();
