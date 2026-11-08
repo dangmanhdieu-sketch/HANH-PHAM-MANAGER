@@ -698,8 +698,9 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
           .filter((receipt) => {
             const data = receipt.DuLieu || {};
             const status = String(data.TrangThaiDuyet || 'Chờ Admin duyệt');
-            const linked = String(data.HopDongQuanLyID || '') === contract.QuanLyID ||
-              String(data.HopDongID || data.MaHopDong || '') === code;
+            const linked = data.HopDongQuanLyID
+              ? String(data.HopDongQuanLyID) === contract.QuanLyID
+              : String(data.HopDongID || data.MaHopDong || '') === code;
             return linked && String(data.Loai || '').toUpperCase() === 'THU' &&
               !['Từ chối', 'Đã từ chối', 'Đã hủy', 'Hủy'].includes(status);
           })
@@ -788,8 +789,9 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
         .filter((receipt) => {
           const data = receipt.DuLieu || {};
           const status = String(data.TrangThaiDuyet || 'Chờ Admin duyệt');
-          const linked = String(data.HopDongQuanLyID || '') === current.QuanLyID ||
-            String(data.HopDongID || data.MaHopDong || '') === contractCode;
+          const linked = data.HopDongQuanLyID
+            ? String(data.HopDongQuanLyID) === current.QuanLyID
+            : String(data.HopDongID || data.MaHopDong || '') === contractCode;
           return linked && String(data.Loai || '').toUpperCase() === 'THU' &&
             !['Từ chối', 'Đã từ chối', 'Đã hủy', 'Hủy'].includes(status);
         })
