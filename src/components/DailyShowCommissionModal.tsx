@@ -187,6 +187,8 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
                 type="button"
                 onClick={() => {
                   setLoaiKhoan('Tiền Show');
+                  setShowTaskCustom(false);
+                  setTenDichVu('');
                   setFormError(null);
                 }}
                 className={`py-3 px-4 rounded-xl border text-left transition flex items-center gap-3 ${
@@ -210,6 +212,8 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
                 type="button"
                 onClick={() => {
                   setLoaiKhoan('Hoa Hồng');
+                  setShowTaskCustom(false);
+                  setTenDichVu('');
                   setFormError(null);
                 }}
                 className={`py-3 px-4 rounded-xl border text-left transition flex items-center gap-3 ${
