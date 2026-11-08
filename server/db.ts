@@ -867,6 +867,17 @@ class DatabaseService {
 
   private getChangedFirestoreTables(): (typeof this.firestoreTables)[number][] {
     return this.firestoreTables.filter((table) => {
+      if (table === 'HOAHONG' && this.hoaHongRecordStorageEnabled) {
+        const current = new Map<string, string>();
+        for (const record of this.db.HOAHONG || []) {
+          if (record.HoaHongID) current.set(String(record.HoaHongID), JSON.stringify(record));
+        }
+        if (current.size !== this.hoaHongPersistedSnapshots.size) return true;
+        for (const [id, value] of current) {
+          if (this.hoaHongPersistedSnapshots.get(id) !== value) return true;
+        }
+        return false;
+      }
       const current = JSON.stringify((this.db as any)[table]);
       return current !== this.firestorePersistedSnapshots[table];
     });
@@ -1068,6 +1079,7 @@ class DatabaseService {
         }
         if (hoaHongChanged && this.hoaHongRecordStorageEnabled) {
           await this.persistHoaHongRecordChanges();
+          this.firestorePersistedSnapshots.HOAHONG = JSON.stringify(this.db.HOAHONG);
         } else if (hoaHongChanged) {
           // Safe fallback until the record collection migration is verified.
           await this.persistToFirestoreNow(['HOAHONG']);
