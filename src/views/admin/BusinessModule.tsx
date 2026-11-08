@@ -141,24 +141,30 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const [selectedContract, setSelectedContract] = useState<QuanLyRecord | null>(null);
   const contractPrintRef = useRef<HTMLElement | null>(null);
   const [downloadingJpeg, setDownloadingJpeg] = useState(false);
+  const loadSequenceRef = useRef(0);
 
   const loadRecords = async () => {
+    const sequence = ++loadSequenceRef.current;
+    const isCurrentLoad = () => sequence === loadSequenceRef.current;
     try {
       setLoading(true);
       const data = await api.quanLy.getAll(module);
+      if (!isCurrentLoad()) return;
       setRecords(data);
       if (module === 'HOP_DONG') {
         const receipts = await api.quanLy.getAll('THU_CHI');
+        if (!isCurrentLoad()) return;
         setReceiptRecords(receipts);
       }
       if (module === 'THU_CHI') {
         const contracts = await api.quanLy.getAll('HOP_DONG');
+        if (!isCurrentLoad()) return;
         setContractRecords(contracts.filter((r) => !['Đã hủy', 'Hủy'].includes(String(r.DuLieu?.TrangThai || ''))));
       }
     } catch (error: any) {
-      alert(error?.message || 'Không thể tải dữ liệu.');
+      if (isCurrentLoad()) alert(error?.message || 'Không thể tải dữ liệu.');
     } finally {
-      setLoading(false);
+      if (isCurrentLoad()) setLoading(false);
     }
   };
 
