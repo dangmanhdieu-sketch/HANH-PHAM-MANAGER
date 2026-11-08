@@ -1618,7 +1618,8 @@ class DatabaseService {
   }
 
   public findLuongById(id: string): Luong | undefined {
-    return this.db.LUONG.find((l) => l.LuongID === id);
+    const matches = this.db.LUONG.filter((item) => item.LuongID === id);
+    return matches.length === 1 ? matches[0] : undefined;
   }
 
   /**
@@ -1783,8 +1784,11 @@ class DatabaseService {
   }
 
   public deleteLuong(luongId: string, adminUser: { HoTen: string; Email: string }): { message: string } {
-    const index = this.db.LUONG.findIndex((item) => item.LuongID === luongId);
-    if (index < 0) throw new Error('Không tìm thấy bảng lương.');
+    const matchingIndexes = this.db.LUONG.map((item, rowIndex) => item.LuongID === luongId ? rowIndex : -1).filter((rowIndex) => rowIndex >= 0);
+    if (matchingIndexes.length !== 1) {
+      throw new Error(matchingIndexes.length ? 'Mã bảng lương bị trùng; không thể xóa an toàn.' : 'Không tìm thấy bảng lương.');
+    }
+    const index = matchingIndexes[0];
     const luong = this.db.LUONG[index];
     if (luong.TrangThai !== 'Chờ duyệt') {
       throw new Error('Chỉ được xóa bảng lương đang Chờ duyệt. Bảng lương đã duyệt hoặc đã thanh toán được giữ để bảo toàn lịch sử.');
@@ -2014,8 +2018,14 @@ class DatabaseService {
     dongY: boolean,
     adminUser: { HoTen: string; Email: string }
   ): HoaHong {
-    const hh = this.db.HOAHONG.find((item) => item.HoaHongID === hoaHongId);
-    if (!hh) throw new Error('Không tìm thấy bản ghi hoa hồng');
+    const matchingClaims = this.db.HOAHONG.filter((item) => item.HoaHongID === hoaHongId);
+    if (matchingClaims.length !== 1) {
+      throw new Error(matchingClaims.length ? 'Mã hoa hồng bị trùng; đã chặn duyệt để tránh cộng sai tiền.' : 'Không tìm thấy bản ghi hoa hồng');
+    }
+    const hh = matchingClaims[0];
+    if (!this.findNhanVienById(hh.NhanVienID)) {
+      throw new Error('Hoa hồng không liên kết duy nhất với một nhân viên. Vui lòng đối soát mã nhân viên trước khi duyệt.');
+    }
 
     // Idempotency guard: only a pending claim can be approved/rejected once.
     // This prevents double taps/retries from adding the same income twice.
@@ -2028,9 +2038,13 @@ class DatabaseService {
       throw new Error('Ngày của khoản hoa hồng không hợp lệ; cần đối soát dữ liệu trước khi duyệt.');
     }
     const thangStr = `${month}/${year}`;
-    const luong = this.db.LUONG.find(
+    const matchingPayrolls = this.db.LUONG.filter(
       (item) => item.NhanVienID === hh.NhanVienID && item.Thang === thangStr
     );
+    if (matchingPayrolls.length > 1) {
+      throw new Error(`Có nhiều bảng lương của ${hh.HoTen} trong kỳ ${thangStr}. Đã chặn duyệt để tránh ghi sai bảng lương.`);
+    }
+    const luong = matchingPayrolls[0];
 
     // A locked payroll cannot be changed silently. Keep the commission pending
     // until Admin resolves the closed payroll period explicitly.
@@ -2070,8 +2084,11 @@ class DatabaseService {
   }
 
   public deleteHoaHong(id: string, adminUser: { HoTen: string; Email: string }): boolean {
-    const hh = this.db.HOAHONG.find((h) => h.HoaHongID === id);
-    if (!hh) throw new Error('Hoa hồng không tồn tại');
+    const matchingClaims = this.db.HOAHONG.filter((item) => item.HoaHongID === id);
+    if (matchingClaims.length !== 1) {
+      throw new Error(matchingClaims.length ? 'Mã hoa hồng bị trùng; không thể xóa an toàn.' : 'Hoa hồng không tồn tại');
+    }
+    const hh = matchingClaims[0];
 
     const [year, month] = String(hh.Ngay || '').split('-');
     const thangStr = month && year ? `${month}/${year}` : '';
