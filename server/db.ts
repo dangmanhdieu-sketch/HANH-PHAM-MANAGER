@@ -1945,7 +1945,7 @@ class DatabaseService {
     const noiDung = String(data.NoiDung || '').trim();
     if (!noiDung) throw new Error('Vui lòng nhập nội dung khoản thu nhập.');
     const ngay = String(data.Ngay || '');
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(ngay) || Number.isNaN(Date.parse(ngay + 'T00:00:00Z'))) {
+    if (!/^\d{4}-\\d{2}-\\d{2}$/.test(ngay) || Number.isNaN(Date.parse(ngay + 'T00:00:00Z'))) {
       throw new Error('Ngày ghi nhận hoa hồng không hợp lệ.');
     }
 
@@ -2029,7 +2029,7 @@ class DatabaseService {
     }
 
     const [year, month] = String(hh.Ngay || '').split('-');
-    if (!/^\\d{4}$/.test(year || '') || !/^\\d{2}$/.test(month || '')) {
+    if (!/^\d{4}$/.test(year || '') || !/^\d{2}$/.test(month || '')) {
       throw new Error('Ngày của khoản hoa hồng không hợp lệ; cần đối soát dữ liệu trước khi duyệt.');
     }
     const thangStr = `${month}/${year}`;
