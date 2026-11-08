@@ -287,6 +287,10 @@ export const api = {
       );
     },
 
+    async getPhotos(id: string): Promise<Pick<ChamCong, 'AnhCheckIn' | 'AnhCheckOut'>> {
+      return request(`/api/chamcong/${encodeURIComponent(id)}/photos`);
+    },
+
     async delete(id: string): Promise<{ message: string }> {
       return request<{ message: string }>(`/api/chamcong/${encodeURIComponent(id)}`, { method: 'DELETE' });
     },
