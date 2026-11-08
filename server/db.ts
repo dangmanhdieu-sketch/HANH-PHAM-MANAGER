@@ -271,6 +271,10 @@ class DatabaseService {
   // Compact per-table fingerprints of the last committed Firestore state.
   // Mutations only rewrite tables whose content actually changed.
   private firestorePersistedSnapshots: Partial<Record<(typeof this.firestoreTables)[number], string>> = {};
+  // HOAHONG uses record-level Firestore documents so approving one item never
+  // rewrites/recompresses the entire commission history.
+  private hoaHongPersistedSnapshots = new Map<string, string>();
+  private hoaHongRecordStorageEnabled = false;
   private firestore: Firestore | null = null;
   private firestoreEnabled = false;
   private readonly firestoreCollection = process.env.FIREBASE_COLLECTION || 'hanh_pham_manager';
@@ -679,6 +683,7 @@ class DatabaseService {
           const migrated = this.applyMigrations();
           this.refreshKPIs();
           this.saveSync();
+          await this.initializeHoaHongRecordStorage(rootRef);
           this.captureFirestoreSnapshots();
 
           // Upgrade any legacy table document that is already too large for
@@ -742,6 +747,118 @@ class DatabaseService {
     }
   }
 
+  /**
+   * Migrate the legacy HOAHONG array to individual documents once, then persist
+   * only changed/deleted commission records. The legacy table is retained as a
+   * rollback copy; the marker is written only after every record is committed.
+   */
+  private async initializeHoaHongRecordStorage(rootRef: FirebaseFirestore.DocumentReference): Promise<void> {
+    const markerRef = rootRef.collection('meta').doc('HOAHONG_RECORDS');
+    const markerSnap = await markerRef.get();
+    const recordsRef = rootRef.collection('hoaHongRecords');
+
+    if (markerSnap.exists && markerSnap.data()?.version === 1) {
+      const snapshot = await recordsRef.get();
+      const records = snapshot.docs.map((doc) => restoreFirestoreValue(doc.data().record));
+      if (records.length !== this.db.HOAHONG.length) {
+        throw new Error(`[Firebase] HOAHONG record count mismatch: legacy=${this.db.HOAHONG.length}, records=${records.length}. Refusing unsafe startup.`);
+      }
+      this.db.HOAHONG = records as HoaHong[];
+      this.hoaHongRecordStorageEnabled = true;
+      this.captureHoaHongRecordSnapshots();
+      console.log('[Firebase] HOAHONG record storage loaded:', records.length);
+      return;
+    }
+
+    const legacyRecords = this.db.HOAHONG || [];
+    const batchSize = 350;
+    for (let offset = 0; offset < legacyRecords.length; offset += batchSize) {
+      const slice = legacyRecords.slice(offset, offset + batchSize);
+      await this.firestore!.runTransaction(async (transaction) => {
+        await this.assertFirestoreWriterLease(transaction);
+        for (const record of slice) {
+          if (!record.HoaHongID) throw new Error('[Firebase] HOAHONG record without HoaHongID; migration stopped.');
+          transaction.set(recordsRef.doc(String(record.HoaHongID)), {
+            record: sanitizeFirestoreValue(record),
+            updatedAt: new Date().toISOString(),
+          }, { merge: false });
+        }
+      });
+    }
+
+    // Verify the migrated collection before publishing its authoritative marker.
+    const verify = await recordsRef.get();
+    if (verify.size !== legacyRecords.length) {
+      throw new Error(`[Firebase] HOAHONG migration verification failed: expected ${legacyRecords.length}, got ${verify.size}.`);
+    }
+    await this.firestore!.runTransaction(async (transaction) => {
+      await this.assertFirestoreWriterLease(transaction);
+      transaction.set(markerRef, {
+        version: 1,
+        recordCount: legacyRecords.length,
+        migratedAt: new Date().toISOString(),
+        legacyTableRetained: true,
+      }, { merge: false });
+    });
+    this.hoaHongRecordStorageEnabled = true;
+    this.captureHoaHongRecordSnapshots();
+    console.log('[Firebase] HOAHONG record migration verified:', legacyRecords.length);
+  }
+
+  private captureHoaHongRecordSnapshots(): void {
+    this.hoaHongPersistedSnapshots.clear();
+    for (const record of this.db.HOAHONG || []) {
+      if (record.HoaHongID) {
+        this.hoaHongPersistedSnapshots.set(String(record.HoaHongID), JSON.stringify(record));
+      }
+    }
+  }
+
+  private async persistHoaHongRecordChanges(): Promise<void> {
+    if (!this.firestore || !this.hoaHongRecordStorageEnabled) {
+      throw new Error('[Firebase] HOAHONG record storage is not initialized.');
+    }
+    const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+    const recordsRef = rootRef.collection('hoaHongRecords');
+    const current = new Map<string, HoaHong>();
+    for (const record of this.db.HOAHONG || []) {
+      if (!record.HoaHongID) throw new Error('[Firebase] HOAHONG record missing HoaHongID; refusing partial write.');
+      current.set(String(record.HoaHongID), record);
+    }
+    const writes: Array<{ id: string; record?: HoaHong }> = [];
+    for (const [id, record] of current) {
+      if (this.hoaHongPersistedSnapshots.get(id) !== JSON.stringify(record)) writes.push({ id, record });
+    }
+    for (const id of this.hoaHongPersistedSnapshots.keys()) {
+      if (!current.has(id)) writes.push({ id });
+    }
+    if (writes.length === 0) return;
+
+    const batchSize = 350;
+    for (let offset = 0; offset < writes.length; offset += batchSize) {
+      const slice = writes.slice(offset, offset + batchSize);
+      await this.firestore.runTransaction(async (transaction) => {
+        await this.assertFirestoreWriterLease(transaction);
+        for (const item of slice) {
+          const ref = recordsRef.doc(item.id);
+          if (item.record) {
+            transaction.set(ref, {
+              record: sanitizeFirestoreValue(item.record),
+              updatedAt: new Date().toISOString(),
+            }, { merge: false });
+          } else {
+            transaction.delete(ref);
+          }
+        }
+      });
+    }
+    this.hoaHongPersistedSnapshots.clear();
+    for (const [id, record] of current) {
+      this.hoaHongPersistedSnapshots.set(id, JSON.stringify(record));
+    }
+    console.log('[Firebase] HOAHONG record changes committed:', writes.length);
+  }
+
   private captureFirestoreSnapshots(): void {
     for (const table of this.firestoreTables) {
       this.firestorePersistedSnapshots[table] = JSON.stringify((this.db as any)[table]);
@@ -750,6 +867,17 @@ class DatabaseService {
 
   private getChangedFirestoreTables(): (typeof this.firestoreTables)[number][] {
     return this.firestoreTables.filter((table) => {
+      if (table === 'HOAHONG' && this.hoaHongRecordStorageEnabled) {
+        const current = new Map<string, string>();
+        for (const record of this.db.HOAHONG || []) {
+          if (record.HoaHongID) current.set(String(record.HoaHongID), JSON.stringify(record));
+        }
+        if (current.size !== this.hoaHongPersistedSnapshots.size) return true;
+        for (const [id, value] of current) {
+          if (this.hoaHongPersistedSnapshots.get(id) !== value) return true;
+        }
+        return false;
+      }
       const current = JSON.stringify((this.db as any)[table]);
       return current !== this.firestorePersistedSnapshots[table];
     });
@@ -942,10 +1070,20 @@ class DatabaseService {
       .catch((previousError) => {
         console.error('[Firebase] Recovering after previous queued write failure:', previousError);
       })
-      .then(() => {
+      .then(async () => {
         const changedTables = this.getChangedFirestoreTables();
-        if (changedTables.length === 0) return;
-        return this.persistToFirestoreNow(changedTables);
+        const hoaHongChanged = changedTables.includes('HOAHONG');
+        const otherChangedTables = changedTables.filter((table) => table !== 'HOAHONG');
+        if (otherChangedTables.length > 0) {
+          await this.persistToFirestoreNow(otherChangedTables);
+        }
+        if (hoaHongChanged && this.hoaHongRecordStorageEnabled) {
+          await this.persistHoaHongRecordChanges();
+          this.firestorePersistedSnapshots.HOAHONG = JSON.stringify(this.db.HOAHONG);
+        } else if (hoaHongChanged) {
+          // Safe fallback until the record collection migration is verified.
+          await this.persistToFirestoreNow(['HOAHONG']);
+        }
       });
     this.firestoreSaveQueue = write.catch((err) => {
       console.error('[Firebase] Verified write failed:', err);
