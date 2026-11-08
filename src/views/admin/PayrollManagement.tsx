@@ -28,7 +28,7 @@ interface PayrollManagementProps {
   payrollList: Luong[];
   commissionList: HoaHong[];
   staffList: NhanVien[];
-  onRefresh: () => void;
+  onRefresh: (month?: string) => void;
   onCommissionMonthChange: (month: string) => void;
   onGenerateMonthlyPayroll: () => void;
   initialFilterStatus?: string;
@@ -53,8 +53,8 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
   // The commission ledger can be very large. Load only the selected payroll
   // month instead of downloading the complete history on every tab open.
   useEffect(() => {
-    onCommissionMonthChange(selectedMonth);
-  }, [selectedMonth, onCommissionMonthChange]);
+    if (initialFilterStatus === 'ALL') onCommissionMonthChange(selectedMonth);
+  }, [selectedMonth, initialFilterStatus, onCommissionMonthChange]);
 
   // Modals
   const [editingLuong, setEditingLuong] = useState<Luong | null>(null);
@@ -120,7 +120,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
       await api.tamUng.create({ ...tamUngForm, SoTien: Number(tamUngForm.SoTien) });
       setTamUngForm((prev) => ({ ...prev, SoTien: 0, LyDo: '', GhiChu: '' }));
       await loadTamUng();
-      onRefresh();
+      onRefresh(selectedMonth);
     } catch (err: any) {
       alert(err.message || 'Không thể tạo khoản tạm ứng');
     } finally {
@@ -133,7 +133,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     if (!window.confirm('Bạn có chắc chắn muốn ' + action + ' yêu cầu ứng ' + Number(item.SoTien).toLocaleString('vi-VN') + ' đ của ' + item.HoTen + '?')) return;
     try {
       await api.tamUng.review(item.TamUngID, approve);
-      await loadTamUng(); onRefresh();
+      await loadTamUng(); onRefresh(selectedMonth);
       alert(approve ? 'Đã duyệt ứng lương. Khoản ứng sẽ được khấu trừ vào bảng lương kỳ tương ứng.' : 'Đã từ chối yêu cầu ứng lương.');
     } catch (err: any) { alert(err.message || 'Không thể xử lý yêu cầu ứng lương.'); }
   };
@@ -143,7 +143,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     try {
       await api.tamUng.delete(item.TamUngID);
       await loadTamUng();
-      onRefresh();
+      onRefresh(selectedMonth);
     } catch (err: any) {
       alert(err.message || 'Không thể xóa khoản tạm ứng');
     }
@@ -193,7 +193,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     if (!window.confirm(`Bạn có chắc muốn xóa bảng lương của ${luong.HoTen} kỳ ${luong.Thang}? Thao tác này không thể hoàn tác.`)) return;
     try {
       await api.payroll.delete(luong.LuongID);
-      onRefresh();
+      onRefresh(selectedMonth);
       alert('Đã xóa bảng lương.');
     } catch (err: any) {
       alert(err.message || 'Không thể xóa bảng lương.');
@@ -207,7 +207,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     try {
       await api.payroll.updateDetail(editingLuong.LuongID, editForm);
       setEditingLuong(null);
-      onRefresh();
+      onRefresh(selectedMonth);
     } catch (err: any) {
       alert(err.message || 'Lỗi khi cập nhật lương');
     } finally {
@@ -220,7 +220,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     try {
       await api.payroll.approve(approvingLuong.LuongID);
       setApprovingLuong(null);
-      onRefresh();
+      onRefresh(selectedMonth);
     } catch (err: any) {
       alert(err.message || 'Không thể duyệt lương');
     }
@@ -231,7 +231,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     try {
       await api.payroll.pay(payingLuong.LuongID);
       setPayingLuong(null);
-      onRefresh();
+      onRefresh(selectedMonth);
     } catch (err: any) {
       alert(err.message || 'Không thể thanh toán lương');
     }
