@@ -861,6 +861,15 @@ app.put('/api/luong/:id', authenticateToken, requireAdmin, (req: AuthRequest, re
 });
 
 // DUYỆT LƯƠNG (Chờ duyệt -> Đã duyệt)
+app.post('/api/luong/:id/dong-bo-hoa-hong', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const updated = dbService.reconcilePendingPayrollCommissions(req.params.id);
+    return res.json({ message: 'Đã đồng bộ hoa hồng theo sổ đã duyệt.', luong: updated });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Không thể đồng bộ hoa hồng.' });
+  }
+});
+
 app.post('/api/luong/:id/duyet', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   try {
     const updated = dbService.duyetLuong(req.params.id, {
