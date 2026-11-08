@@ -259,6 +259,8 @@ function restoreFirestoreValue(value: any): any {
   return value;
 }
 
+type FirestoreTableName = 'NHANVIEN' | 'CHAMCONG' | 'LUONG' | 'TAM_UNG' | 'HOAHONG' | 'THONGKE' | 'AUDIT_LOG' | 'NOTIFICATIONS' | 'QUAN_LY' | 'SYSTEM_CONFIG' | 'THEME';
+
 class DatabaseService {
   private db: DatabaseSchema;
   private firestoreSaveQueue: Promise<void> = Promise.resolve();
@@ -761,8 +763,8 @@ class DatabaseService {
     const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
     const committedAt = new Date().toISOString();
     const PART_SIZE = 200000;
-    const smallTables: Array<{ table: (typeof this.firestoreTables)[number]; data: any; bytes: number }> = [];
-    const largeTables: Array<{ table: (typeof this.firestoreTables)[number]; encoded: string; bytes: number; encoding: string }> = [];
+    const smallTables: Array<{ table: FirestoreTableName; data: any; bytes: number }> = [];
+    const largeTables: Array<{ table: FirestoreTableName; encoded: string; bytes: number; encoding: string }> = [];
 
     try {
       // Prepare changed tables once. Small tables are committed together in one
@@ -781,7 +783,7 @@ class DatabaseService {
         if (encoded.length <= PART_SIZE) {
           smallTables.push({ table, data: JSON.parse(serialized), bytes });
         } else {
-          largeTables.push({ table, encoded, bytes, encoding } as any);
+          largeTables.push({ table, encoded, bytes, encoding });
         }
       }
 
