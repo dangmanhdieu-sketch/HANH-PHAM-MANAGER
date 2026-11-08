@@ -2158,6 +2158,13 @@ class DatabaseService {
     if (!Number.isFinite(soTien) || soTien <= 0) {
       throw new Error('Số tiền thu nhập phải lớn hơn 0. Vui lòng kiểm tra doanh thu, tỷ lệ hoặc số tiền show.');
     }
+    const [year, month] = ngay.split('-');
+    const thangStr = `${month}/${year}`;
+    const matchingPayrolls = this.db.LUONG.filter((item) => item.NhanVienID === nv.NhanVienID && item.Thang === thangStr);
+    if (matchingPayrolls.length > 1) throw new Error('Có nhiều bảng lương cho nhân viên trong tháng này; không thể ghi nhận hoa hồng an toàn.');
+    if (matchingPayrolls[0] && matchingPayrolls[0].TrangThai !== 'Chờ duyệt') {
+      throw new Error('Bảng lương tháng này đã duyệt hoặc thanh toán. Không thể thêm hoa hồng vào kỳ đã khóa.');
+    }
 
     const hoaHongId = `HH-${randomUUID()}`;
 
