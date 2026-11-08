@@ -1045,18 +1045,20 @@ class DatabaseService {
   public findNhanVienByEmail(email: string): NhanVien | undefined {
     const normalized = String(email || '').trim().toLowerCase();
     if (!normalized) return undefined;
-    return this.db.NHANVIEN.find(
+    const matches = this.db.NHANVIEN.filter(
       (nv) => String(nv.Email || '').trim().toLowerCase() === normalized
     );
+    return matches.length === 1 ? matches[0] : undefined;
   }
 
   public findNhanVienByUsername(username: string): NhanVien | undefined {
     const normalized = String(username || '').trim().toLowerCase();
     if (!normalized) return undefined;
 
-    return this.db.NHANVIEN.find(
+    const matches = this.db.NHANVIEN.filter(
       (nv) => String(nv.TenDangNhap || '').trim().toLowerCase() === normalized
     );
+    return matches.length === 1 ? matches[0] : undefined;
   }
 
   public createNhanVien(data: Partial<NhanVien>, adminUser: { HoTen: string; Email: string }): NhanVien {
@@ -1090,14 +1092,14 @@ class DatabaseService {
       );
     }
 
-    if (this.findNhanVienByUsername(tenDangNhap)) {
+    if (this.db.NHANVIEN.some((nv) => String(nv.TenDangNhap || '').trim().toLowerCase() === tenDangNhap)) {
       throw new Error(`Tên đăng nhập "${tenDangNhap}" đã tồn tại trong hệ thống!`);
     }
 
     // Email may be missing in legacy/imported records. Only enforce uniqueness
     // when a non-empty email is supplied.
     const normalizedEmail = suppliedEmail;
-    if (normalizedEmail && this.findNhanVienByEmail(normalizedEmail)) {
+    if (normalizedEmail && this.db.NHANVIEN.some((nv) => String(nv.Email || '').trim().toLowerCase() === normalizedEmail)) {
       throw new Error(`Email ${normalizedEmail} đã tồn tại trong hệ thống!`);
     }
 
@@ -1166,9 +1168,11 @@ class DatabaseService {
         );
       }
 
-      const usernameOwner = this.findNhanVienByUsername(tenDangNhap);
-      if (usernameOwner && usernameOwner.NhanVienID !== id) {
-        throw new Error(`Tên đăng nhập "${tenDangNhap}" đã được sử dụng bởi nhân viên khác.`);
+      const usernameConflict = this.db.NHANVIEN.some((nv, rowIndex) =>
+        rowIndex !== index && String(nv.TenDangNhap || '').trim().toLowerCase() === tenDangNhap
+      );
+      if (usernameConflict) {
+        throw new Error(`Tên đăng nhập "${tenDangNhap}" đã được sử dụng hoặc bị trùng trong dữ liệu cũ.`);
       }
     }
 
@@ -1178,9 +1182,11 @@ class DatabaseService {
       : String(current.Email || '').trim().toLowerCase();
     const currentEmail = String(current.Email || '').trim().toLowerCase();
     if (nextEmail && nextEmail !== currentEmail) {
-      const emailOwner = this.findNhanVienByEmail(nextEmail);
-      if (emailOwner && emailOwner !== current) {
-        throw new Error(`Email ${nextEmail} đã được sử dụng bởi nhân viên khác.`);
+      const emailConflict = this.db.NHANVIEN.some((nv, rowIndex) =>
+        rowIndex !== index && String(nv.Email || '').trim().toLowerCase() === nextEmail
+      );
+      if (emailConflict) {
+        throw new Error(`Email ${nextEmail} đã được sử dụng hoặc bị trùng trong dữ liệu cũ.`);
       }
     }
 
@@ -1631,7 +1637,18 @@ class DatabaseService {
     createdItems: string[];
     skippedItems: string[];
   } {
+    if (!/^\\d{2}\\/\\d{4}$/.test(String(thang || ''))) {
+      throw new Error('Kỳ lương phải có định dạng MM/YYYY.');
+    }
+    const [monthNumber, yearNumber] = thang.split('/').map(Number);
+    if (monthNumber < 1 || monthNumber > 12 || yearNumber < 2000) {
+      throw new Error('Tháng/năm tạo bảng lương không hợp lệ.');
+    }
     const activeStaff = this.db.NHANVIEN.filter((nv) => nv.TrangThai === 'Đang Làm');
+    const activeIds = activeStaff.map((nv) => nv.NhanVienID);
+    if (new Set(activeIds).size !== activeIds.length) {
+      throw new Error('Phát hiện mã nhân viên đang làm bị trùng. Hệ thống đã dừng tạo lương để tránh cộng sai người; hãy chạy Kiểm tra toàn vẹn dữ liệu.');
+    }
     let createdCount = 0;
     let skippedCount = 0;
     const createdItems: string[] = [];
