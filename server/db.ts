@@ -2042,28 +2042,16 @@ class DatabaseService {
     const hh = this.db.HOAHONG.find((item) => item.HoaHongID === hoaHongId);
     if (!hh) throw new Error('Không tìm thấy bản ghi hoa hồng');
 
-    if (dongY) {
-      hh.TrangThai = 'Đã duyệt';
-      hh.NgayDuyet = new Date().toISOString();
-      hh.NguoiDuyet = adminUser.HoTen;
+    const nextStatus = dongY ? 'Đã duyệt' : 'Từ chối';
+    // Tránh ghi Firestore, tạo audit và gửi thông báo lặp khi Admin bấm duyệt nhiều lần.
+    if (hh.TrangThai === nextStatus) return hh;
 
-      // Tự động cộng vào bảng lương của nhân viên trong tháng đó nếu đang 'Chờ duyệt'
-      const [year, month] = hh.Ngay.split('-');
-      const thangStr = `${month}/${year}`;
-      const luong = this.db.LUONG.find(
-        (l) => l.NhanVienID === hh.NhanVienID && l.Thang === thangStr
-      );
+    hh.TrangThai = nextStatus;
+    hh.NgayDuyet = new Date().toISOString();
+    hh.NguoiDuyet = adminUser.HoTen;
 
-      if (luong && luong.TrangThai === 'Chờ duyệt') {
-        // Recompute from the approved ledger instead of adding repeatedly; approval retries stay idempotent.
-        this.syncHoaHongToLuong(hh.NhanVienID, thangStr);
-      }
-    } else {
-      hh.TrangThai = 'Từ chối';
-      hh.NgayDuyet = new Date().toISOString();
-      hh.NguoiDuyet = adminUser.HoTen;
-    }
-
+    // Chỉ đồng bộ bảng lương một lần cho mỗi lần đổi trạng thái.
+    // Trước đây nhánh duyệt gọi syncHoaHongToLuong rồi đoạn phía dưới gọi lại lần hai.
     const [commissionYear, commissionMonth] = hh.Ngay.split('-');
     this.syncHoaHongToLuong(hh.NhanVienID, `${commissionMonth}/${commissionYear}`);
     this.refreshKPIs();
