@@ -36,6 +36,11 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
+  // Match the payroll screen's current-month default; allow an explicit all-time view.
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteConfirmHH, setDeleteConfirmHH] = useState<HoaHong | null>(null);
   const [approveConfirmHH, setApproveConfirmHH] = useState<{ hh: HoaHong; dongY: boolean } | null>(null);
@@ -95,13 +100,15 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
 
   // Form state
   const [formData, setFormData] = useState({
-    NhanVienID: staffList[0]?.NhanVienID || 'NV002',
+    // Admin must explicitly choose the beneficiary; never silently attribute income
+    // to the first employee in a list that may arrive asynchronously or be reordered.
+    NhanVienID: '',
     Ngay: new Date().toISOString().split('T')[0],
     NoiDung: '',
     LoaiKhoan: 'Hoa Hồng' as LoaiKhoanThuNhap,
-    DoanhThu: 20000000,
-    TyLeHoaHong: 5,
-    SoTienHoaHong: 1000000,
+    DoanhThu: 0,
+    TyLeHoaHong: 0,
+    SoTienHoaHong: 0,
     AnhChungTu: '',
     GhiChu: '',
   });
@@ -113,13 +120,14 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const filteredList = commissionList.filter((hh) => {
     const matchStaff = selectedStaffId === 'ALL' || hh.NhanVienID === selectedStaffId;
     const matchStatus = selectedStatus === 'ALL' || hh.TrangThai === selectedStatus;
+    const matchMonth = selectedMonth === 'ALL' || (hh.Ngay || '').slice(0, 7) === selectedMonth;
     const isShow = hh.LoaiKhoan === 'Tiền Show' || hh.NoiDung.includes('Tiền Show');
     const matchType =
       selectedType === 'ALL' ||
       (selectedType === 'Tiền Show' && isShow) ||
       (selectedType === 'Hoa Hồng' && !isShow);
 
-    return matchStaff && matchStatus && matchType;
+    return matchStaff && matchStatus && matchType && matchMonth;
   });
 
   // Calculate metrics
@@ -127,8 +135,19 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
     .filter((hh) => hh.TrangThai === 'Đã duyệt')
     .reduce((sum, hh) => sum + hh.SoTienHoaHong, 0);
 
-  const pendingList = commissionList.filter((hh) => hh.TrangThai === 'Chờ duyệt');
-  const totalPendingMoney = pendingList.reduce((sum, hh) => sum + hh.SoTienHoaHong, 0);
+  // Pending count/amount follows the same employee, type and period filters,
+  // while remaining independent of the status dropdown so the queue count stays useful.
+  const pendingList = commissionList.filter((hh) => {
+    const matchStaff = selectedStaffId === 'ALL' || hh.NhanVienID === selectedStaffId;
+    const matchMonth = selectedMonth === 'ALL' || (hh.Ngay || '').slice(0, 7) === selectedMonth;
+    const isShow = hh.LoaiKhoan === 'Tiền Show' || hh.NoiDung.includes('Tiền Show');
+    const matchType = selectedType === 'ALL' ||
+      (selectedType === 'Tiền Show' && isShow) ||
+      (selectedType === 'Hoa Hồng' && !isShow);
+    return hh.TrangThai === 'Chờ duyệt' && matchStaff && matchMonth && matchType;
+  });
+  const totalPendingMoney = pendingList.reduce((sum, hh) => sum + Number(hh.SoTienHoaHong || 0), 0);
+  const availableMonths = Array.from(new Set(commissionList.map((hh) => (hh.Ngay || '').slice(0, 7)).filter(Boolean))).sort().reverse();
 
   // Computed amount for form preview
   const computedAmount =
@@ -138,8 +157,16 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.NhanVienID || !staffList.some((staff) => staff.NhanVienID === formData.NhanVienID)) {
+      setFormError('Vui lòng chọn đúng nhân viên thụ hưởng từ danh sách hiện tại.');
+      return;
+    }
     if (!formData.NoiDung.trim()) {
       setFormError('Vui lòng nhập nội dung hợp đồng hoặc dịch vụ.');
+      return;
+    }
+    if (!Number.isFinite(computedAmount) || computedAmount <= 0) {
+      setFormError('Số tiền thu nhập phải lớn hơn 0. Vui lòng kiểm tra doanh thu, tỷ lệ hoặc số tiền show.');
       return;
     }
     setSaving(true);
@@ -220,13 +247,14 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
             type="button"
             onClick={() => {
               setFormData({
-                NhanVienID: staffList[0]?.NhanVienID || 'NV002',
+                // Require an explicit beneficiary every time the form is opened.
+                NhanVienID: '',
                 Ngay: new Date().toISOString().split('T')[0],
                 NoiDung: '',
                 LoaiKhoan: 'Tiền Show',
-                DoanhThu: 20000000,
-                TyLeHoaHong: 5,
-                SoTienHoaHong: 800000,
+                DoanhThu: 0,
+                TyLeHoaHong: 0,
+                SoTienHoaHong: 0,
                 AnhChungTu: '',
                 GhiChu: '',
               });
@@ -297,6 +325,20 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
       {/* Filter Toolbar */}
       <div className="bg-white p-4 rounded-xl border border-[#E7DFD5] shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between text-xs">
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-stone-600">Kỳ:</span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] bg-white text-xs"
+            >
+              <option value="ALL">Tất cả thời gian</option>
+              {availableMonths.map((month) => (
+                <option key={month} value={month}>{month.slice(5, 7)}/{month.slice(0, 4)}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-stone-600">Nhân viên:</span>
             <select
@@ -528,10 +570,12 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                     Nhân viên thụ hưởng <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    required
                     value={formData.NhanVienID}
                     onChange={(e) => setFormData({ ...formData, NhanVienID: e.target.value })}
                     className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] bg-white"
                   >
+                    <option value="">-- Chọn nhân viên thụ hưởng --</option>
                     {staffList.map((s) => (
                       <option key={s.NhanVienID} value={s.NhanVienID}>
                         {s.HoTen} - {s.ChucVu} ({s.NhanVienID})

@@ -21,7 +21,7 @@ export interface NhanVien {
   AnhNhanVien: string;
   Quyen: QuyenNguoiDung;
   MatKhau?: string; // Hashed password
-  MatKhauHienThi?: string; // Mật khẩu ban đầu được Admin cấp (để sao chép gửi cho nhân viên)
+  MatKhauHienThi?: never; // Deprecated legacy field; plaintext passwords are removed and never written.
   SoTaiKhoan?: string; // Số tài khoản ngân hàng
   NganHang?: string; // Tên ngân hàng (Vietcombank, Techcombank, MB Bank...)
   TenChuTaiKhoan?: string; // Tên chủ tài khoản (in hoa không dấu)

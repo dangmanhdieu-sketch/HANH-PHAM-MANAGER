@@ -194,18 +194,13 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
       (err) => {
         console.warn('Geolocation error:', err);
 
-        // Keep the existing fallback behavior from the original component.
-        setGpsData({
-          lat: 10.7769,
-          lng: 106.6953,
-          accuracy: 10,
-          address: '10.776900, 106.695300 (Studio Hanh Pham Bridal)',
-        });
-
+        // Never fabricate a studio coordinate when device GPS fails.
+        // A fallback coordinate can create false attendance at the wrong location.
+        setGpsData(null);
         setGpsError(
           err.code === 1
-            ? 'Bạn chưa cấp quyền GPS. Hệ thống đang dùng tọa độ dự phòng.'
-            : 'Không lấy được GPS chính xác. Hệ thống đang dùng tọa độ dự phòng.'
+            ? 'Bạn chưa cấp quyền GPS. Hãy bật quyền vị trí chính xác để tiếp tục chấm công.'
+            : 'Không lấy được GPS chính xác. Vui lòng thử lại khi có tín hiệu GPS ổn định.'
         );
 
         setLoadingGps(false);

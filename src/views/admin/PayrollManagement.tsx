@@ -617,13 +617,15 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Hoa Hồng (Hợp đồng)</label>
+                  <label className="block font-semibold text-stone-700 mb-1">Hoa hồng đã duyệt (tự động đồng bộ)</label>
                   <input
                     type="number"
                     value={editForm.HoaHong}
-                    onChange={(e) => setEditForm({ ...editForm, HoaHong: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f]"
+                    readOnly
+                    aria-readonly="true"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-stone-50 text-stone-600"
                   />
+                  <p className="text-[10px] text-stone-500 mt-1">Số tiền này lấy từ sổ hoa hồng đã duyệt. Không chỉnh trực tiếp tại bảng lương để tránh lệch dữ liệu.</p>
                 </div>
 
                 <div>
@@ -657,13 +659,15 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Tạm Ứng Trong Kỳ</label>
+                  <label className="block font-semibold text-stone-700 mb-1">Tạm ứng đã duyệt (tự động đồng bộ)</label>
                   <input
                     type="number"
                     value={editForm.TamUng}
-                    onChange={(e) => setEditForm({ ...editForm, TamUng: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f]"
+                    readOnly
+                    aria-readonly="true"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-stone-50 text-stone-600"
                   />
+                  <p className="text-[10px] text-stone-500 mt-1">Lấy từ sổ tạm ứng đã duyệt. Muốn điều chỉnh, thao tác tại danh sách tạm ứng để giữ lịch sử từng khoản.</p>
                 </div>
 
                 <div className="col-span-2">

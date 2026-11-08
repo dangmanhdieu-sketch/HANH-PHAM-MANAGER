@@ -7,13 +7,23 @@ import { api } from '../../api';
 import type { QuanLyRecord } from '../../types';
 
 type Period = 'week' | 'month' | 'year';
-type ContractRow = { record: QuanLyRecord; data: Record<string, any>; signedDate: string; value: number; collected: number; remaining: number; status: string };
+type ContractRow = { record: QuanLyRecord; data: Record<string, any>; signedDate: string; value: number; collected: number; remaining: number; overpaid: number; status: string };
 
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
 const dateText = (value: string) => {
   if (!value) return '—';
   const d = new Date(value.length === 10 ? value + 'T00:00:00' : value);
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString('vi-VN');
+};
+const getContractTotalValue = (data: Record<string, any> | undefined) => {
+  const base = Math.max(0, Number(data?.GiaGoiBanDau ?? data?.TongGiaTri ?? 0) || 0);
+  const hasStoredFinal = data?.GiaGoiBanDau !== undefined && data?.TongGiaTri !== undefined;
+  if (hasStoredFinal) return Math.max(0, Number(data?.TongGiaTri) || 0);
+  const direct = Math.max(0, Number(data?.GiamGiaTrucTiep || 0));
+  const rate = Math.min(100, Math.max(0, Number(data?.ChietKhauPhanTram || 0)));
+  const promo = Math.max(0, Number(data?.KhuyenMaiBoSung || 0));
+  const surcharge = Math.max(0, Number(data?.PhuThuDichVu || 0));
+  return Math.max(0, base - direct - Math.round(base * rate / 100) - promo + surcharge);
 };
 const localDate = (d: Date) => {
   const y = d.getFullYear();
@@ -82,19 +92,21 @@ export const ContractsRevenueAnalytics: React.FC = () => {
     return contracts.map(record => {
       const data = record.DuLieu || {};
       const signedDate = String(data.NgayKy || data.NgayTao || record.TaoLuc || '').slice(0, 10);
-      const value = Math.max(0, Number(data.TongGiaTri ?? data.GiaGoiBanDau ?? 0) || 0);
+      const value = getContractTotalValue(data);
       const code = String(data.MaHopDong || record.QuanLyID);
       // Chỉ các phiếu thu đã duyệt mới được xem là tiền thực thu.
       const approvedReceiptTotal = approvedReceipts
         .filter(receipt =>
-          String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === code ||
-          String(receipt.DuLieu?.HopDongQuanLyID || '') === String(record.QuanLyID)
+          (receipt.DuLieu?.HopDongQuanLyID
+            ? String(receipt.DuLieu.HopDongQuanLyID) === String(record.QuanLyID)
+            : String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === code)
         )
         .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
-      const collected = Math.min(value, approvedReceiptTotal);
+      const collected = approvedReceiptTotal;
       return {
         record, data, signedDate, value, collected,
         remaining: Math.max(0, value - collected),
+        overpaid: Math.max(0, collected - value),
         status: String(data.TrangThai || 'Nháp'),
       };
     });
@@ -115,6 +127,7 @@ export const ContractsRevenueAnalytics: React.FC = () => {
   const activeCount = periodRows.filter(r => !['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).length;
   const totalSales = periodRows.reduce((sum, r) => sum + r.value, 0);
   const totalRemaining = Math.max(0, totalSales - collectedInPeriod);
+  const totalOverpaid = periodRows.reduce((sum, row) => sum + row.overpaid, 0);
   const completeRatio = signedCount ? Math.round(completeCount / signedCount * 100) : 0;
 
   const chartData = useMemo(() => {
@@ -197,6 +210,7 @@ export const ContractsRevenueAnalytics: React.FC = () => {
             { label: 'Tổng doanh số', value: money(totalSales), sub: 'Giá trị HĐ ký trong kỳ', icon: FileCheck2, tone: 'gold' },
             { label: 'Đã thu trong kỳ', value: money(collectedInPeriod), sub: 'Tiền đã thu lũy kế của HĐ ký trong kỳ, gồm tiền cọc', icon: Wallet, tone: 'green' },
             { label: 'Còn phải thu', value: money(totalRemaining), sub: 'Công nợ của HĐ ký trong kỳ', icon: ReceiptText, tone: 'amber' },
+            { label: 'Thu vượt hợp đồng', value: money(totalOverpaid), sub: 'Khoản chênh lệch cần đối soát', icon: AlertTriangle, tone: 'amber' },
           ].map((item) => {
             const Icon = item.icon;
             const tone = item.tone === 'gold' ? 'text-[#A98743] bg-[#F8F2E6]' : item.tone === 'green' ? 'text-emerald-700 bg-emerald-50' : 'text-amber-700 bg-amber-50';
@@ -247,9 +261,9 @@ export const ContractsRevenueAnalytics: React.FC = () => {
         <div className="flex flex-col gap-3 border-b border-[#E7DFD5] p-4 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="font-bold text-stone-900">Chi tiết hợp đồng trong kỳ</h3><p className="mt-1 text-xs text-stone-500">{filteredRows.length} hợp đồng phù hợp bộ lọc</p></div><div className="flex items-center gap-2 rounded-xl border border-stone-200 px-3 py-2"><Search className="h-4 w-4 text-stone-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã HĐ, khách hàng..." className="min-w-0 flex-1 text-xs outline-none sm:w-52" /></div></div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-xs">
-            <thead className="bg-[#FAF8F5] text-[10px] uppercase tracking-wider text-stone-500"><tr><th className="px-4 py-3">Hợp đồng / Khách hàng</th><th className="px-4 py-3">Ngày ký</th><th className="px-4 py-3">Gói dịch vụ</th><th className="px-4 py-3 text-right">Giá trị HĐ</th><th className="px-4 py-3 text-right">Đã thu lũy kế</th><th className="px-4 py-3 text-right">Còn phải thu</th><th className="px-4 py-3">Trạng thái</th></tr></thead>
+            <thead className="bg-[#FAF8F5] text-[10px] uppercase tracking-wider text-stone-500"><tr><th className="px-4 py-3">Hợp đồng / Khách hàng</th><th className="px-4 py-3">Ngày ký</th><th className="px-4 py-3">Gói dịch vụ</th><th className="px-4 py-3 text-right">Giá trị HĐ</th><th className="px-4 py-3 text-right">Đã thu lũy kế</th><th className="px-4 py-3 text-right">Còn phải thu</th><th className="px-4 py-3 text-right">Thu vượt</th><th className="px-4 py-3">Trạng thái</th></tr></thead>
             <tbody className="divide-y divide-[#EEE8DF]">
-              {loading ? <tr><td colSpan={7} className="p-8 text-center text-stone-400">Đang tải dữ liệu hợp đồng…</td></tr> : filteredRows.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-stone-400">Không có hợp đồng trong kỳ đã chọn.</td></tr> : filteredRows.map(row => <tr key={row.record.QuanLyID} className="hover:bg-[#FCFAF6]"><td className="px-4 py-3"><div className="font-bold text-stone-900">{row.data.MaHopDong || row.record.QuanLyID}</div><div className="mt-1 text-stone-500">{row.data.KhachHang || 'Chưa có tên khách hàng'}</div></td><td className="px-4 py-3 text-stone-600">{dateText(row.signedDate)}</td><td className="px-4 py-3 text-stone-600">{row.data.GoiDichVu || row.data.TenGoi || '—'}</td><td className="px-4 py-3 text-right font-semibold">{money(row.value)}</td><td className="px-4 py-3 text-right font-semibold text-emerald-700">{money(row.collected)}</td><td className={`px-4 py-3 text-right font-semibold ${row.remaining > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{money(row.remaining)}</td><td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(row.status) ? 'bg-emerald-100 text-emerald-800' : ['Đã hủy', 'Hủy'].includes(row.status) ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>{row.status}</span></td></tr>)}
+              {loading ? <tr><td colSpan={8} className="p-8 text-center text-stone-400">Đang tải dữ liệu hợp đồng…</td></tr> : filteredRows.length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-stone-400">Không có hợp đồng trong kỳ đã chọn.</td></tr> : filteredRows.map(row => <tr key={row.record.QuanLyID} className="hover:bg-[#FCFAF6]"><td className="px-4 py-3"><div className="font-bold text-stone-900">{row.data.MaHopDong || row.record.QuanLyID}</div><div className="mt-1 text-stone-500">{row.data.KhachHang || 'Chưa có tên khách hàng'}</div></td><td className="px-4 py-3 text-stone-600">{dateText(row.signedDate)}</td><td className="px-4 py-3 text-stone-600">{row.data.GoiDichVu || row.data.TenGoi || '—'}</td><td className="px-4 py-3 text-right font-semibold">{money(row.value)}</td><td className="px-4 py-3 text-right font-semibold text-emerald-700">{money(row.collected)}</td><td className={`px-4 py-3 text-right font-semibold ${row.remaining > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{money(row.remaining)}</td><td className="px-4 py-3 text-right font-semibold text-rose-700">{row.overpaid > 0 ? money(row.overpaid) : '—'}</td><td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(row.status) ? 'bg-emerald-100 text-emerald-800' : ['Đã hủy', 'Hủy'].includes(row.status) ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>{row.status}</span></td></tr>)}
             </tbody>
           </table>
         </div>

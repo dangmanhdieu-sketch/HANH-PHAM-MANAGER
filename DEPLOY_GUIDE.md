@@ -49,3 +49,40 @@ Chờ khoảng 1-2 phút, Vercel sẽ cấp cho bạn một đường link chín
 Vì hệ thống có lưu trữ dữ liệu chấm công, hoa hồng và bảng lương vào file nội bộ:
 - **Vercel** là nền tảng Serverless (mỗi lần khởi động lại có thể làm mới bộ nhớ tạm).
 - Nếu bạn muốn dữ liệu được lưu vĩnh viễn không bao giờ mất mà không cần cài đặt SQL phức tạp, bạn có thể triển khai lên **[Render.com](https://render.com)** (chọn *Web Service*, chọn repo GitHub, Build Command: `npm run build`, Start Command: `npm start`).
+
+---
+
+## 5. TRIỂN KHAI RENDER (KHUYẾN NGHỊ CHO BẢN EXPRESS + FIRESTORE)
+
+Ứng dụng chạy Express server liên tục; không dùng thư mục JSON cục bộ trên Render làm nơi lưu dữ liệu chính. Firestore phải là nguồn dữ liệu chính thức.
+
+### Cấu hình Web Service
+- **Runtime**: Node
+- **Root Directory**: để trống (thư mục gốc repository)
+- **Build Command**: `npm install && npm run build`
+- **Start Command**: `npm start`
+- **Health Check Path**: `/healthz`
+- **Instance count**: giữ **1 instance** cho đến khi cơ chế đồng bộ nhiều writer được thiết kế lại.
+- **Node version**: Node 22.12 trở lên (được khai báo trong `package.json`).
+
+### Environment Variables
+Thiết lập trong Render → Web Service → Environment:
+- `NODE_ENV=production`
+- `FIREBASE_SERVICE_ACCOUNT_JSON`: toàn bộ JSON của Firebase Admin service account, dán thành một dòng. Không đưa key vào GitHub hoặc gửi qua chat.
+- `FIREBASE_EXPECTED_PROJECT_ID`: phải trùng chính xác trường `project_id` trong JSON service account.
+- `FIREBASE_COLLECTION=hanh_pham_manager`
+- `FIREBASE_DOCUMENT=database`
+- `AUTH_TOKEN_SECRET`: chuỗi bí mật ngẫu nhiên dài, giữ nguyên qua các lần deploy.
+- `APP_TIMEZONE=Asia/Ho_Chi_Minh`
+- `FIREBASE_ALLOW_EMPTY_INIT`: để `false` hoặc không khai báo khi đang dùng database hiện hữu. Không bật để xử lý lỗi mất dữ liệu.
+
+Không thay các giá trị collection/document nếu chưa xác nhận đúng đường dẫn đang chứa dữ liệu thật trên Firestore. Không tạo project Firebase mới để “thử” trên app production.
+
+### Kiểm tra sau deploy
+1. Chỉ deploy sau khi backup Firestore và xác nhận đúng project/collection/document.
+2. Mở `https://<domain-render-cua-ban>/healthz`; kết quả hợp lệ là HTTP 200 với `database: ready`.
+3. Đăng nhập, kiểm tra danh sách nhân viên và một vài bản ghi lịch sử; không tạo dữ liệu thử có giá trị tiền thật.
+4. Chạy **Kiểm tra toàn vẹn dữ liệu** trong app và đối soát các cảnh báo trước khi duyệt lương/hoa hồng.
+5. Nếu health check trả 503 hoặc Render không khởi động, kiểm tra log Firebase; không bật empty-init và không reset Firestore.
+
+> Lưu ý: `/healthz` chỉ xác nhận server đã tải được database và sẵn sàng phục vụ, không thay thế backup hay đối soát dữ liệu tài chính.

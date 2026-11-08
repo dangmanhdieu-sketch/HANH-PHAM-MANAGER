@@ -1,14 +1,13 @@
+import 'dotenv/config';
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
-import dotenv from 'dotenv';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { dbService } from './server/db.ts';
 import { automationManager } from './server/automation.ts';
 import type { NhanVien } from './src/types.ts';
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -75,25 +74,41 @@ app.use('/api', (req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Helper to create a simple signed token for session
+// Signed session tokens. Never trust a client-editable base64 payload for admin/financial permissions.
+// Set AUTH_TOKEN_SECRET on Render. Firebase service-account secrets are a stable fallback;
+// local development gets an ephemeral secret and therefore requires login again after restart.
+const TOKEN_SECRET =
+  process.env.AUTH_TOKEN_SECRET ||
+  process.env.FIREBASE_SERVICE_ACCOUNT_JSON ||
+  process.env.FIREBASE_PRIVATE_KEY ||
+  randomUUID();
+if (!process.env.AUTH_TOKEN_SECRET && !process.env.FIREBASE_SERVICE_ACCOUNT_JSON && !process.env.FIREBASE_PRIVATE_KEY) {
+  console.warn('[AUTH] AUTH_TOKEN_SECRET is not configured; sessions will be invalidated whenever this process restarts.');
+}
+
 function createToken(user: NhanVien): string {
   const payload = {
     id: user.NhanVienID,
     username: user.TenDangNhap,
     email: user.Email,
-    role: user.Quyen,
-    exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+    exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
   };
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = createHmac('sha256', TOKEN_SECRET).update(encoded).digest('base64url');
+  return `${encoded}.${signature}`;
 }
 
-function parseToken(tokenStr: string): { id: string; username?: string; email: string; role: string; exp: number } | null {
+function parseToken(tokenStr: string): { id: string; username?: string; email: string; exp: number } | null {
   try {
-    const raw = Buffer.from(tokenStr, 'base64').toString('utf-8');
-    const parsed = JSON.parse(raw);
-    if (parsed.exp && parsed.exp > Date.now()) {
-      return parsed;
+    const [encoded, suppliedSignature, extra] = String(tokenStr || '').split('.');
+    if (!encoded || !suppliedSignature || extra !== undefined) return null;
+    const expectedSignature = createHmac('sha256', TOKEN_SECRET).update(encoded).digest();
+    const actualSignature = Buffer.from(suppliedSignature, 'base64url');
+    if (actualSignature.length !== expectedSignature.length || !timingSafeEqual(actualSignature, expectedSignature)) {
+      return null;
     }
+    const parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf-8'));
+    if (typeof parsed.id === 'string' && parsed.exp && parsed.exp > Date.now()) return parsed;
     return null;
   } catch {
     return null;
@@ -200,7 +215,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
     }
 
     const token = createToken(user);
-    const { MatKhau: _, ...userSafe } = user;
+    const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...userSafe } = user;
 
     dbService.logAudit(
       user.HoTen,
@@ -230,7 +245,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
 });
 
 app.get('/api/auth/me', authenticateToken, (req: AuthRequest, res: Response) => {
-  const { MatKhau: _, ...userSafe } = req.user!;
+  const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...userSafe } = req.user!;
   res.json({ user: userSafe });
 });
 
@@ -261,13 +276,13 @@ app.get('/api/nhanvien', authenticateToken, (req: AuthRequest, res: Response) =>
   const user = req.user!;
   // Non-admin can only see their own profile or public staff directory list (without salary)
   if (user.Quyen === 'Admin') {
-    const list = dbService.getNhanVienList().map(({ MatKhau, ...safe }) => safe);
+    const list = dbService.getNhanVienList().map(({ MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe }) => safe);
     return res.json(list);
   } else {
     // Return staff directory list with public info + bank info for all staff
     const list = dbService.getNhanVienList().map((nv) => {
       if (nv.NhanVienID === user.NhanVienID) {
-        const { MatKhau, ...safe } = nv;
+        const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = nv;
         return safe;
       }
       return {
@@ -305,7 +320,7 @@ app.get('/api/nhanvien/:id', authenticateToken, (req: AuthRequest, res: Response
     return res.status(404).json({ error: 'Không tìm thấy nhân viên.' });
   }
 
-  const { MatKhau: _, ...safe } = nv;
+  const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = nv;
   return res.json(safe);
 });
 
@@ -315,7 +330,7 @@ app.post('/api/nhanvien', authenticateToken, requireAdmin, async (req: AuthReque
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
-    const { MatKhau: _, ...safe } = created;
+    const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = created;
     return res.status(201).json(safe);
   } catch (err: any) {
     console.error('[API] Create employee failed:', err);
@@ -346,7 +361,7 @@ app.put('/api/nhanvien/:id', authenticateToken, (req: AuthRequest, res: Response
         HoTen: user.HoTen,
         Email: user.Email,
       });
-      const { MatKhau: _, ...safe } = updated;
+      const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = updated;
       return res.json(safe);
     }
 
@@ -355,7 +370,7 @@ app.put('/api/nhanvien/:id', authenticateToken, (req: AuthRequest, res: Response
       HoTen: user.HoTen,
       Email: user.Email,
     });
-    const { MatKhau: _, ...safe } = updated;
+    const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = updated;
     return res.json(safe);
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
@@ -395,7 +410,7 @@ app.post('/api/nhanvien/:id/toggle-lock', authenticateToken, requireAdmin, (req:
       `${newLockState ? 'Khóa' : 'Mở khóa'} tài khoản ${updated.HoTen} (${updated.NhanVienID})`
     );
 
-    const { MatKhau: _, ...safe } = updated;
+    const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = updated;
     return res.json(safe);
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
@@ -607,18 +622,33 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       const promoDiscount = Number(payload.KhuyenMaiBoSung || 0);
       const surcharge = Number(payload.PhuThuDichVu || 0);
       const percentageDiscount = Math.round(basePrice * discountRate / 100);
-      if (basePrice <= 0 || directDiscount < 0 || discountRate < 0 || discountRate > 100 || promoDiscount < 0 || surcharge < 0 || directDiscount + percentageDiscount + promoDiscount > basePrice) {
+      if (![basePrice, directDiscount, discountRate, promoDiscount, surcharge].every(Number.isFinite) ||
+          basePrice <= 0 || directDiscount < 0 || discountRate < 0 || discountRate > 100 || promoDiscount < 0 || surcharge < 0 ||
+          directDiscount + percentageDiscount + promoDiscount > basePrice) {
         return res.status(400).json({ error: 'Các khoản giảm trừ không hợp lệ hoặc vượt giá gói ban đầu.' });
       }
       payload.GiaGoiBanDau = basePrice;
       payload.TienChietKhau = percentageDiscount;
       payload.TongGiamTru = directDiscount + percentageDiscount + promoDiscount;
       payload.TongGiaTri = basePrice - payload.TongGiamTru + surcharge;
-      payload.TienDatCoc = Number(payload.TienDatCoc || 0);
-      if (!Number.isFinite(payload.TienDatCoc) || payload.TienDatCoc < 0 || payload.TienDatCoc > payload.TongGiaTri) {
-        return res.status(400).json({ error: 'Tiền cọc phải từ 0 đến tổng giá trị hợp đồng.' });
+      const explicitDeposit = Number(payload.TienDatCoc || 0);
+      if (!Number.isFinite(explicitDeposit) || explicitDeposit < 0) {
+        return res.status(400).json({ error: 'Tiền cọc phải là số không âm.' });
       }
-      payload.LichThanhToan = Array.isArray(payload.LichThanhToan) ? payload.LichThanhToan.map((p: any) => ({ ...p, SoTienDuKien: Math.max(0, Number(p.SoTienDuKien || 0)) })) : [];
+      if (!Array.isArray(payload.LichThanhToan)) payload.LichThanhToan = [];
+      if (payload.LichThanhToan.some((p: any) => !Number.isFinite(Number(p.SoTienDuKien || 0)) || Number(p.SoTienDuKien || 0) < 0)) {
+        return res.status(400).json({ error: 'Lịch thanh toán có số tiền không hợp lệ.' });
+      }
+      payload.LichThanhToan = payload.LichThanhToan.map((p: any) => ({ ...p, SoTienDuKien: Number(p.SoTienDuKien || 0) }));
+      const scheduleTotal = payload.LichThanhToan.reduce((sum: number, p: any) => sum + p.SoTienDuKien, 0);
+      if (scheduleTotal > payload.TongGiaTri) {
+        return res.status(400).json({ error: 'Tổng các đợt thanh toán dự kiến không được vượt tổng giá trị hợp đồng.' });
+      }
+      const firstInstallment = Number(payload.LichThanhToan[0]?.SoTienDuKien || 0);
+      payload.TienDatCoc = explicitDeposit > 0 ? explicitDeposit : firstInstallment;
+      if (payload.TienDatCoc > payload.TongGiaTri) {
+        return res.status(400).json({ error: 'Tiền cọc phải không vượt tổng giá trị hợp đồng.' });
+      }
       payload.TrangThai = req.user!.Quyen === 'Admin' ? (payload.TrangThai || 'Đã xác nhận') : 'Chờ admin duyệt';
       payload.LichSuTrangThai = [{ TrangThai: payload.TrangThai, ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen, GhiChu: 'Tạo hợp đồng' }];
       delete payload.DaThu;
@@ -639,8 +669,53 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       if (!['THU', 'CHI'].includes(payload.Loai)) {
         return res.status(400).json({ error: 'Phiếu phải là THU hoặc CHI.' });
       }
-      if (!payload.SoTien || Number(payload.SoTien) <= 0) {
-        return res.status(400).json({ error: 'Số tiền phải lớn hơn 0.' });
+      const amount = Number(payload.SoTien);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return res.status(400).json({ error: 'Số tiền phải là số hợp lệ và lớn hơn 0.' });
+      }
+      payload.SoTien = Math.round(amount);
+
+      if (payload.Loai === 'THU' && (payload.HopDongQuanLyID || payload.HopDongID || payload.MaHopDong)) {
+        const contractId = String(payload.HopDongQuanLyID || '');
+        const contractCode = String(payload.HopDongID || payload.MaHopDong || '');
+        const matches = dbService.getQuanLyRecords('HOP_DONG').filter((item) =>
+          (contractId && item.QuanLyID === contractId) ||
+          (!contractId && contractCode && String(item.DuLieu?.MaHopDong || item.QuanLyID) === contractCode)
+        );
+        if (matches.length !== 1) {
+          return res.status(400).json({ error: matches.length ? 'Mã hợp đồng bị trùng; không thể liên kết phiếu thu an toàn.' : 'Không tìm thấy hợp đồng được liên kết với phiếu thu.' });
+        }
+        const contract = matches[0];
+        const details = contract.DuLieu || {};
+        const base = Math.max(0, Number(details.GiaGoiBanDau ?? details.TongGiaTri ?? 0) || 0);
+        const hasStoredFinal = details.GiaGoiBanDau !== undefined && details.TongGiaTri !== undefined;
+        const direct = Math.max(0, Number(details.GiamGiaTrucTiep || 0));
+        const rate = Math.min(100, Math.max(0, Number(details.ChietKhauPhanTram || 0)));
+        const promo = Math.max(0, Number(details.KhuyenMaiBoSung || 0));
+        const surcharge = Math.max(0, Number(details.PhuThuDichVu || 0));
+        const contractValue = Math.max(0, hasStoredFinal
+          ? Number(details.TongGiaTri || 0)
+          : base - direct - Math.round(base * rate / 100) - promo + surcharge);
+        const code = String(details.MaHopDong || contract.QuanLyID);
+        const reserved = dbService.getQuanLyRecords('THU_CHI')
+          .filter((receipt) => {
+            const data = receipt.DuLieu || {};
+            const status = String(data.TrangThaiDuyet || 'Chờ Admin duyệt');
+            const linked = data.HopDongQuanLyID
+              ? String(data.HopDongQuanLyID) === contract.QuanLyID
+              : String(data.HopDongID || data.MaHopDong || '') === code;
+            return linked && String(data.Loai || '').toUpperCase() === 'THU' &&
+              !['Từ chối', 'Đã từ chối', 'Đã hủy', 'Hủy'].includes(status);
+          })
+          .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
+        if (reserved + amount > contractValue) {
+          return res.status(400).json({
+            error: `Số tiền thu vượt giá trị hợp đồng. Giá trị hợp đồng: ${contractValue.toLocaleString('vi-VN')} đ; phiếu đã duyệt/đang chờ: ${reserved.toLocaleString('vi-VN')} đ; số tiền có thể thu thêm: ${Math.max(0, contractValue - reserved).toLocaleString('vi-VN')} đ.`,
+          });
+        }
+        payload.HopDongQuanLyID = contract.QuanLyID;
+        payload.HopDongID = code;
+        payload.MaHopDong = code;
       }
     }
 
@@ -648,6 +723,41 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
+
+    // Create the initial deposit receipt in the same API mutation as the contract.
+    // Both records live in QUAN_LY, so the Firestore persistence barrier commits
+    // them together; the client cannot accidentally save only half the operation.
+    if (module === 'HOP_DONG') {
+      const installments = Array.isArray(payload.LichThanhToan) ? payload.LichThanhToan : [];
+      const deposit = Math.max(0, Number(payload.TienDatCoc || installments[0]?.SoTienDuKien || 0));
+      if (deposit > 0) {
+        const contractCode = String(payload.MaHopDong || record.QuanLyID);
+        const contractName = String(payload.KhachHang || '');
+        dbService.createQuanLyRecord('THU_CHI', {
+          Ngay: String(payload.NgayTao || new Date().toISOString()).slice(0, 10),
+          Loai: 'THU',
+          DanhMuc: `Thu tiền cọc · ${contractCode} · ${contractName}`,
+          NoiDungThu: `Thu tiền cọc hợp đồng ${contractCode} - ${contractName}`,
+          SoTien: deposit,
+          HopDongID: contractCode,
+          MaHopDong: contractCode,
+          TenHopDong: contractName,
+          DoiTuong: contractName,
+          NhanVienID: req.user!.NhanVienID,
+          NhanVien: req.user!.HoTen,
+          NguoiTao: req.user!.HoTen,
+          NguoiTaoID: req.user!.NhanVienID,
+          PhuongThucThanhToan: payload.PhuongThucThanhToan || 'Tiền mặt',
+          TrangThaiDuyet: 'Chờ Admin duyệt',
+          GhiChu: `Phiếu thu tự tạo từ hợp đồng ${contractCode} - ${contractName}`,
+          NguonTao: 'TIEN_COC_HOP_DONG',
+          HopDongQuanLyID: record.QuanLyID,
+        }, {
+          HoTen: req.user!.HoTen,
+          Email: req.user!.Email,
+        });
+      }
+    }
     return res.status(201).json(record);
   } catch (err: any) {
     return res.status(400).json({ error: err.message || 'Không thể tạo dữ liệu.' });
@@ -656,8 +766,11 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
 
 app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   try {
-    const current = dbService.getQuanLyRecords().find((x) => x.QuanLyID === req.params.id);
-    if (!current) return res.status(404).json({ error: 'Không tìm thấy dữ liệu.' });
+    const currentMatches = dbService.getQuanLyRecords().filter((x) => x.QuanLyID === req.params.id);
+    if (currentMatches.length !== 1) {
+      return res.status(currentMatches.length ? 409 : 404).json({ error: currentMatches.length ? 'Mã dữ liệu nghiệp vụ bị trùng; không thể cập nhật an toàn.' : 'Không tìm thấy dữ liệu.' });
+    }
+    const current = currentMatches[0];
     const changes = { ...(req.body?.data || {}) };
 
     if (current.Module === 'HOP_DONG') {
@@ -670,21 +783,46 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       const promoDiscount = Number(merged.KhuyenMaiBoSung || 0);
       const surcharge = Number(merged.PhuThuDichVu || 0);
       const percentageDiscount = Math.round(basePrice * discountRate / 100);
-      if (basePrice <= 0 || directDiscount < 0 || discountRate < 0 || discountRate > 100 || promoDiscount < 0 || surcharge < 0 || directDiscount + percentageDiscount + promoDiscount > basePrice) {
+      if (![basePrice, directDiscount, discountRate, promoDiscount, surcharge].every(Number.isFinite) ||
+          basePrice <= 0 || directDiscount < 0 || discountRate < 0 || discountRate > 100 || promoDiscount < 0 || surcharge < 0 ||
+          directDiscount + percentageDiscount + promoDiscount > basePrice) {
         return res.status(400).json({ error: 'Các khoản giảm trừ không hợp lệ hoặc vượt giá gói ban đầu.' });
       }
       changes.GiaGoiBanDau = basePrice;
       changes.TienChietKhau = percentageDiscount;
       changes.TongGiamTru = directDiscount + percentageDiscount + promoDiscount;
       changes.TongGiaTri = basePrice - changes.TongGiamTru + surcharge;
-      const deposit = Number(merged.TienDatCoc || 0);
+      const contractCode = String(current.DuLieu?.MaHopDong || current.QuanLyID);
+      const reservedReceipts = dbService.getQuanLyRecords('THU_CHI')
+        .filter((receipt) => {
+          const data = receipt.DuLieu || {};
+          const status = String(data.TrangThaiDuyet || 'Chờ Admin duyệt');
+          const linked = data.HopDongQuanLyID
+            ? String(data.HopDongQuanLyID) === current.QuanLyID
+            : String(data.HopDongID || data.MaHopDong || '') === contractCode;
+          return linked && String(data.Loai || '').toUpperCase() === 'THU' &&
+            !['Từ chối', 'Đã từ chối', 'Đã hủy', 'Hủy'].includes(status);
+        })
+        .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
+      if (reservedReceipts > changes.TongGiaTri) {
+        return res.status(400).json({ error: `Không thể giảm giá trị hợp đồng xuống thấp hơn tổng phiếu thu đã duyệt/đang chờ (${reservedReceipts.toLocaleString('vi-VN')} đ).` });
+      }
+      const schedule = changes.LichThanhToan !== undefined ? changes.LichThanhToan : (Array.isArray(merged.LichThanhToan) ? merged.LichThanhToan : []);
+      if (!Array.isArray(schedule) || schedule.some((p: any) => !Number.isFinite(Number(p.SoTienDuKien || 0)) || Number(p.SoTienDuKien || 0) < 0)) {
+        return res.status(400).json({ error: 'Lịch thanh toán có số tiền không hợp lệ.' });
+      }
+      const normalizedSchedule = schedule.map((p: any) => ({ ...p, SoTienDuKien: Number(p.SoTienDuKien || 0) }));
+      const scheduleTotal = normalizedSchedule.reduce((sum: number, p: any) => sum + p.SoTienDuKien, 0);
+      if (scheduleTotal > changes.TongGiaTri) {
+        return res.status(400).json({ error: 'Tổng các đợt thanh toán dự kiến không được vượt tổng giá trị hợp đồng.' });
+      }
+      if (changes.LichThanhToan !== undefined) changes.LichThanhToan = normalizedSchedule;
+      const explicitDeposit = Number(merged.TienDatCoc || 0);
+      const deposit = explicitDeposit > 0 ? explicitDeposit : Number(normalizedSchedule[0]?.SoTienDuKien || 0);
       if (!Number.isFinite(deposit) || deposit < 0 || deposit > changes.TongGiaTri) {
-        return res.status(400).json({ error: 'Tiền cọc phải từ 0 đến tổng giá trị hợp đồng.' });
+        return res.status(400).json({ error: 'Tiền cọc phải là số hợp lệ và không vượt tổng giá trị hợp đồng.' });
       }
       changes.TienDatCoc = deposit;
-      if (changes.LichThanhToan !== undefined && (!Array.isArray(changes.LichThanhToan) || changes.LichThanhToan.some((p: any) => Number(p.SoTienDuKien || 0) < 0))) {
-        return res.status(400).json({ error: 'Lịch thanh toán không hợp lệ.' });
-      }
       if (changes.MaHopDong && changes.MaHopDong !== current.DuLieu?.MaHopDong) {
         return res.status(400).json({ error: 'Không được thay đổi mã hợp đồng sau khi tạo.' });
       }
@@ -717,9 +855,80 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       if (changes.GhiChuAdmin !== undefined) changes.GhiChuAdmin = String(changes.GhiChuAdmin).slice(0, 1000);
     }
 
-    if (current.Module === 'THU_CHI' && changes.TrangThaiDuyet === 'Đã duyệt' && current.DuLieu?.TrangThaiDuyet !== 'Đã duyệt') {
-      changes.NgayDuyet = new Date().toISOString();
-      changes.NguoiDuyet = req.user!.HoTen;
+    if (current.Module === 'THU_CHI') {
+      const currentStatus = String(current.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt');
+      if (['Đã duyệt', 'Đã thanh toán và duyệt'].includes(currentStatus)) {
+        return res.status(409).json({ error: 'Phiếu thu/chi đã được duyệt hoặc thanh toán. Không thể sửa để làm thay đổi lịch sử tài chính; hãy tạo phiếu điều chỉnh riêng.' });
+      }
+      const mergedCashflow = { ...(current.DuLieu || {}), ...changes };
+      const cashflowType = String(mergedCashflow.Loai || '').toUpperCase();
+      const cashflowAmount = Number(mergedCashflow.SoTien);
+      if (!['THU', 'CHI'].includes(cashflowType) || !Number.isFinite(cashflowAmount) || cashflowAmount <= 0) {
+        return res.status(400).json({ error: 'Loại phiếu và số tiền thu/chi không hợp lệ.' });
+      }
+      changes.SoTien = Math.round(cashflowAmount);
+      const cashflowDate = String(mergedCashflow.Ngay || '');
+      const dateParts = cashflowDate.split('-');
+      const parsedCashflowDate = new Date(cashflowDate + 'T00:00:00Z');
+      if (dateParts.length !== 3 || dateParts[0].length !== 4 || dateParts[1].length !== 2 || dateParts[2].length !== 2 ||
+          !dateParts.every((part) => Number.isInteger(Number(part))) ||
+          Number.isNaN(parsedCashflowDate.getTime()) || parsedCashflowDate.toISOString().slice(0, 10) !== cashflowDate) {
+        return res.status(400).json({ error: 'Ngày phiếu thu/chi không hợp lệ.' });
+      }
+      const hasContractLink = !!(mergedCashflow.HopDongQuanLyID || mergedCashflow.HopDongID || mergedCashflow.MaHopDong);
+      if (cashflowType === 'CHI' && hasContractLink) {
+        return res.status(400).json({ error: 'Phiếu chi không được gắn trực tiếp vào hợp đồng thu tiền.' });
+      }
+      if (cashflowType === 'THU' && hasContractLink) {
+        const contractId = String(mergedCashflow.HopDongQuanLyID || '');
+        const contractCode = String(mergedCashflow.HopDongID || mergedCashflow.MaHopDong || '');
+        const matches = dbService.getQuanLyRecords('HOP_DONG').filter((item) =>
+          contractId ? item.QuanLyID === contractId : String(item.DuLieu?.MaHopDong || item.QuanLyID) === contractCode
+        );
+        if (matches.length !== 1) {
+          return res.status(400).json({ error: matches.length ? 'Mã hợp đồng bị trùng; không thể sửa phiếu thu an toàn.' : 'Không tìm thấy hợp đồng được liên kết.' });
+        }
+        const contract = matches[0];
+        const details = contract.DuLieu || {};
+        const base = Math.max(0, Number(details.GiaGoiBanDau ?? details.TongGiaTri ?? 0) || 0);
+        const hasStoredFinal = details.GiaGoiBanDau !== undefined && details.TongGiaTri !== undefined;
+        const direct = Math.max(0, Number(details.GiamGiaTrucTiep || 0));
+        const rate = Math.min(100, Math.max(0, Number(details.ChietKhauPhanTram || 0)));
+        const promo = Math.max(0, Number(details.KhuyenMaiBoSung || 0));
+        const surcharge = Math.max(0, Number(details.PhuThuDichVu || 0));
+        const contractValue = Math.max(0, hasStoredFinal ? Number(details.TongGiaTri || 0) : base - direct - Math.round(base * rate / 100) - promo + surcharge);
+        const code = String(details.MaHopDong || contract.QuanLyID);
+        const reserved = dbService.getQuanLyRecords('THU_CHI')
+          .filter((receipt) => {
+            if (receipt.QuanLyID === current.QuanLyID) return false;
+            const data = receipt.DuLieu || {};
+            const status = String(data.TrangThaiDuyet || 'Chờ Admin duyệt');
+            const linked = data.HopDongQuanLyID
+              ? String(data.HopDongQuanLyID) === contract.QuanLyID
+              : String(data.HopDongID || data.MaHopDong || '') === code;
+            return linked && String(data.Loai || '').toUpperCase() === 'THU' &&
+              !['Từ chối', 'Đã từ chối', 'Đã hủy', 'Hủy'].includes(status);
+          })
+          .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
+        if (reserved + cashflowAmount > contractValue) {
+          return res.status(400).json({ error: `Số tiền sửa phiếu thu vượt số dư hợp đồng. Giá trị hợp đồng ${contractValue.toLocaleString('vi-VN')} đ; các phiếu khác đã duyệt/đang chờ ${reserved.toLocaleString('vi-VN')} đ.` });
+        }
+        changes.HopDongQuanLyID = contract.QuanLyID;
+        changes.HopDongID = code;
+        changes.MaHopDong = code;
+      }
+      if (changes.TrangThaiDuyet !== undefined &&
+          !['Chờ Admin duyệt', 'Đã duyệt', 'Đã thanh toán và duyệt', 'Từ chối', 'Đã từ chối'].includes(String(changes.TrangThaiDuyet))) {
+        return res.status(400).json({ error: 'Trạng thái duyệt phiếu thu/chi không hợp lệ.' });
+      }
+      if (changes.TrangThaiDuyet && changes.TrangThaiDuyet !== currentStatus &&
+          currentStatus !== 'Chờ Admin duyệt') {
+        return res.status(409).json({ error: 'Phiếu này đã được xử lý trước đó; không thể duyệt lại hoặc đổi trạng thái.' });
+      }
+      if (['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(changes.TrangThaiDuyet || ''))) {
+        changes.NgayDuyet = new Date().toISOString();
+        changes.NguoiDuyet = req.user!.HoTen;
+      }
     }
 
     const record = dbService.updateQuanLyRecord(req.params.id, changes, {
@@ -987,7 +1196,9 @@ app.post('/api/hoahong/:id/duyet', authenticateToken, requireAdmin, (req: AuthRe
       Email: req.user!.Email,
     });
     return res.json({
-      message: dongY !== false ? 'Duyệt hoa hồng thành công và đã cộng vào bảng lương.' : 'Đã từ chối hoa hồng.',
+      message: dongY !== false
+        ? (updated.LuongID ? 'Duyệt hoa hồng thành công và đã đồng bộ vào bảng lương.' : 'Duyệt hoa hồng thành công. Khoản này sẽ được tự động tính khi tạo bảng lương đúng kỳ.')
+        : 'Đã từ chối hoa hồng.',
       hoahong: updated,
     });
   } catch (err: any) {
@@ -1042,6 +1253,10 @@ app.get('/api/thongke', authenticateToken, (req: AuthRequest, res: Response) => 
 app.get('/api/audit-log', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   const raw = dbService.getRawData();
   return res.json(raw.AUDIT_LOG);
+});
+
+app.get('/api/admin/data-integrity', authenticateToken, requireAdmin, (_req: AuthRequest, res: Response) => {
+  return res.json(dbService.getDataIntegrityReport());
 });
 
 app.get('/api/notifications', authenticateToken, (req: AuthRequest, res: Response) => {
@@ -1221,7 +1436,23 @@ app.get('/api/export/:table', authenticateToken, requireAdmin, (req: AuthRequest
 // VITE / STATIC SERVING
 // ==========================================
 
+// Render health checks must only pass when the persistent database is ready.
+app.get('/healthz', async (_req: Request, res: Response) => {
+  try {
+    await dbService.waitUntilReady();
+    return res.status(200).json({ status: 'ok', database: 'ready' });
+  } catch (error: any) {
+    console.error('[Health] Database readiness check failed:', error);
+    return res.status(503).json({ status: 'unavailable', database: 'not-ready' });
+  }
+});
+
 async function startServer() {
+  // Do not start accepting traffic while Firestore is still loading, or when
+  // its configuration/data is invalid. This prevents Render from serving a
+  // healthy-looking shell while API requests are failing or data is incomplete.
+  await dbService.waitUntilReady();
+
   const isProd = process.env.NODE_ENV === 'production';
 
   if (!isProd) {
@@ -1244,7 +1475,10 @@ async function startServer() {
 }
 
 if (process.env.VERCEL !== '1' && !process.env.VERCEL_ENV) {
-  startServer();
+  startServer().catch((error) => {
+    console.error('[SERVER] Startup aborted because persistent storage is not ready:', error);
+    process.exit(1);
+  });
 }
 
 export default app;
