@@ -517,10 +517,9 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       .filter((receipt) =>
         String(receipt.DuLieu?.Loai || '').toUpperCase() === 'THU' &&
         receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt' &&
-        (
-          String(receipt.DuLieu?.HopDongID || '') === contractCode ||
-          String(receipt.DuLieu?.HopDongQuanLyID || '') === String(record.QuanLyID)
-        )
+        receipt.DuLieu?.HopDongQuanLyID
+          ? String(receipt.DuLieu.HopDongQuanLyID) === String(record.QuanLyID)
+          : String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === contractCode
       )
       .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
     // Return the real approved amount. Never cap it at contract value:
@@ -535,8 +534,9 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         const status = String(d.TrangThaiDuyet || 'Chờ Admin duyệt');
         return String(d.Loai || '').toUpperCase() === 'THU' &&
           !['Từ chối', 'Đã hủy', 'Hủy'].includes(status) &&
-          (String(d.HopDongID || d.MaHopDong || '') === contractCode ||
-           String(d.HopDongQuanLyID || '') === String(record.QuanLyID));
+          (d.HopDongQuanLyID
+            ? String(d.HopDongQuanLyID) === String(record.QuanLyID)
+            : String(d.HopDongID || d.MaHopDong || '') === contractCode);
       })
       .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
   };
@@ -724,7 +724,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         const customer = String(d.KhachHang || 'Chưa có tên');
         const value = getContractTotalValue(d);
         const collected = getContractCollected(selectedContract);
-        const receipts = receiptRecords.filter((receipt) => String(receipt.DuLieu?.Loai || '').toUpperCase() === 'THU' && (String(receipt.DuLieu?.HopDongQuanLyID || '') === String(selectedContract.QuanLyID) || String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === code));
+        const receipts = receiptRecords.filter((receipt) => String(receipt.DuLieu?.Loai || '').toUpperCase() === 'THU' && (receipt.DuLieu?.HopDongQuanLyID ? String(receipt.DuLieu.HopDongQuanLyID) === String(selectedContract.QuanLyID) : String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === code));
         const money = (n: unknown) => Number(n || 0).toLocaleString('vi-VN') + ' đ';
         const field = (label: string, value: unknown) => <div className="rounded-xl border border-stone-200 bg-white p-3"><div className="text-[11px] uppercase tracking-wide text-stone-600">{label}</div><div className="mt-1 text-sm font-semibold text-stone-800 break-words">{String(value || '—')}</div></div>;
         return <div className="fixed inset-0 z-[90] bg-stone-100 text-stone-800 overflow-y-auto">
