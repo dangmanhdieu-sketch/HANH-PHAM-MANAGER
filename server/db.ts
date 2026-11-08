@@ -2476,8 +2476,9 @@ class DatabaseService {
       return receipts.filter((receipt) => {
         const data = receipt.DuLieu || {};
         return String(data.Loai || '').toUpperCase() === 'THU' &&
-          (String(data.HopDongQuanLyID || '') === contract.QuanLyID ||
-           String(data.HopDongID || data.MaHopDong || '') === code);
+          (data.HopDongQuanLyID
+            ? String(data.HopDongQuanLyID) === contract.QuanLyID
+            : String(data.HopDongID || data.MaHopDong || '') === code);
       });
     };
     receipts.forEach((receipt) => {
@@ -2641,8 +2642,9 @@ class DatabaseService {
       const linkedReceipts = (this.db.QUAN_LY || []).filter((record) =>
         record.Module === 'THU_CHI' &&
         String(record.DuLieu?.Loai || '').toUpperCase() === 'THU' &&
-        (String(record.DuLieu?.HopDongQuanLyID || '') === target.QuanLyID ||
-         String(record.DuLieu?.HopDongID || record.DuLieu?.MaHopDong || '') === code)
+        (record.DuLieu?.HopDongQuanLyID
+          ? String(record.DuLieu.HopDongQuanLyID) === target.QuanLyID
+          : String(record.DuLieu?.HopDongID || record.DuLieu?.MaHopDong || '') === code)
       );
       if (linkedReceipts.length > 0) {
         throw new Error('Hợp đồng đã có phiếu thu liên kết. Không thể xóa để tránh làm mất lịch sử công nợ; hãy chuyển trạng thái hợp đồng sang Đã hủy và giữ nguyên phiếu thu.');
