@@ -37,6 +37,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [modalOpen, setModalOpen] = useState(false);
+  const [customShowTask, setCustomShowTask] = useState(false);
   const [deleteConfirmHH, setDeleteConfirmHH] = useState<HoaHong | null>(null);
   const [approveConfirmHH, setApproveConfirmHH] = useState<{ hh: HoaHong; dongY: boolean } | null>(null);
   const [approvingHH, setApprovingHH] = useState(false);
@@ -221,6 +222,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           <button
             type="button"
             onClick={() => {
+              setCustomShowTask(false);
               setFormData({
                 NhanVienID: staffList[0]?.NhanVienID || 'NV002',
                 Ngay: new Date().toISOString().split('T')[0],
@@ -514,7 +516,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, LoaiKhoan: 'Hoa Hồng' })}
+                    onClick={() => { setCustomShowTask(false); setFormData({ ...formData, LoaiKhoan: 'Hoa Hồng' }); }}
                     className={`py-2 px-3 rounded-lg border text-center font-bold ${
                       formData.LoaiKhoan === 'Hoa Hồng'
                         ? 'bg-stone-900 text-white border-stone-900'
@@ -547,9 +549,9 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                 <div className="col-span-2">
                   <label className="block font-semibold text-stone-700 mb-1">Nội dung công việc / Tên show cưới <span className="text-rose-500">*</span></label>
                   {formData.LoaiKhoan === 'Tiền Show' ? <>
-                    <select required value={formData.NoiDung && !['MK đám hỏi, rước dâu, nhà thờ','MK cô dâu Đám cưới','MK chụp cổng 1c','MK chụp cổng 2c','MK tiệc tại tiệm','MK tiệc tại nhà khách','MK bà sui','Chụp TT Máy lẻ','Chụp TT máy Tặng','Chụp PS máy Lẻ','Chụp PS Kèm Máy TT','Quay PS','Quay TT'].includes(formData.NoiDung) ? 'Khác' : formData.NoiDung} onChange={(e) => {
+                    <select required value={customShowTask ? 'Khác' : formData.NoiDung} onChange={(e) => {
                       const fees: Record<string, number> = {'MK đám hỏi, rước dâu, nhà thờ':800000,'MK cô dâu Đám cưới':1000000,'MK chụp cổng 1c':300000,'MK chụp cổng 2c':500000,'MK tiệc tại tiệm':300000,'MK tiệc tại nhà khách':300000,'MK bà sui':500000,'Chụp TT Máy lẻ':1200000,'Chụp TT máy Tặng':500000,'Chụp PS máy Lẻ':2000000,'Chụp PS Kèm Máy TT':1500000,'Quay PS':3500000,'Quay TT':2500000};
-                      const value=e.target.value; setFormData(prev=>({...prev,NoiDung:value==='Khác'?'':value,SoTienHoaHong:fees[value]??prev.SoTienHoaHong}));
+                      const value=e.target.value; setCustomShowTask(value==='Khác'); setFormData(prev=>({...prev,NoiDung:value==='Khác'?'':value,SoTienHoaHong:fees[value]??prev.SoTienHoaHong}));
                     }} className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-white">
                       <option value="">-- Chọn công việc --</option>
                       <option value="MK đám hỏi, rước dâu, nhà thờ">MK đám hỏi, rước dâu, nhà thờ — 800.000đ</option>
@@ -565,7 +567,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                       <option value="Chụp PS Kèm Máy TT">Chụp PS Kèm Máy TT — 1.500.000đ</option>
                       <option value="Quay PS">Quay PS — 3.500.000đ</option><option value="Quay TT">Quay TT — 2.500.000đ</option><option value="Khác">Khác (tự nhập)</option>
                     </select>
-                    {(formData.NoiDung === '' || !['MK đám hỏi, rước dâu, nhà thờ','MK cô dâu Đám cưới','MK chụp cổng 1c','MK chụp cổng 2c','MK tiệc tại tiệm','MK tiệc tại nhà khách','MK bà sui','Chụp TT Máy lẻ','Chụp TT máy Tặng','Chụp PS máy Lẻ','Chụp PS Kèm Máy TT','Quay PS','Quay TT'].includes(formData.NoiDung)) && <input type="text" required value={formData.NoiDung} onChange={e=>setFormData(prev=>({...prev,NoiDung:e.target.value}))} placeholder="Nhập nội dung công việc khác" className="mt-2 w-full px-3 py-2 border border-stone-200 rounded-lg" />}
+                    {customShowTask && <input type="text" required value={formData.NoiDung} onChange={e=>setFormData(prev=>({...prev,NoiDung:e.target.value}))} placeholder="Nhập nội dung công việc khác" className="mt-2 w-full px-3 py-2 border border-stone-200 rounded-lg" />}
                   </> : <input type="text" required value={formData.NoiDung} onChange={e=>setFormData({...formData,NoiDung:e.target.value})} placeholder="VD: Tên hợp đồng / khách hàng" className="w-full px-3 py-2 border border-stone-200 rounded-lg" />}
                 </div>
 
