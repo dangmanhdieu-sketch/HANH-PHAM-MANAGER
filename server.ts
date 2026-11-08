@@ -420,7 +420,24 @@ app.get('/api/chamcong', authenticateToken, (req: AuthRequest, res: Response) =>
     trangThai,
   });
 
-  return res.json(records);
+  // Keep large base64 photos out of list responses; fetch them only when opened.
+  return res.json(records.map(({ AnhCheckIn, AnhCheckOut, ...record }) => ({
+    ...record,
+    HasCheckInPhoto: Boolean(AnhCheckIn),
+    HasCheckOutPhoto: Boolean(AnhCheckOut),
+  })));
+});
+
+app.get('/api/chamcong/:id/photos', authenticateToken, (req: AuthRequest, res: Response) => {
+  const user = req.user!;
+  const record = dbService.getChamCongPhotos(req.params.id);
+  if (!record) return res.status(404).json({ error: 'Không tìm thấy bản ghi chấm công.' });
+  const attendance = dbService.getChamCongList().find((item) => item.ChamCongID === req.params.id);
+  if (!attendance) return res.status(404).json({ error: 'Không tìm thấy bản ghi chấm công.' });
+  if (user.Quyen !== 'Admin' && attendance.NhanVienID !== user.NhanVienID) {
+    return res.status(403).json({ error: 'Không có quyền xem ảnh chấm công này.' });
+  }
+  return res.json(record);
 });
 
 app.delete('/api/chamcong/:id', authenticateToken, (req: AuthRequest, res: Response) => {
