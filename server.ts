@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
+import { gzipSync } from 'node:zlib';
 import dotenv from 'dotenv';
 import { dbService } from './server/db.ts';
 import { automationManager } from './server/automation.ts';
@@ -19,6 +20,47 @@ const PORT = Number(process.env.PORT) || 3000;
 // High payload limit for camera photo uploads in base64
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+
+// Compress large JSON API responses for faster loading on mobile networks.
+// Node's built-in gzip avoids an extra runtime dependency. Mutations are still
+// persisted/verified by the middleware below before the compressed response is sent.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const acceptsGzip = /\\bgzip\\b/.test(String(req.headers['accept-encoding'] || ''));
+  if (!acceptsGzip || req.method === 'HEAD') return next();
+
+  const originalSend = res.send.bind(res);
+  res.send = ((body?: any) => {
+    const contentType = String(res.getHeader('Content-Type') || '');
+    const alreadyEncoded = Boolean(res.getHeader('Content-Encoding'));
+    if (
+      alreadyEncoded ||
+      !contentType.includes('application/json') ||
+      res.statusCode === 204 ||
+      res.statusCode === 304 ||
+      body === undefined ||
+      body === null
+    ) {
+      return originalSend(body);
+    }
+
+    const payload = Buffer.isBuffer(body) ? body : Buffer.from(String(body), 'utf8');
+    if (payload.length < 1024) return originalSend(body);
+
+    try {
+      const compressed = gzipSync(payload, { level: 1 });
+      res.setHeader('Content-Encoding', 'gzip');
+      res.setHeader('Vary', 'Accept-Encoding');
+      res.removeHeader('Content-Length');
+      return originalSend(compressed);
+    } catch (error) {
+      console.error('[HTTP] JSON gzip compression failed; sending uncompressed response:', error);
+      return originalSend(body);
+    }
+  }) as Response['send'];
+
+  next();
+});
+
 
 // Firebase/Firestore startup gate: wait until dbService has loaded the
 // persistent database from Firestore before any API route reads or writes data.
