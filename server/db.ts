@@ -770,7 +770,7 @@ class DatabaseService {
         // request may mutate this table while Firestore is awaiting a commit.
         // The persisted snapshot must describe the committed payload, not the
         // later live object, or that newer mutation can be mistaken as saved.
-        const sourceSnapshot = JSON.stringify(value);
+        const sourceSnapshot = JSON.stringify(value) ?? 'null';
         const serialized = JSON.stringify(sanitizeFirestoreValue(value));
         const bytes = Buffer.byteLength(serialized, 'utf8');
         const encoded = Buffer.from(serialized, 'utf8').toString('base64');
