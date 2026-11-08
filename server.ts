@@ -1,14 +1,13 @@
+import 'dotenv/config';
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
-import dotenv from 'dotenv';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { dbService } from './server/db.ts';
 import { automationManager } from './server/automation.ts';
 import type { NhanVien } from './src/types.ts';
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -75,25 +74,41 @@ app.use('/api', (req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Helper to create a simple signed token for session
+// Signed session tokens. Never trust a client-editable base64 payload for admin/financial permissions.
+// Set AUTH_TOKEN_SECRET on Render. Firebase service-account secrets are a stable fallback;
+// local development gets an ephemeral secret and therefore requires login again after restart.
+const TOKEN_SECRET =
+  process.env.AUTH_TOKEN_SECRET ||
+  process.env.FIREBASE_SERVICE_ACCOUNT_JSON ||
+  process.env.FIREBASE_PRIVATE_KEY ||
+  randomUUID();
+if (!process.env.AUTH_TOKEN_SECRET && !process.env.FIREBASE_SERVICE_ACCOUNT_JSON && !process.env.FIREBASE_PRIVATE_KEY) {
+  console.warn('[AUTH] AUTH_TOKEN_SECRET is not configured; sessions will be invalidated whenever this process restarts.');
+}
+
 function createToken(user: NhanVien): string {
   const payload = {
     id: user.NhanVienID,
     username: user.TenDangNhap,
     email: user.Email,
-    role: user.Quyen,
-    exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+    exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
   };
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = createHmac('sha256', TOKEN_SECRET).update(encoded).digest('base64url');
+  return `${encoded}.${signature}`;
 }
 
-function parseToken(tokenStr: string): { id: string; username?: string; email: string; role: string; exp: number } | null {
+function parseToken(tokenStr: string): { id: string; username?: string; email: string; exp: number } | null {
   try {
-    const raw = Buffer.from(tokenStr, 'base64').toString('utf-8');
-    const parsed = JSON.parse(raw);
-    if (parsed.exp && parsed.exp > Date.now()) {
-      return parsed;
+    const [encoded, suppliedSignature, extra] = String(tokenStr || '').split('.');
+    if (!encoded || !suppliedSignature || extra !== undefined) return null;
+    const expectedSignature = createHmac('sha256', TOKEN_SECRET).update(encoded).digest();
+    const actualSignature = Buffer.from(suppliedSignature, 'base64url');
+    if (actualSignature.length !== expectedSignature.length || !timingSafeEqual(actualSignature, expectedSignature)) {
+      return null;
     }
+    const parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf-8'));
+    if (typeof parsed.id === 'string' && parsed.exp && parsed.exp > Date.now()) return parsed;
     return null;
   } catch {
     return null;
@@ -200,7 +215,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
     }
 
     const token = createToken(user);
-    const { MatKhau: _, ...userSafe } = user;
+    const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...userSafe } = user;
 
     dbService.logAudit(
       user.HoTen,
@@ -230,7 +245,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
 });
 
 app.get('/api/auth/me', authenticateToken, (req: AuthRequest, res: Response) => {
-  const { MatKhau: _, ...userSafe } = req.user!;
+  const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...userSafe } = req.user!;
   res.json({ user: userSafe });
 });
 
@@ -261,13 +276,13 @@ app.get('/api/nhanvien', authenticateToken, (req: AuthRequest, res: Response) =>
   const user = req.user!;
   // Non-admin can only see their own profile or public staff directory list (without salary)
   if (user.Quyen === 'Admin') {
-    const list = dbService.getNhanVienList().map(({ MatKhau, ...safe }) => safe);
+    const list = dbService.getNhanVienList().map(({ MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe }) => safe);
     return res.json(list);
   } else {
     // Return staff directory list with public info + bank info for all staff
     const list = dbService.getNhanVienList().map((nv) => {
       if (nv.NhanVienID === user.NhanVienID) {
-        const { MatKhau, ...safe } = nv;
+        const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = nv;
         return safe;
       }
       return {
@@ -305,7 +320,7 @@ app.get('/api/nhanvien/:id', authenticateToken, (req: AuthRequest, res: Response
     return res.status(404).json({ error: 'Không tìm thấy nhân viên.' });
   }
 
-  const { MatKhau: _, ...safe } = nv;
+  const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = nv;
   return res.json(safe);
 });
 
@@ -315,7 +330,7 @@ app.post('/api/nhanvien', authenticateToken, requireAdmin, async (req: AuthReque
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
-    const { MatKhau: _, ...safe } = created;
+    const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = created;
     return res.status(201).json(safe);
   } catch (err: any) {
     console.error('[API] Create employee failed:', err);
@@ -346,7 +361,7 @@ app.put('/api/nhanvien/:id', authenticateToken, (req: AuthRequest, res: Response
         HoTen: user.HoTen,
         Email: user.Email,
       });
-      const { MatKhau: _, ...safe } = updated;
+      const { MatKhau: _password, MatKhauHienThi: _plainPassword, ...safe } = updated;
       return res.json(safe);
     }
 
