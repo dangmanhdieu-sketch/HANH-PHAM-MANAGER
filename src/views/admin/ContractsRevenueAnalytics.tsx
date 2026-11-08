@@ -9,6 +9,28 @@ import type { QuanLyRecord } from '../../types';
 type Period = 'week' | 'month' | 'year';
 type ContractRow = { record: QuanLyRecord; data: Record<string, any>; signedDate: string; value: number; collected: number; remaining: number; status: string };
 
+const APPROVED_RECEIPT_STATUSES = new Set(['Đã duyệt', 'Đã thanh toán và duyệt']);
+const EXCLUDED_SALES_STATUSES = new Set(['Nháp', 'Chờ admin duyệt', 'Chờ duyệt', 'Đã hủy', 'Hủy']);
+const isApprovedReceipt = (record: QuanLyRecord) => {
+  const data = record.DuLieu || {};
+  return String(data.Loai || '').toUpperCase() === 'THU' &&
+    APPROVED_RECEIPT_STATUSES.has(String(data.TrangThaiDuyet || ''));
+};
+const receiptDate = (record: QuanLyRecord) =>
+  String(record.DuLieu?.Ngay || record.TaoLuc || '').slice(0, 10);
+const isExcludedSalesStatus = (status: string) => EXCLUDED_SALES_STATUSES.has(status);
+const receiptMatchesContract = (receipt: QuanLyRecord, contract: QuanLyRecord) => {
+  const d = receipt.DuLieu || {};
+  const contractData = contract.DuLieu || {};
+  const ids = new Set([
+    String(contract.QuanLyID || ''),
+    String(contractData.MaHopDong || ''),
+  ].filter(Boolean));
+  return ids.has(String(d.HopDongQuanLyID || '')) ||
+    ids.has(String(d.HopDongID || '')) ||
+    ids.has(String(d.MaHopDong || ''));
+};
+
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
 const dateText = (value: string) => {
   if (!value) return '—';
@@ -75,27 +97,22 @@ export const ContractsRevenueAnalytics: React.FC = () => {
   }, [period, year, month, weekDate]);
 
   const rows = useMemo<ContractRow[]>(() => {
-    const approvedReceipts = receipts.filter(r => {
-      const d = r.DuLieu || {};
-      return String(d.Loai || '').toUpperCase() === 'THU' && String(d.TrangThaiDuyet || '') === 'Đã duyệt';
-    });
+    const approvedReceipts = receipts.filter(isApprovedReceipt);
     return contracts.map(record => {
       const data = record.DuLieu || {};
       const signedDate = String(data.NgayKy || data.NgayTao || record.TaoLuc || '').slice(0, 10);
       const value = Math.max(0, Number(data.TongGiaTri ?? data.GiaGoiBanDau ?? 0) || 0);
-      const code = String(data.MaHopDong || record.QuanLyID);
-      // Chỉ các phiếu thu đã duyệt mới được xem là tiền thực thu.
+      const status = String(data.TrangThai || 'Nháp');
+      // Tiền đã thu lũy kế lấy từ phiếu THU đã duyệt gắn với hợp đồng; không tự cộng tiền cọc riêng,
+      // tránh tính trùng khi khoản cọc đã có phiếu thu.
       const approvedReceiptTotal = approvedReceipts
-        .filter(receipt =>
-          String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === code ||
-          String(receipt.DuLieu?.HopDongQuanLyID || '') === String(record.QuanLyID)
-        )
+        .filter(receipt => receiptMatchesContract(receipt, record))
         .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
-      const collected = Math.min(value, approvedReceiptTotal);
+      const collected = approvedReceiptTotal;
       return {
         record, data, signedDate, value, collected,
         remaining: Math.max(0, value - collected),
-        status: String(data.TrangThai || 'Nháp'),
+        status,
       };
     });
   }, [contracts, receipts]);
@@ -105,16 +122,26 @@ export const ContractsRevenueAnalytics: React.FC = () => {
     !['Đã hủy', 'Hủy'].includes(row.status)
   ), [rows, bounds]);
 
-  // Các chỉ số Tổng doanh số, Đã thu và Còn phải thu dùng cùng nhóm hợp đồng ký trong kỳ.
-  // Tiền đã thu lũy kế của mỗi hợp đồng bao gồm tiền cọc (kể cả dữ liệu cũ) và phiếu thu đã duyệt,
-  // không cộng trùng tiền cọc với phiếu thu cọc.
-  const collectedInPeriod = periodRows.reduce((sum, row) => sum + row.collected, 0);
+  // Doanh số chỉ tính hợp đồng không phải nháp/chờ duyệt/đã hủy.
+  const salesRows = periodRows.filter(row => !isExcludedSalesStatus(row.status));
+  // Đã thu trong kỳ là dòng tiền thực nhận theo ngày phiếu thu, không phụ thuộc ngày ký hợp đồng.
+  // Chỉ tính phiếu THU đã duyệt có liên kết hợp đồng, không trộn thu nội bộ/thu khác.
+  const contractReceipts = useMemo(() => receipts.filter(receipt =>
+    isApprovedReceipt(receipt) &&
+    contracts.some(contract => receiptMatchesContract(receipt, contract))
+  ), [receipts, contracts]);
+  const collectedInPeriod = contractReceipts
+    .filter(receipt => {
+      const date = receiptDate(receipt);
+      return date >= bounds.start && date < bounds.end;
+    })
+    .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
 
-  const signedCount = periodRows.length;
-  const completeCount = periodRows.filter(r => ['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).length;
-  const activeCount = periodRows.filter(r => !['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).length;
-  const totalSales = periodRows.reduce((sum, r) => sum + r.value, 0);
-  const totalRemaining = Math.max(0, totalSales - collectedInPeriod);
+  const signedCount = salesRows.length;
+  const completeCount = salesRows.filter(r => ['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).length;
+  const activeCount = salesRows.filter(r => !['Hoàn thành', 'Đã hoàn tất', 'Hoàn tất'].includes(r.status)).length;
+  const totalSales = salesRows.reduce((sum, r) => sum + r.value, 0);
+  const totalRemaining = salesRows.reduce((sum, r) => sum + r.remaining, 0);
   const completeRatio = signedCount ? Math.round(completeCount / signedCount * 100) : 0;
 
   const chartData = useMemo(() => {
@@ -143,15 +170,17 @@ export const ContractsRevenueAnalytics: React.FC = () => {
       }
     }
     return slots.map(slot => {
-      const signed = rows.filter(r => r.signedDate >= slot.start && r.signedDate < slot.end && !['Đã hủy', 'Hủy'].includes(r.status));
-      const paid = receipts.filter(r => {
-        const d = r.DuLieu || {};
-        const date = String(d.Ngay || r.TaoLuc || '').slice(0, 10);
-        return String(d.Loai || '').toUpperCase() === 'THU' && String(d.TrangThaiDuyet || '') === 'Đã duyệt' && date >= slot.start && date < slot.end;
-      }).reduce((sum, r) => sum + Number(r.DuLieu?.SoTien || 0), 0);
+      const signed = rows.filter(r =>
+        r.signedDate >= slot.start && r.signedDate < slot.end &&
+        !isExcludedSalesStatus(r.status)
+      );
+      const paid = contractReceipts.filter(r => {
+        const date = receiptDate(r);
+        return date >= slot.start && date < slot.end;
+      }).reduce((sum, r) => sum + Math.max(0, Number(r.DuLieu?.SoTien || 0)), 0);
       return { ...slot, sales: signed.reduce((sum, r) => sum + r.value, 0), collected: paid };
     });
-  }, [period, year, month, bounds, rows, receipts]);
+  }, [period, year, month, bounds, rows, contractReceipts]);
 
   const filteredRows = periodRows.filter(row => {
     const q = search.trim().toLowerCase();
@@ -195,8 +224,8 @@ export const ContractsRevenueAnalytics: React.FC = () => {
         <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { label: 'Tổng doanh số', value: money(totalSales), sub: 'Giá trị HĐ ký trong kỳ', icon: FileCheck2, tone: 'gold' },
-            { label: 'Đã thu trong kỳ', value: money(collectedInPeriod), sub: 'Tiền đã thu lũy kế của HĐ ký trong kỳ, gồm tiền cọc', icon: Wallet, tone: 'green' },
-            { label: 'Còn phải thu', value: money(totalRemaining), sub: 'Công nợ của HĐ ký trong kỳ', icon: ReceiptText, tone: 'amber' },
+            { label: 'Đã thu trong kỳ', value: money(collectedInPeriod), sub: 'Phiếu thu hợp đồng đã duyệt trong kỳ', icon: Wallet, tone: 'green' },
+            { label: 'Còn phải thu', value: money(totalRemaining), sub: 'Công nợ lũy kế của HĐ ký trong kỳ', icon: ReceiptText, tone: 'amber' },
           ].map((item) => {
             const Icon = item.icon;
             const tone = item.tone === 'gold' ? 'text-[#A98743] bg-[#F8F2E6]' : item.tone === 'green' ? 'text-emerald-700 bg-emerald-50' : 'text-amber-700 bg-amber-50';
@@ -253,7 +282,7 @@ export const ContractsRevenueAnalytics: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <div className="flex flex-col gap-1 border-t border-[#E7DFD5] bg-[#FAF8F5] px-4 py-3 text-[11px] text-stone-500 sm:flex-row sm:justify-between"><span>Tiền đã thu lũy kế: chỉ tính phiếu THU đã được Admin duyệt.</span><span>Doanh số theo kỳ dựa trên ngày ký hợp đồng.</span></div>
+        <div className="flex flex-col gap-1 border-t border-[#E7DFD5] bg-[#FAF8F5] px-4 py-3 text-[11px] text-stone-500 sm:flex-row sm:justify-between"><span>Đã thu lũy kế theo phiếu THU hợp đồng đã được duyệt; không cộng trùng tiền cọc.</span><span>Doanh số theo kỳ dựa trên ngày ký hợp đồng.</span></div>
       </div>
     </section>
   );
