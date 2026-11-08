@@ -1301,8 +1301,10 @@ class DatabaseService {
 
   // CHAMCONG methods
   public deleteChamCong(id: string): boolean {
-    const index = this.db.CHAMCONG.findIndex((cc) => cc.ChamCongID === id);
-    if (index < 0) return false;
+    const matchingIndexes = this.db.CHAMCONG.map((item, rowIndex) => item.ChamCongID === id ? rowIndex : -1).filter((rowIndex) => rowIndex >= 0);
+    if (matchingIndexes.length === 0) return false;
+    if (matchingIndexes.length > 1) throw new Error('Mã chấm công bị trùng; đã chặn xóa để tránh tác động nhầm bản ghi.');
+    const index = matchingIndexes[0];
     const deleted = this.db.CHAMCONG[index];
     const [year, month] = String(deleted.Ngay || '').split('-');
     const thang = month && year ? `${month}/${year}` : '';
@@ -1366,9 +1368,13 @@ class DatabaseService {
     }
 
     // Check if already checked in today
-    let record = this.db.CHAMCONG.find(
+    const todayRecords = this.db.CHAMCONG.filter(
       (cc) => cc.NhanVienID === user.NhanVienID && cc.Ngay === todayStr
     );
+    if (todayRecords.length > 1) {
+      throw new Error('Phát hiện nhiều bản ghi chấm công của bạn trong hôm nay. Hệ thống đã chặn thao tác để tránh ghi nhầm; vui lòng báo Admin đối soát.');
+    }
+    let record = todayRecords[0];
 
     if (record && record.CheckIn) {
       throw new Error(`Bạn đã Check-in hôm nay lúc ${record.CheckIn}. Không thể Check-in lại!`);
@@ -1449,9 +1455,13 @@ class DatabaseService {
       throw new Error('Bạn về trước 20:30, vui lòng nhập lý do để Admin xem xét.');
     }
 
-    const record = this.db.CHAMCONG.find(
+    const todayRecords = this.db.CHAMCONG.filter(
       (cc) => cc.NhanVienID === user.NhanVienID && cc.Ngay === todayStr
     );
+    if (todayRecords.length > 1) {
+      throw new Error('Phát hiện nhiều bản ghi chấm công của bạn trong hôm nay. Hệ thống đã chặn thao tác để tránh ghi nhầm; vui lòng báo Admin đối soát.');
+    }
+    const record = todayRecords[0];
 
     if (!record || !record.CheckIn) {
       throw new Error('Bạn chưa Check-in hôm nay. Vui lòng Check-in trước khi Check-out!');
