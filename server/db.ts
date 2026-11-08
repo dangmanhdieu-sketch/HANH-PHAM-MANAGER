@@ -1547,7 +1547,14 @@ class DatabaseService {
 
   public getTongTamUng(nhanVienId: string, thang: string): number {
     // Legacy records without status remain counted as approved for backward compatibility.
-    return this.getTamUngList({ nhanVienId, thang }).filter((item) => !item.TrangThai || item.TrangThai === 'Đã duyệt').reduce((sum, item) => sum + (Number(item.SoTien) || 0), 0);
+    const approved = this.getTamUngList({ nhanVienId, thang }).filter((item) => !item.TrangThai || item.TrangThai === 'Đã duyệt');
+    return approved.reduce((sum, item) => {
+      const amount = Number(item.SoTien);
+      if (!Number.isFinite(amount) || amount < 0) {
+        throw new Error(`Khoản tạm ứng ${item.TamUngID} có số tiền không hợp lệ; cần đối soát trước khi tính lương.`);
+      }
+      return sum + amount;
+    }, 0);
   }
 
   private syncTamUngToLuong(luong: Luong): void {
@@ -1565,7 +1572,13 @@ class DatabaseService {
       String(item.Ngay || '').startsWith(prefix) &&
       item.TrangThai === 'Đã duyệt'
     );
-    luong.HoaHong = approved.reduce((sum, item) => sum + Math.max(0, Number(item.SoTienHoaHong) || 0), 0);
+    luong.HoaHong = approved.reduce((sum, item) => {
+      const amount = Number(item.SoTienHoaHong);
+      if (!Number.isFinite(amount) || amount < 0) {
+        throw new Error(`Hoa hồng ${item.HoaHongID} có số tiền không hợp lệ; cần đối soát trước khi tính lương.`);
+      }
+      return sum + amount;
+    }, 0);
     approved.forEach((item) => { item.LuongID = luong.LuongID; });
     this.recalculateLuong(luong);
   }
@@ -1635,14 +1648,30 @@ class DatabaseService {
 
   // LUONG methods & Anti-duplicate check
   public recalculateLuong(luong: Luong): void {
-    const tong =
-      (luong.LuongCoBan || 0) +
-      (luong.PhuCap || 0) +
-      (luong.Thuong || 0) +
-      (luong.HoaHong || 0) -
-      (luong.Phat || 0) -
-      (luong.TamUng || 0);
-    luong.TongLuong = Math.max(0, tong);
+    const normalize = (value: unknown, label: string) => {
+      const amount = Number(value ?? 0);
+      if (!Number.isFinite(amount) || amount < 0) {
+        throw new Error(`Giá trị ${label} của bảng lương không hợp lệ; đã chặn tính lương.`);
+      }
+      return Math.round(amount);
+    };
+    // Normalize legacy numeric strings before arithmetic. Adding a string to a
+    // number in JavaScript concatenates values and can silently inflate payroll.
+    luong.LuongCoBan = normalize(luong.LuongCoBan, 'lương cơ bản');
+    luong.PhuCap = normalize(luong.PhuCap, 'phụ cấp');
+    luong.Thuong = normalize(luong.Thuong, 'thưởng');
+    luong.HoaHong = normalize(luong.HoaHong, 'hoa hồng');
+    luong.Phat = normalize(luong.Phat, 'khấu trừ');
+    luong.TamUng = normalize(luong.TamUng, 'tạm ứng');
+    luong.SoNgayCong = Number(luong.SoNgayCong || 0);
+    luong.SoGioLam = Number(luong.SoGioLam || 0);
+    if (!Number.isFinite(luong.SoNgayCong) || luong.SoNgayCong < 0 ||
+        !Number.isFinite(luong.SoGioLam) || luong.SoGioLam < 0) {
+      throw new Error('Số ngày công hoặc số giờ làm không hợp lệ; đã chặn tính lương.');
+    }
+    const tong = luong.LuongCoBan + luong.PhuCap + luong.Thuong +
+      luong.HoaHong - luong.Phat - luong.TamUng;
+    luong.TongLuong = Math.max(0, Math.round(tong));
     luong.ThucLanh = luong.TongLuong;
   }
 
