@@ -1969,6 +1969,8 @@ class DatabaseService {
       AnhChungTu?: string;
       GhiChu?: string;
       TaoBoi?: 'Admin' | 'Nhân viên';
+      TrangThaiThanhToan?: 'Đã thanh toán' | 'Chưa thanh toán';
+      PhuongThucThanhToan?: 'Chuyển khoản' | 'Tiền mặt' | '';
     },
     user: { HoTen: string; Email: string; Quyen?: string }
   ): HoaHong {
@@ -2006,6 +2008,8 @@ class DatabaseService {
       TrangThai: 'Chờ duyệt',
       GhiChu: data.GhiChu || '',
       TaoBoi: data.TaoBoi || (user.Quyen === 'Admin' ? 'Admin' : 'Nhân viên'),
+      TrangThaiThanhToan: data.TrangThaiThanhToan || 'Chưa thanh toán',
+      PhuongThucThanhToan: data.TrangThaiThanhToan === 'Đã thanh toán' ? (data.PhuongThucThanhToan || '') : '',
     };
 
     this.db.HOAHONG.unshift(newHoaHong);
