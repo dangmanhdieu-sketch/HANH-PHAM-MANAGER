@@ -39,6 +39,8 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteConfirmHH, setDeleteConfirmHH] = useState<HoaHong | null>(null);
   const [approveConfirmHH, setApproveConfirmHH] = useState<{ hh: HoaHong; dongY: boolean } | null>(null);
+  const [approvingHH, setApprovingHH] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -158,13 +160,27 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   };
 
   const handleApproveAction = async () => {
-    if (!approveConfirmHH) return;
+    if (!approveConfirmHH || approvingHH) return;
+    setApprovingHH(true);
+    setApproveError(null);
+    console.info('[Commission] Admin confirmed approval action:', {
+      commissionId: approveConfirmHH.hh.HoaHongID,
+      approve: approveConfirmHH.dongY,
+    });
     try {
-      await api.commission.approve(approveConfirmHH.hh.HoaHongID, approveConfirmHH.dongY);
+      const result = await api.commission.approve(
+        approveConfirmHH.hh.HoaHongID,
+        approveConfirmHH.dongY
+      );
+      console.info('[Commission] Approval API completed:', result?.message || 'OK');
       setApproveConfirmHH(null);
       onRefresh();
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi duyệt hoa hồng');
+      const message = err?.message || 'Không thể kết nối máy chủ để duyệt hoa hồng.';
+      console.error('[Commission] Approval failed:', err);
+      setApproveError(message);
+    } finally {
+      setApprovingHH(false);
     }
   };
 
@@ -724,8 +740,14 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
       {/* Confirmation Modal for Approve / Reject */}
       <ConfirmationModal
         isOpen={Boolean(approveConfirmHH)}
-        onClose={() => setApproveConfirmHH(null)}
+        onClose={() => {
+          if (approvingHH) return;
+          setApproveError(null);
+          setApproveConfirmHH(null);
+        }}
         onConfirm={handleApproveAction}
+        loading={approvingHH}
+        errorMessage={approveError}
         title={approveConfirmHH?.dongY ? 'PHÊ DUYỆT THU NHẬP' : 'TỪ CHỐI'}
         message={
           approveConfirmHH?.dongY
