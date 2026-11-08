@@ -90,8 +90,14 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
   // Calculated commission
   const calculatedCommission = Math.round((doanhThu * tyLe) / 100);
 
-  // Total final requested amount
-  const finalAmount = loaiKhoan === 'Tiền Show' ? tienShow : calculatedCommission;
+  // Ba hạng mục này chỉ nhận 70% mức tiền show khai báo
+  const show70PercentTasks = ['MK tiệc tại tiệm', 'MK tiệc tại nhà khách', 'MK bà sui'];
+  const isShow70Percent = loaiKhoan === 'Tiền Show' && show70PercentTasks.includes(tenDichVu);
+
+  // Số tiền đề nghị duyệt thực tế; các hạng mục còn lại nhận 100%
+  const finalAmount = loaiKhoan === 'Tiền Show'
+    ? Math.round(tienShow * (isShow70Percent ? 0.7 : 1))
+    : calculatedCommission;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -338,6 +344,11 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
           {loaiKhoan === 'Tiền Show' ? (
             /* TIỀN SHOW INPUT */
             <div className="p-4 bg-[#FAF8F5] rounded-2xl border border-[#E7DFD5] space-y-3">
+              {isShow70Percent && (
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Hạng mục này áp dụng mức nhận 70% số tiền show khai báo.
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <label className="font-bold text-stone-800 flex items-center gap-1.5">
                   <DollarSign className="w-4 h-4 text-[#bf954f]" />
