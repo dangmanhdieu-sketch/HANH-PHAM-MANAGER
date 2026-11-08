@@ -1723,6 +1723,42 @@ class DatabaseService {
     if (new Set(activeIds).size !== activeIds.length) {
       throw new Error('Phát hiện mã nhân viên đang làm bị trùng. Hệ thống đã dừng tạo lương để tránh cộng sai người; hãy chạy Kiểm tra toàn vẹn dữ liệu.');
     }
+    const pendingGenerationStaff = activeStaff.filter((nv) =>
+      !this.db.LUONG.some((row) => row.NhanVienID === nv.NhanVienID && row.Thang === thang)
+    );
+    // Preflight the entire batch before creating the first payroll row. This
+    // prevents a duplicate or invalid record for a later employee from leaving
+    // a partially generated payroll month.
+    for (const nv of pendingGenerationStaff) {
+      const baseSalary = Number(nv.LuongCoBan);
+      if (!Number.isFinite(baseSalary) || baseSalary < 0) {
+        throw new Error(`Lương cơ bản của ${nv.HoTen} (${nv.NhanVienID}) không hợp lệ; đã dừng tạo toàn bộ kỳ lương.`);
+      }
+      const attendance = this.db.CHAMCONG.filter((cc) =>
+        cc.NhanVienID === nv.NhanVienID && String(cc.Ngay || '').startsWith(monthPrefix)
+      );
+      const dates = attendance.map((cc) => cc.Ngay);
+      if (new Set(dates).size !== dates.length) {
+        throw new Error(`Nhân viên ${nv.HoTen} có nhiều bản ghi chấm công trong cùng một ngày của kỳ ${thang}. Đã dừng toàn bộ kỳ lương để đối soát.`);
+      }
+      attendance.forEach((cc) => {
+        const hours = Number(cc.SoGioLam || 0);
+        if (!Number.isFinite(hours) || hours < 0) {
+          throw new Error(`Bản ghi chấm công ${cc.ChamCongID} có số giờ làm không hợp lệ; đã dừng toàn bộ kỳ lương.`);
+        }
+      });
+      const commissions = this.db.HOAHONG.filter((hh) =>
+        hh.NhanVienID === nv.NhanVienID && String(hh.Ngay || '').startsWith(monthPrefix) && hh.TrangThai === 'Đã duyệt'
+      );
+      commissions.forEach((hh) => {
+        const amount = Number(hh.SoTienHoaHong);
+        if (!Number.isFinite(amount) || amount < 0) {
+          throw new Error(`Hoa hồng ${hh.HoaHongID} của ${nv.HoTen} không hợp lệ; đã dừng toàn bộ kỳ lương.`);
+        }
+      });
+      this.getTongTamUng(nv.NhanVienID, thang);
+    }
+
     let createdCount = 0;
     let skippedCount = 0;
     const createdItems: string[] = [];
@@ -1775,7 +1811,7 @@ class DatabaseService {
         if (!cc.CheckIn || cc.TrangThai === 'Nghỉ' || isFullDayLate(cc)) return sum;
         return sum + (isHalfDayLate(cc) ? 0.5 : 1);
       }, 0);
-      const soGioLam = attendance.reduce((sum, cc) => sum + (cc.SoGioLam || 0), 0);
+      const soGioLam = attendance.reduce((sum, cc) => sum + Number(cc.SoGioLam || 0), 0);
 
       // Only explicitly approved leave requests count as leave. Missing check-ins
       // without an approved leave or an actual attendance record are not absences.
@@ -1820,7 +1856,7 @@ class DatabaseService {
           hh.Ngay.startsWith(monthPrefix) &&
           hh.TrangThai === 'Đã duyệt'
       );
-      const tongHoaHong = approvedCommissions.reduce((sum, hh) => sum + (hh.SoTienHoaHong || 0), 0);
+      const tongHoaHong = approvedCommissions.reduce((sum, hh) => sum + Number(hh.SoTienHoaHong), 0);
 
       const luongId = `L-${thang.replace('/', '')}-${nv.NhanVienID}`;
       const newLuong: Luong = {
@@ -1828,7 +1864,7 @@ class DatabaseService {
         NhanVienID: nv.NhanVienID,
         HoTen: nv.HoTen,
         Thang: thang,
-        LuongCoBan: nv.LuongCoBan,
+        LuongCoBan: Number(nv.LuongCoBan),
         SoNgayCong: soNgayCong,
         SoGioLam: Math.round(soGioLam * 100) / 100,
         PhuCap: 0,
