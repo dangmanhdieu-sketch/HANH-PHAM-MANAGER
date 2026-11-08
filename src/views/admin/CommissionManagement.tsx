@@ -505,7 +505,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, LoaiKhoan: 'Tiền Show' })}
+                    onClick={() => { setCustomShowTask(false); setFormData({ ...formData, LoaiKhoan: 'Tiền Show', NoiDung: '' }); }}
                     className={`py-2 px-3 rounded-lg border text-center font-bold ${
                       formData.LoaiKhoan === 'Tiền Show'
                         ? 'bg-stone-900 text-white border-stone-900'
