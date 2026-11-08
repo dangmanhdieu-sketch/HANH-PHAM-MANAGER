@@ -629,11 +629,24 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       payload.TienChietKhau = percentageDiscount;
       payload.TongGiamTru = directDiscount + percentageDiscount + promoDiscount;
       payload.TongGiaTri = basePrice - payload.TongGiamTru + surcharge;
-      payload.TienDatCoc = Number(payload.TienDatCoc || 0);
-      if (!Number.isFinite(payload.TienDatCoc) || payload.TienDatCoc < 0 || payload.TienDatCoc > payload.TongGiaTri) {
-        return res.status(400).json({ error: 'Tiền cọc phải từ 0 đến tổng giá trị hợp đồng.' });
+      const explicitDeposit = Number(payload.TienDatCoc || 0);
+      if (!Number.isFinite(explicitDeposit) || explicitDeposit < 0) {
+        return res.status(400).json({ error: 'Tiền cọc phải là số không âm.' });
       }
-      payload.LichThanhToan = Array.isArray(payload.LichThanhToan) ? payload.LichThanhToan.map((p: any) => ({ ...p, SoTienDuKien: Math.max(0, Number(p.SoTienDuKien || 0)) })) : [];
+      if (!Array.isArray(payload.LichThanhToan)) payload.LichThanhToan = [];
+      if (payload.LichThanhToan.some((p: any) => !Number.isFinite(Number(p.SoTienDuKien || 0)) || Number(p.SoTienDuKien || 0) < 0)) {
+        return res.status(400).json({ error: 'Lịch thanh toán có số tiền không hợp lệ.' });
+      }
+      payload.LichThanhToan = payload.LichThanhToan.map((p: any) => ({ ...p, SoTienDuKien: Number(p.SoTienDuKien || 0) }));
+      const scheduleTotal = payload.LichThanhToan.reduce((sum: number, p: any) => sum + p.SoTienDuKien, 0);
+      if (scheduleTotal > payload.TongGiaTri) {
+        return res.status(400).json({ error: 'Tổng các đợt thanh toán dự kiến không được vượt tổng giá trị hợp đồng.' });
+      }
+      const firstInstallment = Number(payload.LichThanhToan[0]?.SoTienDuKien || 0);
+      payload.TienDatCoc = explicitDeposit > 0 ? explicitDeposit : firstInstallment;
+      if (payload.TienDatCoc > payload.TongGiaTri) {
+        return res.status(400).json({ error: 'Tiền cọc phải không vượt tổng giá trị hợp đồng.' });
+      }
       payload.TrangThai = req.user!.Quyen === 'Admin' ? (payload.TrangThai || 'Đã xác nhận') : 'Chờ admin duyệt';
       payload.LichSuTrangThai = [{ TrangThai: payload.TrangThai, ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen, GhiChu: 'Tạo hợp đồng' }];
       delete payload.DaThu;
@@ -784,14 +797,22 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       if (reservedReceipts > changes.TongGiaTri) {
         return res.status(400).json({ error: `Không thể giảm giá trị hợp đồng xuống thấp hơn tổng phiếu thu đã duyệt/đang chờ (${reservedReceipts.toLocaleString('vi-VN')} đ).` });
       }
-      const deposit = Number(merged.TienDatCoc || 0);
+      const schedule = changes.LichThanhToan !== undefined ? changes.LichThanhToan : (Array.isArray(merged.LichThanhToan) ? merged.LichThanhToan : []);
+      if (!Array.isArray(schedule) || schedule.some((p: any) => !Number.isFinite(Number(p.SoTienDuKien || 0)) || Number(p.SoTienDuKien || 0) < 0)) {
+        return res.status(400).json({ error: 'Lịch thanh toán có số tiền không hợp lệ.' });
+      }
+      const normalizedSchedule = schedule.map((p: any) => ({ ...p, SoTienDuKien: Number(p.SoTienDuKien || 0) }));
+      const scheduleTotal = normalizedSchedule.reduce((sum: number, p: any) => sum + p.SoTienDuKien, 0);
+      if (scheduleTotal > changes.TongGiaTri) {
+        return res.status(400).json({ error: 'Tổng các đợt thanh toán dự kiến không được vượt tổng giá trị hợp đồng.' });
+      }
+      if (changes.LichThanhToan !== undefined) changes.LichThanhToan = normalizedSchedule;
+      const explicitDeposit = Number(merged.TienDatCoc || 0);
+      const deposit = explicitDeposit > 0 ? explicitDeposit : Number(normalizedSchedule[0]?.SoTienDuKien || 0);
       if (!Number.isFinite(deposit) || deposit < 0 || deposit > changes.TongGiaTri) {
-        return res.status(400).json({ error: 'Tiền cọc phải từ 0 đến tổng giá trị hợp đồng.' });
+        return res.status(400).json({ error: 'Tiền cọc phải là số hợp lệ và không vượt tổng giá trị hợp đồng.' });
       }
       changes.TienDatCoc = deposit;
-      if (changes.LichThanhToan !== undefined && (!Array.isArray(changes.LichThanhToan) || changes.LichThanhToan.some((p: any) => Number(p.SoTienDuKien || 0) < 0))) {
-        return res.status(400).json({ error: 'Lịch thanh toán không hợp lệ.' });
-      }
       if (changes.MaHopDong && changes.MaHopDong !== current.DuLieu?.MaHopDong) {
         return res.status(400).json({ error: 'Không được thay đổi mã hợp đồng sau khi tạo.' });
       }
