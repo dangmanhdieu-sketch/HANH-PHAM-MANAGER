@@ -2292,8 +2292,15 @@ class DatabaseService {
 
     const [year, month] = String(hh.Ngay || '').split('-');
     const thangStr = month && year ? `${month}/${year}` : '';
-    const linkedLuong = (hh.LuongID ? this.findLuongById(hh.LuongID) : undefined) ||
-      this.db.LUONG.find((item) => item.NhanVienID === hh.NhanVienID && item.Thang === thangStr);
+    const matchingPayrolls = this.db.LUONG.filter((item) => item.NhanVienID === hh.NhanVienID && item.Thang === thangStr);
+    if (matchingPayrolls.length > 1) {
+      throw new Error('Có nhiều bảng lương cho nhân viên trong kỳ này; không thể xóa hoa hồng an toàn.');
+    }
+    const linkedById = hh.LuongID ? this.findLuongById(hh.LuongID) : undefined;
+    if (hh.LuongID && !linkedById) {
+      throw new Error('Liên kết bảng lương của hoa hồng không duy nhất hoặc đã hỏng; cần đối soát trước khi xóa.');
+    }
+    const linkedLuong = linkedById || matchingPayrolls[0];
     if (hh.TrangThai === 'Đã duyệt') {
       this.db.HOAHONG.filter((item) =>
         item.HoaHongID !== id && item.NhanVienID === hh.NhanVienID &&
