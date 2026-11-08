@@ -637,6 +637,15 @@ export const api = {
   },
 
   // =========================================================
+  // REPORTS
+  // =========================================================
+  reports: {
+    async getContractsRevenue(): Promise<{ contracts: QuanLyRecord[]; receipts: QuanLyRecord[] }> {
+      return request('/api/reports/contracts-revenue');
+    },
+  },
+
+  // =========================================================
   // DASHBOARD
   // =========================================================
 
