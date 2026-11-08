@@ -330,6 +330,10 @@ function AppContent() {
     return () => window.clearInterval(timer);
   }, [currentUser, currentTab]);
 
+  const handleCommissionMonthChange = useCallback((month: string) => {
+    void refreshTabData('luong', month);
+  }, [refreshTabData]);
+
   // Handle Login success
   const handleLoginSuccess = (user: NhanVien) => {
     setCurrentUser(user);
@@ -506,7 +510,8 @@ function AppContent() {
                 payrollList={payrollList}
                 commissionList={commissionList}
                 staffList={staffList}
-                onRefresh={() => refreshTabData(currentTab)}
+                onRefresh={(month) => refreshTabData(currentTab, month)}
+                onCommissionMonthChange={handleCommissionMonthChange}
                 onGenerateMonthlyPayroll={() => setConfirmGeneratePayrollOpen(true)}
               />
             )}
