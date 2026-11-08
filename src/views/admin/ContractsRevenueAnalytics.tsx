@@ -97,8 +97,9 @@ export const ContractsRevenueAnalytics: React.FC = () => {
       // Chỉ các phiếu thu đã duyệt mới được xem là tiền thực thu.
       const approvedReceiptTotal = approvedReceipts
         .filter(receipt =>
-          String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === code ||
-          String(receipt.DuLieu?.HopDongQuanLyID || '') === String(record.QuanLyID)
+          (receipt.DuLieu?.HopDongQuanLyID
+            ? String(receipt.DuLieu.HopDongQuanLyID) === String(record.QuanLyID)
+            : String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === code)
         )
         .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
       const collected = approvedReceiptTotal;
