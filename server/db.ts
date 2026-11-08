@@ -1379,8 +1379,8 @@ class DatabaseService {
     const todayStr = zoned.date;
     const timeStr = zoned.time; // HH:mm:ss
     const currentMinutes = zoned.hour * 60 + zoned.minute;
-    if (currentMinutes >= 8 * 60 + 30 && !String(data.ghiChu || '').trim()) {
-      throw new Error('Bạn đi trễ, vui lòng nhập lý do để Admin xem xét trước khi chấm công.');
+    if (currentMinutes > 8 * 60 + 30 && !String(data.ghiChu || '').trim()) {
+      throw new Error('Bạn đi trễ sau 08:30, vui lòng nhập lý do để Admin xem xét trước khi chấm công.');
     }
 
     // Check if already checked in today
@@ -1396,21 +1396,19 @@ class DatabaseService {
       throw new Error(`Bạn đã Check-in hôm nay lúc ${record.CheckIn}. Không thể Check-in lại!`);
     }
 
-    // Attendance policy: before 08:30 is on time; 08:30-09:30 is late notice only;
-    // after 09:30 through 13:00 deducts half a day; strictly after 13:00 is a full absence.
+    // Payroll policy confirmed by the studio: before or at 08:30 is on time;
+    // strictly after 08:30 through 13:00 deducts half a day; strictly after 13:00
+    // counts as a full absence.
     const onTimeDeadline = 8 * 60 + 30;
-    const halfDayDeadline = 9 * 60 + 30;
     const fullDayAbsenceDeadline = 13 * 60;
     let trangThai: ChamCong['TrangThai'] = 'Có mặt';
     let policyNote = '';
     if (currentMinutes > fullDayAbsenceDeadline) {
       trangThai = 'Nghỉ';
       policyNote = 'Check-in sau 13:00: tính nghỉ cả ngày.';
-    } else if (currentMinutes >= onTimeDeadline) {
+    } else if (currentMinutes > onTimeDeadline) {
       trangThai = 'Đi trễ';
-      policyNote = currentMinutes > halfDayDeadline
-        ? 'Check-in sau 09:30: khấu trừ nửa ngày lương.'
-        : 'Đi trễ: ghi nhận lý do, không khấu trừ lương trong khung 08:30-09:30.';
+      policyNote = 'Check-in sau 08:30 đến 13:00: khấu trừ nửa ngày lương.';
     }
     const chamCongId = `CC-${todayStr.replace(/-/g, '')}-${user.NhanVienID}`;
 
