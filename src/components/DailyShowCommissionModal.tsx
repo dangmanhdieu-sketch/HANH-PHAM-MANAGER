@@ -372,23 +372,6 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
                 className="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-xl font-mono text-sm font-semibold text-stone-900 focus:ring-1 focus:ring-[#bf954f]"
               />
 
-              {/* Quick Fee Buttons */}
-              <div className="flex flex-wrap gap-2">
-                {[500000, 800000, 1000000, 1200000, 1500000, 2000000].map((amt) => (
-                  <button
-                    key={amt}
-                    type="button"
-                    onClick={() => setTienShow(amt)}
-                    className={`px-3 py-1 rounded-lg text-xs font-mono transition ${
-                      tienShow === amt
-                        ? 'bg-stone-900 text-white font-bold'
-                        : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-50'
-                    }`}
-                  >
-                    {(amt / 1000).toLocaleString('vi-VN')}k
-                  </button>
-                ))}
-              </div>
             </div>
           ) : (
             /* HOA HỒNG INPUT */
@@ -499,13 +482,7 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
                   />
                 </label>
               )}
-              <input
-                type="url"
-                value={anhChungTu}
-                onChange={(e) => setAnhChungTu(e.target.value)}
-                placeholder="Hoặc dán đường link ảnh..."
-                className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-xs"
-              />
+
             </div>
           </div>
 
