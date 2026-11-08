@@ -2266,6 +2266,64 @@ class DatabaseService {
       }
     });
 
+    const contracts = (this.db.QUAN_LY || []).filter((row) => row.Module === 'HOP_DONG');
+    const receipts = (this.db.QUAN_LY || []).filter((row) => row.Module === 'THU_CHI');
+    duplicates(contracts, (row) => String(row.DuLieu?.MaHopDong || ''), 'DUPLICATE_CONTRACT_CODE', 'Mã hợp đồng');
+
+    const contractTotal = (data: any) => {
+      const base = Math.max(0, Number(data?.GiaGoiBanDau ?? data?.TongGiaTri ?? 0) || 0);
+      if (data?.GiaGoiBanDau !== undefined && data?.TongGiaTri !== undefined) {
+        return Math.max(0, Number(data.TongGiaTri) || 0);
+      }
+      const direct = Math.max(0, Number(data?.GiamGiaTrucTiep || 0));
+      const rate = Math.min(100, Math.max(0, Number(data?.ChietKhauPhanTram || 0)));
+      const promo = Math.max(0, Number(data?.KhuyenMaiBoSung || 0));
+      const surcharge = Math.max(0, Number(data?.PhuThuDichVu || 0));
+      return Math.max(0, base - direct - Math.round(base * rate / 100) - promo + surcharge);
+    };
+    const linkedReceiptsFor = (contract: any) => {
+      const code = String(contract.DuLieu?.MaHopDong || contract.QuanLyID);
+      return receipts.filter((receipt) => {
+        const data = receipt.DuLieu || {};
+        return String(data.Loai || '').toUpperCase() === 'THU' &&
+          (String(data.HopDongQuanLyID || '') === contract.QuanLyID ||
+           String(data.HopDongID || data.MaHopDong || '') === code);
+      });
+    };
+    receipts.forEach((receipt) => {
+      const data = receipt.DuLieu || {};
+      const hasContractLink = !!(data.HopDongQuanLyID || data.HopDongID || data.MaHopDong);
+      if (!hasContractLink || String(data.Loai || '').toUpperCase() !== 'THU') return;
+      const matches = contracts.filter((contract) =>
+        (data.HopDongQuanLyID && contract.QuanLyID === String(data.HopDongQuanLyID)) ||
+        (!data.HopDongQuanLyID && String(contract.DuLieu?.MaHopDong || contract.QuanLyID) === String(data.HopDongID || data.MaHopDong))
+      );
+      if (matches.length !== 1) {
+        add('ORPHAN_CONTRACT_RECEIPT', 'critical', `Phiếu thu ${receipt.QuanLyID} không liên kết duy nhất tới một hợp đồng.`, [receipt.QuanLyID, String(data.HopDongID || data.MaHopDong || data.HopDongQuanLyID)]);
+      }
+    });
+    contracts.forEach((contract) => {
+      const data = contract.DuLieu || {};
+      const linked = linkedReceiptsFor(contract);
+      const reserved = linked
+        .filter((receipt) => !['Từ chối', 'Đã từ chối', 'Đã hủy', 'Hủy'].includes(String(receipt.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt')))
+        .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
+      const value = contractTotal(data);
+      if (reserved > value) {
+        add('CONTRACT_OVERPAID', 'critical', `Hợp đồng ${data.MaHopDong || contract.QuanLyID} có phiếu thu đã duyệt/đang chờ vượt giá trị hợp đồng ${(reserved - value).toLocaleString('vi-VN')} đ.`, [contract.QuanLyID, ...linked.map((receipt) => receipt.QuanLyID)]);
+      }
+      const firstInstallment = Array.isArray(data.LichThanhToan) ? Number(data.LichThanhToan[0]?.SoTienDuKien || 0) : 0;
+      const deposit = Math.max(0, Number(data.TienDatCoc || firstInstallment || 0));
+      const hasDepositReceipt = linked.some((receipt) => {
+        const receiptData = receipt.DuLieu || {};
+        const description = String(receiptData.NoiDungThu || receiptData.DanhMuc || receiptData.GhiChu || '').toLowerCase();
+        return receiptData.NguonTao === 'TIEN_COC_HOP_DONG' || description.includes('cọc');
+      });
+      if (deposit > 0 && !hasDepositReceipt) {
+        add('CONTRACT_DEPOSIT_WITHOUT_RECEIPT', 'warning', `Hợp đồng ${data.MaHopDong || contract.QuanLyID} có tiền cọc dự kiến ${deposit.toLocaleString('vi-VN')} đ nhưng chưa tìm thấy phiếu thu cọc liên kết.`, [contract.QuanLyID]);
+      }
+    });
+
     this.db.LUONG.forEach((payroll) => {
       const monthPrefix = (() => {
         const [month, year] = String(payroll.Thang || '').split('/');
