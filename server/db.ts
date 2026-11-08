@@ -1585,26 +1585,40 @@ class DatabaseService {
 
   public createTamUng(data: { NhanVienID: string; Ngay: string; SoTien: number; LyDo?: string; GhiChu?: string; TrangThai?: 'Chờ duyệt' | 'Đã duyệt' }, adminUser: { HoTen: string; Email: string }): TamUng {
     const nv = this.findNhanVienById(data.NhanVienID);
-    if (!nv) throw new Error('Nhân viên không tồn tại');
+    if (!nv) throw new Error('Không tìm thấy duy nhất một nhân viên theo mã đã chọn.');
     const amount = Number(data.SoTien);
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Số tiền tạm ứng phải lớn hơn 0.');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data.Ngay || ''))) throw new Error('Ngày tạm ứng không hợp lệ.');
-    const [yyyy, mm] = String(data.Ngay).split('-');
+    const date = String(data.Ngay || '');
+    const dateParts = date.split('-');
+    const parsedDate = new Date(date + 'T00:00:00Z');
+    if (dateParts.length !== 3 || dateParts[0].length !== 4 || dateParts[1].length !== 2 || dateParts[2].length !== 2 ||
+        !dateParts.every((part) => Number.isInteger(Number(part))) ||
+        Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) {
+      throw new Error('Ngày tạm ứng không hợp lệ.');
+    }
+    const [yyyy, mm] = dateParts;
     const thang = `${mm}/${yyyy}`;
-    const luong = this.db.LUONG.find((l) => l.NhanVienID === nv.NhanVienID && l.Thang === thang);
+    const matchingPayrolls = this.db.LUONG.filter((l) => l.NhanVienID === nv.NhanVienID && l.Thang === thang);
+    if (matchingPayrolls.length > 1) throw new Error('Có nhiều bảng lương cho nhân viên trong tháng này; không thể thêm tạm ứng an toàn.');
+    const luong = matchingPayrolls[0];
     if (luong && luong.TrangThai !== 'Chờ duyệt') throw new Error('Bảng lương tháng này đã duyệt/đã thanh toán, không thể thêm tạm ứng.');
+    const status = data.TrangThai || 'Đã duyệt';
+    if (!['Chờ duyệt', 'Đã duyệt'].includes(status)) throw new Error('Trạng thái tạm ứng không hợp lệ.');
+    if (status === 'Đã duyệt') this.getTongTamUng(nv.NhanVienID, thang);
+
     const item: TamUng = {
-      TamUngID: `TU-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
+      TamUngID: `TU-${randomUUID()}`,
       NhanVienID: nv.NhanVienID,
       HoTen: nv.HoTen,
-      Ngay: data.Ngay,
+      Ngay: date,
       Thang: thang,
       SoTien: Math.round(amount),
       LyDo: String(data.LyDo || '').trim(),
       GhiChu: String(data.GhiChu || '').trim(),
       TaoLuc: new Date().toISOString(),
       TaoBoi: adminUser.HoTen,
-      TrangThai: data.TrangThai || 'Đã duyệt',
+      TrangThai: status,
+      ...(status === 'Đã duyệt' ? { NgayDuyet: new Date().toISOString(), NguoiDuyet: adminUser.HoTen } : {}),
     };
     this.db.TAM_UNG.unshift(item);
     if (luong && item.TrangThai === 'Đã duyệt') this.syncTamUngToLuong(luong);
@@ -1616,28 +1630,44 @@ class DatabaseService {
   }
 
   public duyetTamUng(id: string, approve: boolean, lyDoTuChoi: string | undefined, adminUser: { HoTen: string; Email: string }): TamUng {
-    const item = this.db.TAM_UNG.find((x) => x.TamUngID === id);
-    if (!item) throw new Error('Không tìm thấy yêu cầu ứng lương.');
+    const matches = this.db.TAM_UNG.filter((item) => item.TamUngID === id);
+    if (matches.length !== 1) {
+      throw new Error(matches.length ? 'Mã tạm ứng bị trùng; không thể duyệt an toàn.' : 'Không tìm thấy yêu cầu ứng lương.');
+    }
+    const item = matches[0];
     if (item.TrangThai !== 'Chờ duyệt') throw new Error('Yêu cầu này đã được xử lý.');
-    const luong = this.db.LUONG.find((l) => l.NhanVienID === item.NhanVienID && l.Thang === item.Thang);
+    const matchingPayrolls = this.db.LUONG.filter((l) => l.NhanVienID === item.NhanVienID && l.Thang === item.Thang);
+    if (matchingPayrolls.length > 1) throw new Error('Có nhiều bảng lương cho nhân viên trong tháng này; không thể duyệt tạm ứng an toàn.');
+    const luong = matchingPayrolls[0];
     if (approve && luong && luong.TrangThai !== 'Chờ duyệt') throw new Error('Bảng lương tháng này đã duyệt hoặc thanh toán; không thể thêm khoản ứng vào kỳ đã khóa.');
+    const amount = Number(item.SoTien);
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Số tiền tạm ứng không hợp lệ; không thể duyệt.');
+    if (approve) this.getTongTamUng(item.NhanVienID, item.Thang);
+
     item.TrangThai = approve ? 'Đã duyệt' : 'Từ chối';
     item.NgayDuyet = new Date().toISOString();
     item.NguoiDuyet = adminUser.HoTen;
     item.LyDoTuChoi = approve ? '' : String(lyDoTuChoi || '').trim();
     if (approve && luong) this.syncTamUngToLuong(luong);
-    this.refreshKPIs(); this.save();
+    this.refreshKPIs();
+    this.save();
     this.logAudit(adminUser.HoTen, adminUser.Email, approve ? 'Duyệt ứng lương' : 'Từ chối ứng lương', `${approve ? 'Duyệt' : 'Từ chối'} yêu cầu ứng ${item.SoTien.toLocaleString('vi-VN')} đ của ${item.HoTen}`);
     this.addNotification(approve ? 'Yêu cầu ứng lương đã duyệt' : 'Yêu cầu ứng lương bị từ chối', approve ? `Yêu cầu ứng ${item.SoTien.toLocaleString('vi-VN')} đ đã được duyệt và sẽ khấu trừ vào bảng lương tháng ${item.Thang}.` : `Yêu cầu ứng ${item.SoTien.toLocaleString('vi-VN')} đ bị từ chối. ${item.LyDoTuChoi || ''}`, approve ? 'success' : 'warning', item.NhanVienID);
     return item;
   }
 
   public deleteTamUng(id: string, adminUser: { HoTen: string; Email: string }): boolean {
-    const index = this.db.TAM_UNG.findIndex((x) => x.TamUngID === id);
-    if (index === -1) throw new Error('Không tìm thấy khoản tạm ứng.');
+    const matchingIndexes = this.db.TAM_UNG.map((item, index) => item.TamUngID === id ? index : -1).filter((index) => index >= 0);
+    if (matchingIndexes.length !== 1) {
+      throw new Error(matchingIndexes.length ? 'Mã tạm ứng bị trùng; không thể xóa an toàn.' : 'Không tìm thấy khoản tạm ứng.');
+    }
+    const index = matchingIndexes[0];
     const item = this.db.TAM_UNG[index];
-    const luong = this.db.LUONG.find((l) => l.NhanVienID === item.NhanVienID && l.Thang === item.Thang);
+    const matchingPayrolls = this.db.LUONG.filter((l) => l.NhanVienID === item.NhanVienID && l.Thang === item.Thang);
+    if (matchingPayrolls.length > 1) throw new Error('Có nhiều bảng lương cho nhân viên trong tháng này; không thể xóa tạm ứng an toàn.');
+    const luong = matchingPayrolls[0];
     if (luong && luong.TrangThai !== 'Chờ duyệt') throw new Error('Bảng lương tháng này đã duyệt/đã thanh toán, không thể xóa tạm ứng.');
+    this.getTongTamUng(item.NhanVienID, item.Thang);
     this.db.TAM_UNG.splice(index, 1);
     if (luong) this.syncTamUngToLuong(luong);
     this.refreshKPIs();
