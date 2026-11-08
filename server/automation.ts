@@ -83,6 +83,9 @@ class AutomationManager {
           `Đã tạo ${result.createdCount} bảng lương cho tháng ${currentMonthStr}. Bỏ qua ${result.skippedCount} nhân viên đã có.`
         );
 
+        // Scheduled jobs run outside HTTP middleware, so explicitly await the
+        // same verified Firestore durability barrier before marking the job done.
+        await dbService.saveAndVerify();
         this.isRunning = false;
       }
     } catch (err) {
