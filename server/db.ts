@@ -1605,6 +1605,48 @@ class DatabaseService {
     return luong;
   }
 
+  /** Automatically reconcile pending payroll rows against the approved commission ledger. */
+  public autoSyncPendingPayrollCommissions(filter?: { thang?: string; nhanVienId?: string }): number {
+    let changed = 0;
+    const pendingRows = this.db.LUONG.filter((item) =>
+      item.TrangThai === 'Chờ duyệt' &&
+      (!filter?.thang || item.Thang === filter.thang) &&
+      (!filter?.nhanVienId || item.NhanVienID === filter.nhanVienId)
+    );
+    for (const luong of pendingRows) {
+      const beforeAmount = Number(luong.HoaHong) || 0;
+      const beforeTakeHome = Number(luong.ThucLanh) || 0;
+      const [month, year] = luong.Thang.split('/');
+      const prefix = `${year}-${String(month).padStart(2, '0')}`;
+      const approved = this.db.HOAHONG.filter((item) =>
+        item.NhanVienID === luong.NhanVienID && item.Ngay.startsWith(prefix) && item.TrangThai === 'Đã duyệt'
+      );
+      const total = approved.reduce((sum, item) => sum + (Number(item.SoTienHoaHong) || 0), 0);
+      const approvedIds = new Set(approved.map((item) => item.HoaHongID));
+      let linksChanged = false;
+      this.db.HOAHONG.forEach((item) => {
+        if (item.NhanVienID !== luong.NhanVienID || !item.Ngay.startsWith(prefix)) return;
+        if (approvedIds.has(item.HoaHongID) && item.LuongID !== luong.LuongID) {
+          item.LuongID = luong.LuongID;
+          linksChanged = true;
+        } else if (!approvedIds.has(item.HoaHongID) && item.LuongID === luong.LuongID) {
+          delete item.LuongID;
+          linksChanged = true;
+        }
+      });
+      if (beforeAmount !== total || linksChanged) {
+        luong.HoaHong = total;
+        this.recalculateLuong(luong);
+        if (beforeAmount !== total || beforeTakeHome !== Number(luong.ThucLanh) || linksChanged) changed++;
+      }
+    }
+    if (changed > 0) {
+      this.refreshKPIs();
+      this.save();
+    }
+    return changed;
+  }
+
   public recalculateLuong(luong: Luong): void {
     const tong =
       (luong.LuongCoBan || 0) +
