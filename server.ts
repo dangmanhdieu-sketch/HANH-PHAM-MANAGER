@@ -25,7 +25,7 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 // Node's built-in gzip avoids an extra runtime dependency. Mutations are still
 // persisted/verified by the middleware below before the compressed response is sent.
 app.use((req: Request, res: Response, next: NextFunction) => {
-  const acceptsGzip = /\\bgzip\\b/.test(String(req.headers['accept-encoding'] || ''));
+  const acceptsGzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
   if (!acceptsGzip || req.method === 'HEAD') return next();
 
   const originalSend = res.send.bind(res);
@@ -49,7 +49,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     try {
       const compressed = gzipSync(payload, { level: 1 });
       res.setHeader('Content-Encoding', 'gzip');
-      res.setHeader('Vary', 'Accept-Encoding');
+      res.vary('Accept-Encoding');
       res.removeHeader('Content-Length');
       return originalSend(compressed);
     } catch (error) {
