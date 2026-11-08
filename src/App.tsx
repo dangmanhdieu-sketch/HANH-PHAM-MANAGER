@@ -521,7 +521,8 @@ function AppContent() {
                 payrollList={payrollList}
                 commissionList={commissionList}
                 staffList={staffList}
-                onRefresh={() => refreshTabData(currentTab)}
+                onRefresh={(month) => refreshTabData(currentTab, month)}
+                onCommissionMonthChange={handleCommissionMonthChange}
                 onGenerateMonthlyPayroll={() => setConfirmGeneratePayrollOpen(true)}
                 initialFilterStatus="Chờ duyệt"
               />
@@ -532,7 +533,8 @@ function AppContent() {
                 payrollList={payrollList}
                 commissionList={commissionList}
                 staffList={staffList}
-                onRefresh={() => refreshTabData(currentTab)}
+                onRefresh={(month) => refreshTabData(currentTab, month)}
+                onCommissionMonthChange={handleCommissionMonthChange}
                 onGenerateMonthlyPayroll={() => setConfirmGeneratePayrollOpen(true)}
                 initialFilterStatus="Đã thanh toán"
               />
