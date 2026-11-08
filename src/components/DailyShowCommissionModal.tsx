@@ -46,7 +46,7 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
   const [tenKhachHang, setTenKhachHang] = useState('');
 
   // Show fee states
-  const [tienShow, setTienShow] = useState<number>(800000);
+  const [tienShow, setTienShow] = useState<number>(0);
 
   // Commission states
   const [doanhThu, setDoanhThu] = useState<number>(20000000);
@@ -201,6 +201,7 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
                   setLoaiKhoan('Tiền Show');
                   setShowTaskCustom(false);
                   setTenDichVu('');
+                  setTienShow(0);
                   setFormError(null);
                 }}
                 className={`py-3 px-4 rounded-xl border text-left transition flex items-center gap-3 ${
@@ -295,6 +296,7 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
                       setTienShow(preset.fee);
                     } else if (selected === 'Khác') {
                       setTenDichVu('');
+                      setTienShow(0);
                     }
                   }}
                   className="w-full px-3 py-2.5 border border-stone-200 rounded-lg bg-white focus:ring-1 focus:ring-[#bf954f]"
@@ -364,8 +366,9 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
                 min="0"
                 step="50000"
                 required
-                value={tienShow}
-                onChange={(e) => setTienShow(Number(e.target.value))}
+                value={tienShow || ''}
+                placeholder="Chọn công việc để tự điền giá hoặc nhập số tiền"
+                onChange={(e) => setTienShow(e.target.value === '' ? 0 : Number(e.target.value))}
                 className="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-xl font-mono text-sm font-semibold text-stone-900 focus:ring-1 focus:ring-[#bf954f]"
               />
 
