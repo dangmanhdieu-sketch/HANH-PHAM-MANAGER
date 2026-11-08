@@ -96,6 +96,10 @@ function AppContent() {
   const [commissionList, setCommissionList] = useState<HoaHong[]>([]);
   const [notifications, setNotifications] = useState<ThongBao[]>([]);
   const [automationStatus, setAutomationStatus] = useState<any>(null);
+  const [dashboardFinanceSummary, setDashboardFinanceSummary] = useState({
+    approvedCommissionTotal: 0,
+    pendingPayrollTotal: 0,
+  });
 
   // Employee specific stats
   const [todayAttendanceRecord, setTodayAttendanceRecord] = useState<ChamCong | null>(null);
@@ -158,19 +162,20 @@ function AppContent() {
           const results = await Promise.allSettled([
             api.dashboard.getStats(),
             api.staff.getAll(),
-            api.payroll.getAll(),
-            api.commission.getAll(),
             api.dashboard.getNotifications(),
           ]);
-          const [stats, staff, payroll, commission, notice] = results;
+          const [stats, staff, notice] = results;
           if (stats.status === 'fulfilled') {
             setKpis(stats.value.kpis || []);
             setAttendanceList(stats.value.todayChamCong || []);
+            setPayrollList(stats.value.pendingLuong || []);
             setAutomationStatus(stats.value.automation || null);
+            setDashboardFinanceSummary({
+              approvedCommissionTotal: Number(stats.value.approvedCommissionTotal || 0),
+              pendingPayrollTotal: Number(stats.value.pendingPayrollTotal || 0),
+            });
           }
           if (staff.status === 'fulfilled') setStaffList(staff.value);
-          if (payroll.status === 'fulfilled') setPayrollList(payroll.value);
-          if (commission.status === 'fulfilled') setCommissionList(commission.value);
           if (notice.status === 'fulfilled') setNotifications(notice.value);
           results.forEach((result, index) => {
             if (result.status === 'rejected') console.error('Lỗi tải Dashboard mục #' + index, result.reason);
