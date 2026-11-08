@@ -622,7 +622,9 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       const promoDiscount = Number(payload.KhuyenMaiBoSung || 0);
       const surcharge = Number(payload.PhuThuDichVu || 0);
       const percentageDiscount = Math.round(basePrice * discountRate / 100);
-      if (basePrice <= 0 || directDiscount < 0 || discountRate < 0 || discountRate > 100 || promoDiscount < 0 || surcharge < 0 || directDiscount + percentageDiscount + promoDiscount > basePrice) {
+      if (![basePrice, directDiscount, discountRate, promoDiscount, surcharge].every(Number.isFinite) ||
+          basePrice <= 0 || directDiscount < 0 || discountRate < 0 || discountRate > 100 || promoDiscount < 0 || surcharge < 0 ||
+          directDiscount + percentageDiscount + promoDiscount > basePrice) {
         return res.status(400).json({ error: 'Các khoản giảm trừ không hợp lệ hoặc vượt giá gói ban đầu.' });
       }
       payload.GiaGoiBanDau = basePrice;
@@ -780,7 +782,9 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       const promoDiscount = Number(merged.KhuyenMaiBoSung || 0);
       const surcharge = Number(merged.PhuThuDichVu || 0);
       const percentageDiscount = Math.round(basePrice * discountRate / 100);
-      if (basePrice <= 0 || directDiscount < 0 || discountRate < 0 || discountRate > 100 || promoDiscount < 0 || surcharge < 0 || directDiscount + percentageDiscount + promoDiscount > basePrice) {
+      if (![basePrice, directDiscount, discountRate, promoDiscount, surcharge].every(Number.isFinite) ||
+          basePrice <= 0 || directDiscount < 0 || discountRate < 0 || discountRate > 100 || promoDiscount < 0 || surcharge < 0 ||
+          directDiscount + percentageDiscount + promoDiscount > basePrice) {
         return res.status(400).json({ error: 'Các khoản giảm trừ không hợp lệ hoặc vượt giá gói ban đầu.' });
       }
       changes.GiaGoiBanDau = basePrice;
