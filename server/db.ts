@@ -2436,6 +2436,10 @@ class DatabaseService {
       throw new Error('Phiếu thu/chi đã được duyệt hoặc thanh toán. Không thể xóa khỏi sổ tài chính; hãy tạo phiếu điều chỉnh/hoàn tiền riêng.');
     }
     if (target.Module === 'HOP_DONG') {
+      const contractStatus = String(target.DuLieu?.TrangThai || 'Nháp');
+      if (!['Nháp', 'Chờ admin duyệt', 'Chờ Admin duyệt'].includes(contractStatus)) {
+        throw new Error('Hợp đồng đã xác nhận hoặc đã triển khai. Không thể xóa lịch sử; hãy chuyển trạng thái sang Đã hủy và lưu lý do.');
+      }
       const code = String(target.DuLieu?.MaHopDong || target.QuanLyID);
       const linkedReceipts = (this.db.QUAN_LY || []).filter((record) =>
         record.Module === 'THU_CHI' &&
