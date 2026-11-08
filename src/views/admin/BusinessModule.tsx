@@ -536,6 +536,38 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     reader.readAsDataURL(file);
   };
 
+  const printContract = () => {
+    const article = contractPrintRef.current;
+    if (!article) { alert('Không tìm thấy nội dung hợp đồng.'); return; }
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isMobile) { window.print(); return; }
+
+    // Safari/Chrome mobile thường không in được phần tử đang display:none trên màn hình.
+    // Tạo trang in độc lập, chứa trực tiếp HTML hợp đồng thay vì in từ DOM ẩn của app.
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Trình duyệt đang chặn cửa sổ in. Hãy cho phép cửa sổ bật lên rồi thử lại.');
+      return;
+    }
+    const html = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <title>Hợp đồng ${String(selectedContract?.DuLieu?.MaHopDong || selectedContract?.QuanLyID || '')}</title>
+      <style>
+        *{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#202020;font-family:Arial,sans-serif}
+        body{padding:16px}.contract-print-sheet{display:block!important;width:100%!important;max-width:100%!important;margin:0 auto!important;padding:0!important;background:#fff!important;color:#202020!important;font-size:10pt;line-height:1.35}
+        table{width:100%;border-collapse:collapse}th,td{border:1px solid #c9c2b8;padding:5px;text-align:left;overflow-wrap:anywhere}
+        th{background:#f4efe7}img{max-width:100%;height:auto}
+        @page{size:A4 portrait;margin:8mm}
+        @media print{body{padding:0}.contract-print-sheet{width:100%!important}}
+      </style></head><body>${article.outerHTML}
+      <script>window.onload=function(){setTimeout(function(){window.focus();window.print()},500)};</script>
+      </body></html>`;
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   const downloadContractJpeg = async () => {
     const article = contractPrintRef.current;
     if (!article || downloadingJpeg) return;
@@ -607,10 +639,12 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         if (!previewWindow || previewWindow.closed) {
           throw new Error('Trình duyệt đã chặn cửa sổ ảnh. Hãy cho phép mở cửa sổ bật lên rồi thử lại.');
         }
-        previewWindow.document.title = fileName;
-        previewWindow.document.body.style.cssText = 'margin:0;background:#222;display:flex;align-items:center;justify-content:center;min-height:100vh;';
-        previewWindow.location.href = objectUrl;
-        // Không thu hồi Blob URL quá sớm trên điện thoại; người dùng cần thời gian lưu ảnh.
+        // Dùng data URL trực tiếp trong trang ảnh: ổn định hơn điều hướng blob: trên Safari/iOS.
+        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        previewWindow.document.open();
+        previewWindow.document.write(`<!doctype html><html lang="vi"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>${fileName}</title><style>html,body{margin:0;min-height:100%;background:#222}body{display:flex;align-items:flex-start;justify-content:center;padding:8px;box-sizing:border-box}img{display:block;width:100%;height:auto;object-fit:contain;background:#fff}</style></head><body><img alt="Hợp đồng ${fileName}" src="${imageDataUrl}"></body></html>`);
+        previewWindow.document.close();
+        // Người dùng có thể nhấn giữ ảnh để lưu vào điện thoại.
       } else {
         const link = document.createElement('a');
         link.download = fileName;
@@ -1012,7 +1046,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"><CheckSquare className="w-4 h-4"/> Hoàn thành hợp đồng</button>}
             </section>
             <div className="flex flex-wrap justify-end gap-3 border-t border-stone-200 pt-5 pb-2">
-              <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-3 text-sm font-bold text-white hover:bg-amber-500"><FileText className="w-4 h-4"/> In / Tải PDF</button>
+              <button type="button" onClick={printContract} className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-3 text-sm font-bold text-white hover:bg-amber-500"><FileText className="w-4 h-4"/> In / Tải PDF</button>
               <button type="button" disabled={downloadingJpeg} onClick={() => void downloadContractJpeg()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-60">{downloadingJpeg ? 'Đang tạo JPEG...' : 'Tải JPEG'}</button>
               <button type="button" onClick={() => { const r = selectedContract; setSelectedContract(null); openEdit(r); }} className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-5 py-3 text-sm text-stone-800 hover:bg-stone-100"><Edit3 className="w-4 h-4"/> Sửa hợp đồng</button>
             </div>
