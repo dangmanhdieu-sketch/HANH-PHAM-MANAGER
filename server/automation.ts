@@ -83,6 +83,8 @@ class AutomationManager {
           `Đã tạo ${result.createdCount} bảng lương cho tháng ${currentMonthStr}. Bỏ qua ${result.skippedCount} nhân viên đã có.`
         );
 
+        // Scheduled jobs run outside the HTTP mutation persistence barrier.
+        await dbService.saveAndVerify();
         this.isRunning = false;
       }
     } catch (err) {
