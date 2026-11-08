@@ -1715,7 +1715,7 @@ class DatabaseService {
       }
       const attendanceByDate = new Map(attendance.map((cc) => [cc.Ngay, cc]));
       const getCheckInMinutes = (cc: ChamCong) => {
-        if (!cc.CheckIn || !/^\\d{2}:\\d{2}/.test(cc.CheckIn)) return null;
+        if (!cc.CheckIn || !/^\d{2}:\d{2}/.test(cc.CheckIn)) return null;
         const [hour, minute] = cc.CheckIn.split(':').map(Number);
         if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
         return hour * 60 + minute;
