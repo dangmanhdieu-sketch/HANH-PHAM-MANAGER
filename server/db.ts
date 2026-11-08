@@ -1085,14 +1085,19 @@ class DatabaseService {
     // The Firestore transaction commit is the durable-write confirmation.
     // Avoid an additional 11-document read-back on every small edit/delete:
     // it added noticeable latency without making the committed transaction safer.
+    const requestStartedAt = Date.now();
     const write = this.firestoreSaveQueue
       .catch((previousError) => {
         console.error('[Firebase] Recovering after previous queued write failure:', previousError);
       })
       .then(async () => {
+        const queueWaitMs = Date.now() - requestStartedAt;
+        const diffStartedAt = Date.now();
         const changedTables = this.getChangedFirestoreTables();
+        const diffMs = Date.now() - diffStartedAt;
         const hoaHongChanged = changedTables.includes('HOAHONG');
         const otherChangedTables = changedTables.filter((table) => table !== 'HOAHONG');
+        const persistStartedAt = Date.now();
         if (otherChangedTables.length > 0) {
           await this.persistToFirestoreNow(otherChangedTables);
         }
@@ -1103,6 +1108,13 @@ class DatabaseService {
           // Safe fallback until the record collection migration is verified.
           await this.persistToFirestoreNow(['HOAHONG']);
         }
+        console.info('[PERF] firestore-mutation-save', {
+          queueWaitMs,
+          diffMs,
+          persistMs: Date.now() - persistStartedAt,
+          totalMs: Date.now() - requestStartedAt,
+          changedTables,
+        });
       });
     this.firestoreSaveQueue = write.catch((err) => {
       console.error('[Firebase] Verified write failed:', err);
