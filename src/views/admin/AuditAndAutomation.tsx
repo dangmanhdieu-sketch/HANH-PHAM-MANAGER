@@ -49,6 +49,7 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
   };
   const [automationStatus, setAutomationStatus] = useState<any>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [integrityReport, setIntegrityReport] = useState<Awaited<ReturnType<typeof api.system.getDataIntegrityReport>> | null>(null);
   const [config, setConfig] = useState<SystemConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [runningAuto, setRunningAuto] = useState(false);
@@ -60,14 +61,16 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
   const loadData = async () => {
     setLoading(true);
     try {
-      const [auto, logs, cfg] = await Promise.all([
+      const [auto, logs, cfg, integrity] = await Promise.all([
         api.automation.getStatus(),
         api.dashboard.getAuditLogs(),
         api.system.getConfig(),
+        api.system.getDataIntegrityReport(),
       ]);
       setAutomationStatus(auto);
       setAuditLogs(logs);
       setConfig(cfg);
+      setIntegrityReport(integrity);
     } catch (err) {
       console.error('Error loading automation data:', err);
     } finally {
@@ -406,6 +409,51 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
           </div>
         </div>
       </div>
+
+      {/* READ-ONLY DATA INTEGRITY AUDIT */}
+      <section className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+          <div>
+            <h2 className="text-base font-bold text-stone-900 flex items-center gap-2">
+              <Database className="w-5 h-5 text-[#bf954f]" />
+              KIỂM TRA TOÀN VẸN DỮ LIỆU
+            </h2>
+            <p className="text-xs text-stone-500 mt-1">Quét mã nhân viên trùng, chấm công trùng, hoa hồng mồ côi và chênh lệch giữa sổ thu nhập với bảng lương. Chỉ đọc, không tự sửa dữ liệu.</p>
+          </div>
+          <button type="button" onClick={loadData} disabled={loading} className="px-3 py-2 rounded-lg border border-stone-200 text-xs font-semibold disabled:opacity-50">
+            {loading ? 'Đang quét...' : 'Quét lại dữ liệu'}
+          </button>
+        </div>
+        {integrityReport ? (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="rounded-xl bg-stone-50 p-3"><span className="text-stone-500">Nhân viên</span><p className="text-lg font-bold">{integrityReport.summary.employees}</p></div>
+              <div className="rounded-xl bg-stone-50 p-3"><span className="text-stone-500">Hoa hồng</span><p className="text-lg font-bold">{integrityReport.summary.commissions}</p></div>
+              <div className="rounded-xl bg-stone-50 p-3"><span className="text-stone-500">Lỗi nghiêm trọng</span><p className="text-lg font-bold text-rose-700">{integrityReport.summary.critical}</p></div>
+              <div className="rounded-xl bg-stone-50 p-3"><span className="text-stone-500">Cảnh báo</span><p className="text-lg font-bold text-amber-700">{integrityReport.summary.warning}</p></div>
+            </div>
+            {integrityReport.issues.length === 0 ? (
+              <p className="text-sm font-semibold text-emerald-700">Không phát hiện lỗi liên kết theo các quy tắc kiểm tra hiện tại.</p>
+            ) : (
+              <div className="max-h-80 overflow-y-auto divide-y divide-stone-100 border border-stone-100 rounded-xl">
+                {integrityReport.issues.map((issue, index) => (
+                  <div key={issue.code + '-' + index} className="p-3 text-xs">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={issue.severity === 'critical' ? 'font-bold text-rose-700' : 'font-bold text-amber-700'}>
+                        {issue.severity === 'critical' ? 'LỖI NGHIÊM TRỌNG' : 'CẢNH BÁO'}
+                      </span>
+                      <span className="font-mono text-stone-400">{issue.code}</span>
+                    </div>
+                    <p className="text-stone-700">{issue.message}</p>
+                    {issue.records?.length ? <p className="text-stone-400 mt-1">Mã liên quan: {issue.records.join(', ')}</p> : null}
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] text-stone-400">Lần quét: {new Date(integrityReport.generatedAt).toLocaleString('vi-VN')}. Các lỗi cũ cần đối soát trước khi điều chỉnh để không làm thay đổi tiền đã duyệt hoặc thanh toán.</p>
+          </>
+        ) : <p className="text-xs text-stone-500">Chưa có kết quả kiểm tra. Hãy làm mới trang hoặc thử quét lại.</p>}
+      </section>
 
       {/* STUDIO CONFIGURATION */}
       {config && (
