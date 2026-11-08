@@ -13,7 +13,7 @@ import {
   Calendar,
   Eye,
 } from 'lucide-react';
-import type { ChamCong, Luong, HoaHong, NhanVien, ThongKeKPI } from '../../types';
+import type { ChamCong, Luong, NhanVien, ThongKeKPI } from '../../types';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { BusinessStats } from './BusinessStats';
 import { ContractsRevenueAnalytics } from './ContractsRevenueAnalytics';
@@ -23,8 +23,8 @@ interface AdminDashboardProps {
   todayAttendance: ChamCong[];
   pendingPayroll: Luong[];
   paidPayroll: Luong[];
-  allPayroll: Luong[];
-  allCommissions: HoaHong[];
+  approvedCommissionTotal: number;
+  pendingPayrollTotal: number;
   staffList: NhanVien[];
   automationStatus: any;
   onGeneratePayroll: () => void;
@@ -38,8 +38,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   todayAttendance,
   pendingPayroll,
   paidPayroll,
-  allPayroll,
-  allCommissions,
+  approvedCommissionTotal,
+  pendingPayrollTotal,
   staffList,
   automationStatus,
   onGeneratePayroll,
@@ -87,7 +87,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <ContractsRevenueAnalytics />
 
       {/* THỐNG KÊ VẬN HÀNH: NHÂN SỰ, CÔNG VIỆC, HỢP ĐỒNG */}
-      <BusinessStats staffList={staffList} payrollList={allPayroll} commissionList={allCommissions} />
+      <BusinessStats staffList={staffList} approvedCommissionTotal={approvedCommissionTotal} pendingPayrollTotal={pendingPayrollTotal} />
 
       {/* SECTION 1: CHẤM CÔNG HÔM NAY (Realtime Attendance Feed) */}
       <div className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm overflow-hidden">
