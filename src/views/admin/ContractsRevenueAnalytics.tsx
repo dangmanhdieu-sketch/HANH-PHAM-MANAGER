@@ -7,13 +7,23 @@ import { api } from '../../api';
 import type { QuanLyRecord } from '../../types';
 
 type Period = 'week' | 'month' | 'year';
-type ContractRow = { record: QuanLyRecord; data: Record<string, any>; signedDate: string; value: number; collected: number; remaining: number; status: string };
+type ContractRow = { record: QuanLyRecord; data: Record<string, any>; signedDate: string; value: number; collected: number; remaining: number; overpaid: number; status: string };
 
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
 const dateText = (value: string) => {
   if (!value) return '—';
   const d = new Date(value.length === 10 ? value + 'T00:00:00' : value);
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString('vi-VN');
+};
+const getContractTotalValue = (data: Record<string, any> | undefined) => {
+  const base = Math.max(0, Number(data?.GiaGoiBanDau ?? data?.TongGiaTri ?? 0) || 0);
+  const hasStoredFinal = data?.GiaGoiBanDau !== undefined && data?.TongGiaTri !== undefined;
+  if (hasStoredFinal) return Math.max(0, Number(data?.TongGiaTri) || 0);
+  const direct = Math.max(0, Number(data?.GiamGiaTrucTiep || 0));
+  const rate = Math.min(100, Math.max(0, Number(data?.ChietKhauPhanTram || 0)));
+  const promo = Math.max(0, Number(data?.KhuyenMaiBoSung || 0));
+  const surcharge = Math.max(0, Number(data?.PhuThuDichVu || 0));
+  return Math.max(0, base - direct - Math.round(base * rate / 100) - promo + surcharge);
 };
 const localDate = (d: Date) => {
   const y = d.getFullYear();
@@ -82,7 +92,7 @@ export const ContractsRevenueAnalytics: React.FC = () => {
     return contracts.map(record => {
       const data = record.DuLieu || {};
       const signedDate = String(data.NgayKy || data.NgayTao || record.TaoLuc || '').slice(0, 10);
-      const value = Math.max(0, Number(data.TongGiaTri ?? data.GiaGoiBanDau ?? 0) || 0);
+      const value = getContractTotalValue(data);
       const code = String(data.MaHopDong || record.QuanLyID);
       // Chỉ các phiếu thu đã duyệt mới được xem là tiền thực thu.
       const approvedReceiptTotal = approvedReceipts
@@ -91,10 +101,11 @@ export const ContractsRevenueAnalytics: React.FC = () => {
           String(receipt.DuLieu?.HopDongQuanLyID || '') === String(record.QuanLyID)
         )
         .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
-      const collected = Math.min(value, approvedReceiptTotal);
+      const collected = approvedReceiptTotal;
       return {
         record, data, signedDate, value, collected,
         remaining: Math.max(0, value - collected),
+        overpaid: Math.max(0, collected - value),
         status: String(data.TrangThai || 'Nháp'),
       };
     });
