@@ -75,22 +75,42 @@ export const ContractsRevenueAnalytics: React.FC = () => {
   }, [period, year, month, weekDate]);
 
   const rows = useMemo<ContractRow[]>(() => {
-    const approvedReceipts = receipts.filter(r => {
-      const d = r.DuLieu || {};
-      return String(d.Loai || '').toUpperCase() === 'THU' && String(d.TrangThaiDuyet || '') === 'Đã duyệt';
-    });
+    // Build lookup indexes once. The previous implementation filtered the full
+    // approved-receipt list for every contract (O(contracts × receipts)).
+    const contractsByCode = new Map<string, string[]>();
+    for (const record of contracts) {
+      const code = String(record.DuLieu?.MaHopDong || record.QuanLyID);
+      const ids = contractsByCode.get(code) || [];
+      ids.push(String(record.QuanLyID));
+      contractsByCode.set(code, ids);
+    }
+
+    const collectedByContractId = new Map<string, number>();
+    for (const receipt of receipts) {
+      const data = receipt.DuLieu || {};
+      if (String(data.Loai || '').toUpperCase() !== 'THU' || String(data.TrangThaiDuyet || '') !== 'Đã duyệt') continue;
+
+      const matchedContractIds = new Set<string>();
+      const contractCode = String(data.HopDongID || data.MaHopDong || '');
+      if (contractCode) {
+        for (const id of contractsByCode.get(contractCode) || []) matchedContractIds.add(id);
+      }
+      const linkedContractId = String(data.HopDongQuanLyID || '');
+      if (linkedContractId && contracts.some(contract => String(contract.QuanLyID) === linkedContractId)) {
+        matchedContractIds.add(linkedContractId);
+      }
+
+      const amount = Math.max(0, Number(data.SoTien || 0));
+      for (const id of matchedContractIds) {
+        collectedByContractId.set(id, (collectedByContractId.get(id) || 0) + amount);
+      }
+    }
+
     return contracts.map(record => {
       const data = record.DuLieu || {};
       const signedDate = String(data.NgayKy || data.NgayTao || record.TaoLuc || '').slice(0, 10);
       const value = Math.max(0, Number(data.TongGiaTri ?? data.GiaGoiBanDau ?? 0) || 0);
-      const code = String(data.MaHopDong || record.QuanLyID);
-      // Chỉ các phiếu thu đã duyệt mới được xem là tiền thực thu.
-      const approvedReceiptTotal = approvedReceipts
-        .filter(receipt =>
-          String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === code ||
-          String(receipt.DuLieu?.HopDongQuanLyID || '') === String(record.QuanLyID)
-        )
-        .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
+      const approvedReceiptTotal = collectedByContractId.get(String(record.QuanLyID)) || 0;
       const collected = Math.min(value, approvedReceiptTotal);
       return {
         record, data, signedDate, value, collected,
