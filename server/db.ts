@@ -757,8 +757,8 @@ class DatabaseService {
     const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
     const committedAt = new Date().toISOString();
     const PART_SIZE = 200000;
-    const smallTables: Array<{ table: string; data: any; bytes: number }> = [];
-    const largeTables: Array<{ table: string; encoded: string; bytes: number }> = [];
+    const smallTables: Array<{ table: string; data: any; bytes: number; snapshot: string }> = [];
+    const largeTables: Array<{ table: string; encoded: string; bytes: number; snapshot: string }> = [];
 
     try {
       // Prepare changed tables once. Small tables are committed together in one
@@ -766,13 +766,18 @@ class DatabaseService {
       for (const table of tablesToWrite) {
         const value = (this.db as any)[table];
         if (value === undefined) continue;
+        // Capture the exact in-memory version being serialized. A concurrent
+        // request may mutate this table while Firestore is awaiting a commit.
+        // The persisted snapshot must describe the committed payload, not the
+        // later live object, or that newer mutation can be mistaken as saved.
+        const sourceSnapshot = JSON.stringify(value);
         const serialized = JSON.stringify(sanitizeFirestoreValue(value));
         const bytes = Buffer.byteLength(serialized, 'utf8');
         const encoded = Buffer.from(serialized, 'utf8').toString('base64');
         if (encoded.length <= PART_SIZE) {
-          smallTables.push({ table, data: JSON.parse(serialized), bytes });
+          smallTables.push({ table, data: JSON.parse(serialized), bytes, snapshot: sourceSnapshot });
         } else {
-          largeTables.push({ table, encoded, bytes });
+          largeTables.push({ table, encoded, bytes, snapshot: sourceSnapshot });
         }
       }
 
@@ -856,8 +861,15 @@ class DatabaseService {
         });
       }
 
-      for (const table of tablesToWrite) {
-        this.firestorePersistedSnapshots[table] = JSON.stringify((this.db as any)[table]);
+      // Mark only the exact versions that were serialized and committed.
+      // If another request changed a table during the async Firestore write,
+      // its live JSON will differ from this snapshot and the next queued save
+      // will persist that newer version instead of silently skipping it.
+      for (const item of smallTables) {
+        this.firestorePersistedSnapshots[item.table as (typeof this.firestoreTables)[number]] = item.snapshot;
+      }
+      for (const item of largeTables) {
+        this.firestorePersistedSnapshots[item.table as (typeof this.firestoreTables)[number]] = item.snapshot;
       }
     } catch (err) {
       console.error('[Firebase] Firestore save error:', err);
