@@ -683,7 +683,11 @@ class DatabaseService {
           const migrated = this.applyMigrations();
           this.refreshKPIs();
           this.saveSync();
-          await this.initializeHoaHongRecordStorage(rootRef);
+          // Emergency stability rollback: keep the legacy HOAHONG table authoritative.
+          // The record-level collection migration currently performs a full collection
+          // scan during startup and can block the entire API from becoming ready.
+          // Legacy HOAHONG data is retained in Firestore and remains the safe source.
+          this.hoaHongRecordStorageEnabled = false;
           this.captureFirestoreSnapshots();
 
           // Upgrade any legacy table document that is already too large for
