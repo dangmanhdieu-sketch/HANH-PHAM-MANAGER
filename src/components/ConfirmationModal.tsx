@@ -11,6 +11,7 @@ interface ConfirmationModalProps {
   cancelText?: string;
   type?: 'warning' | 'danger' | 'info' | 'success';
   loading?: boolean;
+  errorMessage?: string | null;
 }
 
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -23,6 +24,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   cancelText = 'HỦY',
   type = 'info',
   loading = false,
+  errorMessage = null,
 }) => {
   if (!isOpen) return null;
 
@@ -57,6 +59,12 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </div>
         </div>
 
+        {errorMessage && (
+          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">
+            {errorMessage}
+          </div>
+        )}
+
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E7DFD5]">
           <button
             type="button"
@@ -68,7 +76,11 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (!loading) void onConfirm();
+            }}
             disabled={loading}
             className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition flex items-center gap-2 ${buttonColorMap[type]} disabled:opacity-50`}
           >
