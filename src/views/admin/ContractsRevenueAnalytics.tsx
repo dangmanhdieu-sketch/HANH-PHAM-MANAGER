@@ -43,12 +43,9 @@ export const ContractsRevenueAnalytics: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const [contractData, receiptData] = await Promise.all([
-        api.quanLy.getAll('HOP_DONG'),
-        api.quanLy.getAll('THU_CHI'),
-      ]);
-      setContracts(contractData);
-      setReceipts(receiptData);
+      const reportData = await api.reports.getContractsRevenue();
+      setContracts(reportData.contracts);
+      setReceipts(reportData.receipts);
     } catch (e: any) {
       setError(e?.message || 'Không tải được dữ liệu hợp đồng.');
     } finally {

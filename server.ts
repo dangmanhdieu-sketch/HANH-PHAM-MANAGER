@@ -588,6 +588,55 @@ app.post('/api/chamcong/checkout', authenticateToken, (req: AuthRequest, res: Re
 // ==========================================
 // QUẢN LÝ NGHIỆP VỤ LIÊN KẾT
 // ==========================================
+// Lightweight report payload: omit receipt photos and unrelated fields so the
+// analytics screen does not download large base64 images for every receipt.
+app.get('/api/reports/contracts-revenue', authenticateToken, requireAdmin, (_req: AuthRequest, res: Response) => {
+  const records = dbService.getQuanLyRecords();
+  const contracts = records
+    .filter((record) => record.Module === 'HOP_DONG')
+    .map((record) => {
+      const data = record.DuLieu || {};
+      return {
+        QuanLyID: record.QuanLyID,
+        Module: record.Module,
+        TaoLuc: record.TaoLuc,
+        DuLieu: {
+          MaHopDong: data.MaHopDong,
+          KhachHang: data.KhachHang,
+          GoiDichVu: data.GoiDichVu,
+          TenGoi: data.TenGoi,
+          NgayKy: data.NgayKy,
+          NgayTao: data.NgayTao,
+          TongGiaTri: data.TongGiaTri,
+          GiaGoiBanDau: data.GiaGoiBanDau,
+          TrangThai: data.TrangThai,
+        },
+      };
+    });
+  const receipts = records
+    .filter((record) => record.Module === 'THU_CHI')
+    .map((record) => {
+      const data = record.DuLieu || {};
+      return {
+        QuanLyID: record.QuanLyID,
+        Module: record.Module,
+        TaoLuc: record.TaoLuc,
+        DuLieu: {
+          Loai: data.Loai,
+          TrangThaiDuyet: data.TrangThaiDuyet,
+          HopDongID: data.HopDongID,
+          MaHopDong: data.MaHopDong,
+          HopDongQuanLyID: data.HopDongQuanLyID,
+          SoTien: data.SoTien,
+          Ngay: data.Ngay,
+        },
+      };
+    })
+    .filter((record) => String(record.DuLieu.Loai || '').toUpperCase() === 'THU');
+  res.setHeader('Cache-Control', 'private, no-store');
+  return res.json({ contracts, receipts });
+});
+
 app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => {
   const module = req.query.module as any;
   let records = dbService.getQuanLyRecords(module || undefined);
