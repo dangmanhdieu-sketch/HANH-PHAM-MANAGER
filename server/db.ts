@@ -1492,6 +1492,21 @@ class DatabaseService {
     this.recalculateLuong(luong);
   }
 
+  /** Approved commission ledger is the single source of truth for payroll commission totals. */
+  private syncHoaHongToLuong(luong: Luong): void {
+    const [month, year] = String(luong.Thang || '').split('/');
+    const prefix = month && year ? `${year}-${month.padStart(2, '0')}` : '';
+    if (!prefix) throw new Error(`Kỳ lương không hợp lệ: ${luong.Thang}`);
+    const approved = this.db.HOAHONG.filter((item) =>
+      item.NhanVienID === luong.NhanVienID &&
+      String(item.Ngay || '').startsWith(prefix) &&
+      item.TrangThai === 'Đã duyệt'
+    );
+    luong.HoaHong = approved.reduce((sum, item) => sum + Math.max(0, Number(item.SoTienHoaHong) || 0), 0);
+    approved.forEach((item) => { item.LuongID = luong.LuongID; });
+    this.recalculateLuong(luong);
+  }
+
   public createTamUng(data: { NhanVienID: string; Ngay: string; SoTien: number; LyDo?: string; GhiChu?: string; TrangThai?: 'Chờ duyệt' | 'Đã duyệt' }, adminUser: { HoTen: string; Email: string }): TamUng {
     const nv = this.findNhanVienById(data.NhanVienID);
     if (!nv) throw new Error('Nhân viên không tồn tại');
@@ -1764,7 +1779,8 @@ class DatabaseService {
     if (updates.SoGioLam !== undefined) luong.SoGioLam = Number(updates.SoGioLam);
     if (updates.PhuCap !== undefined) luong.PhuCap = Number(updates.PhuCap);
     if (updates.Thuong !== undefined) luong.Thuong = Number(updates.Thuong);
-    if (updates.HoaHong !== undefined) luong.HoaHong = Number(updates.HoaHong);
+    // HoaHong is never accepted as a manually editable payroll number.
+    // It is always recalculated from approved HOAHONG ledger rows below.
     if (updates.Phat !== undefined) luong.Phat = Number(updates.Phat);
 
     // When an admin edits the "Tạm ứng trong kỳ" field, reconcile the underlying
@@ -1816,6 +1832,7 @@ class DatabaseService {
     if (updates.GhiChu !== undefined) luong.GhiChu = updates.GhiChu;
 
     this.syncTamUngToLuong(luong);
+    this.syncHoaHongToLuong(luong);
     this.refreshKPIs();
     this.save();
 
@@ -1924,31 +1941,47 @@ class DatabaseService {
     user: { HoTen: string; Email: string; Quyen?: string }
   ): HoaHong {
     const nv = this.findNhanVienById(data.NhanVienID);
-    if (!nv) throw new Error('Nhân viên không tồn tại');
+    if (!nv) throw new Error('Không tìm thấy duy nhất một nhân viên theo mã đã chọn. Vui lòng kiểm tra mã nhân viên trùng.');
+    const noiDung = String(data.NoiDung || '').trim();
+    if (!noiDung) throw new Error('Vui lòng nhập nội dung khoản thu nhập.');
+    const ngay = String(data.Ngay || '');
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(ngay) || Number.isNaN(Date.parse(ngay + 'T00:00:00Z'))) {
+      throw new Error('Ngày ghi nhận hoa hồng không hợp lệ.');
+    }
 
     const loaiKhoan = data.LoaiKhoan || 'Hoa Hồng';
-    const doanhThu = Number(data.DoanhThu) || 0;
-    const tyLe = Number(data.TyLeHoaHong) || 0;
+    if (loaiKhoan !== 'Tiền Show' && loaiKhoan !== 'Hoa Hồng') {
+      throw new Error('Loại khoản thu nhập không hợp lệ.');
+    }
+    const doanhThu = Number(data.DoanhThu ?? 0);
+    const tyLe = Number(data.TyLeHoaHong ?? 0);
+    if (!Number.isFinite(doanhThu) || doanhThu < 0) throw new Error('Doanh thu phải là số không âm.');
+    if (!Number.isFinite(tyLe) || tyLe < 0 || tyLe > 100) throw new Error('Tỷ lệ hoa hồng phải từ 0 đến 100%.');
 
     let soTien = 0;
     if (loaiKhoan === 'Tiền Show') {
-      soTien = data.SoTienHoaHong !== undefined && data.SoTienHoaHong > 0
-        ? Number(data.SoTienHoaHong)
+      const directAmount = Number(data.SoTienHoaHong);
+      soTien = Number.isFinite(directAmount) && directAmount > 0
+        ? Math.round(directAmount)
         : Math.round((doanhThu * (tyLe > 0 ? tyLe : 100)) / 100);
     } else {
-      soTien = data.SoTienHoaHong && tyLe === 0
-        ? Number(data.SoTienHoaHong)
+      const directAmount = Number(data.SoTienHoaHong);
+      soTien = tyLe === 0 && Number.isFinite(directAmount) && directAmount > 0
+        ? Math.round(directAmount)
         : Math.round((doanhThu * tyLe) / 100);
     }
+    if (!Number.isFinite(soTien) || soTien <= 0) {
+      throw new Error('Số tiền thu nhập phải lớn hơn 0. Vui lòng kiểm tra doanh thu, tỷ lệ hoặc số tiền show.');
+    }
 
-    const hoaHongId = `HH-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
+    const hoaHongId = `HH-${randomUUID()}`;
 
     const newHoaHong: HoaHong = {
       HoaHongID: hoaHongId,
       NhanVienID: nv.NhanVienID,
       HoTen: nv.HoTen,
-      Ngay: data.Ngay || new Date().toISOString().split('T')[0],
-      NoiDung: data.NoiDung.trim(),
+      Ngay: ngay,
+      NoiDung: noiDung,
       LoaiKhoan: loaiKhoan,
       DoanhThu: doanhThu,
       TyLeHoaHong: tyLe,
@@ -1989,46 +2022,55 @@ class DatabaseService {
     const hh = this.db.HOAHONG.find((item) => item.HoaHongID === hoaHongId);
     if (!hh) throw new Error('Không tìm thấy bản ghi hoa hồng');
 
-    if (dongY) {
-      hh.TrangThai = 'Đã duyệt';
-      hh.NgayDuyet = new Date().toISOString();
-      hh.NguoiDuyet = adminUser.HoTen;
+    // Idempotency guard: only a pending claim can be approved/rejected once.
+    // This prevents double taps/retries from adding the same income twice.
+    if (hh.TrangThai !== 'Chờ duyệt') {
+      throw new Error(`Khoản thu nhập này đã được xử lý (${hh.TrangThai}); hệ thống không thực hiện duyệt lại.`);
+    }
 
-      // Tự động cộng vào bảng lương của nhân viên trong tháng đó nếu đang 'Chờ duyệt'
-      const [year, month] = hh.Ngay.split('-');
-      const thangStr = `${month}/${year}`;
-      const luong = this.db.LUONG.find(
-        (l) => l.NhanVienID === hh.NhanVienID && l.Thang === thangStr
-      );
+    const [year, month] = String(hh.Ngay || '').split('-');
+    if (!/^\\d{4}$/.test(year || '') || !/^\\d{2}$/.test(month || '')) {
+      throw new Error('Ngày của khoản hoa hồng không hợp lệ; cần đối soát dữ liệu trước khi duyệt.');
+    }
+    const thangStr = `${month}/${year}`;
+    const luong = this.db.LUONG.find(
+      (item) => item.NhanVienID === hh.NhanVienID && item.Thang === thangStr
+    );
 
-      if (luong && luong.TrangThai === 'Chờ duyệt') {
-        luong.HoaHong = (luong.HoaHong || 0) + hh.SoTienHoaHong;
-        this.recalculateLuong(luong);
-        hh.LuongID = luong.LuongID;
-      }
-    } else {
-      hh.TrangThai = 'Từ chối';
-      hh.NgayDuyet = new Date().toISOString();
-      hh.NguoiDuyet = adminUser.HoTen;
+    // A locked payroll cannot be changed silently. Keep the commission pending
+    // until Admin resolves the closed payroll period explicitly.
+    if (dongY && luong && luong.TrangThai !== 'Chờ duyệt') {
+      throw new Error(`Bảng lương ${thangStr} của ${hh.HoTen} đã ở trạng thái "${luong.TrangThai}". Không thể cộng thêm hoa hồng vào kỳ đã khóa; vui lòng xử lý điều chỉnh lương trước.`);
+    }
+
+    const now = new Date().toISOString();
+    hh.TrangThai = dongY ? 'Đã duyệt' : 'Từ chối';
+    hh.NgayDuyet = now;
+    hh.NguoiDuyet = adminUser.HoTen;
+
+    if (dongY && luong) {
+      this.syncHoaHongToLuong(luong);
+      hh.LuongID = luong.LuongID;
+    } else if (!dongY) {
+      hh.LuongID = undefined;
     }
 
     this.refreshKPIs();
     this.save();
-
     this.logAudit(
       adminUser.HoTen,
       adminUser.Email,
       dongY ? 'Duyệt hoa hồng' : 'Từ chối hoa hồng',
       `${dongY ? 'Duyệt' : 'Từ chối'} hoa hồng ${hh.HoaHongID} của ${hh.HoTen} (${hh.SoTienHoaHong.toLocaleString('vi-VN')} đ)`
     );
-
     this.addNotification(
       dongY ? 'Hoa hồng đã được duyệt' : 'Hoa hồng bị từ chối',
-      `Khoản hoa hồng "${hh.NoiDung}" (${hh.SoTienHoaHong.toLocaleString('vi-VN')} đ) đã ${dongY ? 'được duyệt và cộng vào lương' : 'bị từ chối'}.`,
+      dongY
+        ? `Khoản hoa hồng "${hh.NoiDung}" (${hh.SoTienHoaHong.toLocaleString('vi-VN')} đ) đã được duyệt.`
+        : `Khoản hoa hồng "${hh.NoiDung}" (${hh.SoTienHoaHong.toLocaleString('vi-VN')} đ) đã bị từ chối.`,
       dongY ? 'success' : 'warning',
       hh.NhanVienID
     );
-
     return hh;
   }
 
@@ -2036,16 +2078,15 @@ class DatabaseService {
     const hh = this.db.HOAHONG.find((h) => h.HoaHongID === id);
     if (!hh) throw new Error('Hoa hồng không tồn tại');
 
-    // If already linked to a Luong, subtract from Luong if Luong is still Chờ duyệt
-    if (hh.LuongID && hh.TrangThai === 'Đã duyệt') {
-      const luong = this.findLuongById(hh.LuongID);
-      if (luong && luong.TrangThai === 'Chờ duyệt') {
-        luong.HoaHong = Math.max(0, (luong.HoaHong || 0) - hh.SoTienHoaHong);
-        this.recalculateLuong(luong);
-      }
+    const linkedLuong = hh.LuongID ? this.findLuongById(hh.LuongID) : undefined;
+    if (hh.TrangThai === 'Đã duyệt' && linkedLuong && linkedLuong.TrangThai !== 'Chờ duyệt') {
+      throw new Error('Khoản hoa hồng đã nằm trong bảng lương đã duyệt/thanh toán. Không thể xóa làm sai lệch lịch sử tài chính.');
     }
 
     this.db.HOAHONG = this.db.HOAHONG.filter((h) => h.HoaHongID !== id);
+    if (hh.TrangThai === 'Đã duyệt' && linkedLuong) {
+      this.syncHoaHongToLuong(linkedLuong);
+    }
     this.refreshKPIs();
     this.save();
 
