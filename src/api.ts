@@ -459,6 +459,10 @@ export const api = {
       );
     },
 
+    async syncCommissions(id: string): Promise<{ message: string; luong: Luong }> {
+      return request('/api/luong/' + encodeURIComponent(id) + '/dong-bo-hoa-hong', { method: 'POST' });
+    },
+
     async approve(
       id: string
     ): Promise<{
