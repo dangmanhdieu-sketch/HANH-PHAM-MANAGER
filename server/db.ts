@@ -2190,6 +2190,20 @@ class DatabaseService {
     if (dongY && luong && luong.TrangThai !== 'Chờ duyệt') {
       throw new Error(`Bảng lương ${thangStr} của ${hh.HoTen} đã ở trạng thái "${luong.TrangThai}". Không thể cộng thêm hoa hồng vào kỳ đã khóa; vui lòng xử lý điều chỉnh lương trước.`);
     }
+    if (dongY) {
+      const monthPrefix = `${year}-${month}`;
+      const monthClaims = this.db.HOAHONG.filter((item) =>
+        item.NhanVienID === hh.NhanVienID &&
+        String(item.Ngay || '').startsWith(monthPrefix) &&
+        (item.TrangThai === 'Đã duyệt' || item.HoaHongID === hh.HoaHongID)
+      );
+      monthClaims.forEach((item) => {
+        const amount = Number(item.SoTienHoaHong);
+        if (!Number.isFinite(amount) || amount < 0) {
+          throw new Error(`Hoa hồng ${item.HoaHongID} có số tiền không hợp lệ; đã chặn duyệt để tránh làm sai bảng lương.`);
+        }
+      });
+    }
 
     const now = new Date().toISOString();
     hh.TrangThai = dongY ? 'Đã duyệt' : 'Từ chối';
@@ -2233,6 +2247,17 @@ class DatabaseService {
     const thangStr = month && year ? `${month}/${year}` : '';
     const linkedLuong = (hh.LuongID ? this.findLuongById(hh.LuongID) : undefined) ||
       this.db.LUONG.find((item) => item.NhanVienID === hh.NhanVienID && item.Thang === thangStr);
+    if (hh.TrangThai === 'Đã duyệt') {
+      this.db.HOAHONG.filter((item) =>
+        item.HoaHongID !== id && item.NhanVienID === hh.NhanVienID &&
+        String(item.Ngay || '').startsWith(`${year}-${month}`) && item.TrangThai === 'Đã duyệt'
+      ).forEach((item) => {
+        const amount = Number(item.SoTienHoaHong);
+        if (!Number.isFinite(amount) || amount < 0) {
+          throw new Error(`Hoa hồng ${item.HoaHongID} còn lại có số tiền không hợp lệ; không thể xóa an toàn.`);
+        }
+      });
+    }
     if (hh.TrangThai === 'Đã duyệt' && linkedLuong && linkedLuong.TrangThai !== 'Chờ duyệt') {
       throw new Error('Khoản hoa hồng thuộc kỳ lương đã duyệt/thanh toán. Không thể xóa làm sai lệch lịch sử tài chính.');
     }
