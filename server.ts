@@ -654,8 +654,51 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       if (!['THU', 'CHI'].includes(payload.Loai)) {
         return res.status(400).json({ error: 'Phiếu phải là THU hoặc CHI.' });
       }
-      if (!payload.SoTien || Number(payload.SoTien) <= 0) {
-        return res.status(400).json({ error: 'Số tiền phải lớn hơn 0.' });
+      const amount = Number(payload.SoTien);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return res.status(400).json({ error: 'Số tiền phải là số hợp lệ và lớn hơn 0.' });
+      }
+
+      if (payload.Loai === 'THU' && (payload.HopDongQuanLyID || payload.HopDongID || payload.MaHopDong)) {
+        const contractId = String(payload.HopDongQuanLyID || '');
+        const contractCode = String(payload.HopDongID || payload.MaHopDong || '');
+        const matches = dbService.getQuanLyRecords('HOP_DONG').filter((item) =>
+          (contractId && item.QuanLyID === contractId) ||
+          (!contractId && contractCode && String(item.DuLieu?.MaHopDong || item.QuanLyID) === contractCode)
+        );
+        if (matches.length !== 1) {
+          return res.status(400).json({ error: matches.length ? 'Mã hợp đồng bị trùng; không thể liên kết phiếu thu an toàn.' : 'Không tìm thấy hợp đồng được liên kết với phiếu thu.' });
+        }
+        const contract = matches[0];
+        const details = contract.DuLieu || {};
+        const base = Math.max(0, Number(details.GiaGoiBanDau ?? details.TongGiaTri ?? 0) || 0);
+        const hasStoredFinal = details.GiaGoiBanDau !== undefined && details.TongGiaTri !== undefined;
+        const direct = Math.max(0, Number(details.GiamGiaTrucTiep || 0));
+        const rate = Math.min(100, Math.max(0, Number(details.ChietKhauPhanTram || 0)));
+        const promo = Math.max(0, Number(details.KhuyenMaiBoSung || 0));
+        const surcharge = Math.max(0, Number(details.PhuThuDichVu || 0));
+        const contractValue = Math.max(0, hasStoredFinal
+          ? Number(details.TongGiaTri || 0)
+          : base - direct - Math.round(base * rate / 100) - promo + surcharge);
+        const code = String(details.MaHopDong || contract.QuanLyID);
+        const reserved = dbService.getQuanLyRecords('THU_CHI')
+          .filter((receipt) => {
+            const data = receipt.DuLieu || {};
+            const status = String(data.TrangThaiDuyet || 'Chờ Admin duyệt');
+            const linked = String(data.HopDongQuanLyID || '') === contract.QuanLyID ||
+              String(data.HopDongID || data.MaHopDong || '') === code;
+            return linked && String(data.Loai || '').toUpperCase() === 'THU' &&
+              !['Từ chối', 'Đã từ chối', 'Đã hủy', 'Hủy'].includes(status);
+          })
+          .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
+        if (reserved + amount > contractValue) {
+          return res.status(400).json({
+            error: `Số tiền thu vượt giá trị hợp đồng. Giá trị hợp đồng: ${contractValue.toLocaleString('vi-VN')} đ; phiếu đã duyệt/đang chờ: ${reserved.toLocaleString('vi-VN')} đ; số tiền có thể thu thêm: ${Math.max(0, contractValue - reserved).toLocaleString('vi-VN')} đ.`,
+          });
+        }
+        payload.HopDongQuanLyID = contract.QuanLyID;
+        payload.HopDongID = code;
+        payload.MaHopDong = code;
       }
     }
 
@@ -692,6 +735,20 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       changes.TienChietKhau = percentageDiscount;
       changes.TongGiamTru = directDiscount + percentageDiscount + promoDiscount;
       changes.TongGiaTri = basePrice - changes.TongGiamTru + surcharge;
+      const contractCode = String(current.DuLieu?.MaHopDong || current.QuanLyID);
+      const reservedReceipts = dbService.getQuanLyRecords('THU_CHI')
+        .filter((receipt) => {
+          const data = receipt.DuLieu || {};
+          const status = String(data.TrangThaiDuyet || 'Chờ Admin duyệt');
+          const linked = String(data.HopDongQuanLyID || '') === current.QuanLyID ||
+            String(data.HopDongID || data.MaHopDong || '') === contractCode;
+          return linked && String(data.Loai || '').toUpperCase() === 'THU' &&
+            !['Từ chối', 'Đã từ chối', 'Đã hủy', 'Hủy'].includes(status);
+        })
+        .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
+      if (reservedReceipts > changes.TongGiaTri) {
+        return res.status(400).json({ error: `Không thể giảm giá trị hợp đồng xuống thấp hơn tổng phiếu thu đã duyệt/đang chờ (${reservedReceipts.toLocaleString('vi-VN')} đ).` });
+      }
       const deposit = Number(merged.TienDatCoc || 0);
       if (!Number.isFinite(deposit) || deposit < 0 || deposit > changes.TongGiaTri) {
         return res.status(400).json({ error: 'Tiền cọc phải từ 0 đến tổng giá trị hợp đồng.' });
@@ -732,9 +789,23 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       if (changes.GhiChuAdmin !== undefined) changes.GhiChuAdmin = String(changes.GhiChuAdmin).slice(0, 1000);
     }
 
-    if (current.Module === 'THU_CHI' && changes.TrangThaiDuyet === 'Đã duyệt' && current.DuLieu?.TrangThaiDuyet !== 'Đã duyệt') {
-      changes.NgayDuyet = new Date().toISOString();
-      changes.NguoiDuyet = req.user!.HoTen;
+    if (current.Module === 'THU_CHI') {
+      const currentStatus = String(current.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt');
+      if (['Đã duyệt', 'Đã thanh toán và duyệt'].includes(currentStatus)) {
+        return res.status(409).json({ error: 'Phiếu thu/chi đã được duyệt hoặc thanh toán. Không thể sửa để làm thay đổi lịch sử tài chính; hãy tạo phiếu điều chỉnh riêng.' });
+      }
+      if (changes.TrangThaiDuyet !== undefined &&
+          !['Chờ Admin duyệt', 'Đã duyệt', 'Đã thanh toán và duyệt', 'Từ chối', 'Đã từ chối'].includes(String(changes.TrangThaiDuyet))) {
+        return res.status(400).json({ error: 'Trạng thái duyệt phiếu thu/chi không hợp lệ.' });
+      }
+      if (changes.TrangThaiDuyet && changes.TrangThaiDuyet !== currentStatus &&
+          currentStatus !== 'Chờ Admin duyệt') {
+        return res.status(409).json({ error: 'Phiếu này đã được xử lý trước đó; không thể duyệt lại hoặc đổi trạng thái.' });
+      }
+      if (['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(changes.TrangThaiDuyet || ''))) {
+        changes.NgayDuyet = new Date().toISOString();
+        changes.NguoiDuyet = req.user!.HoTen;
+      }
     }
 
     const record = dbService.updateQuanLyRecord(req.params.id, changes, {
