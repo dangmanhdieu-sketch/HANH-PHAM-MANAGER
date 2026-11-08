@@ -1783,52 +1783,8 @@ class DatabaseService {
     // It is always recalculated from approved HOAHONG ledger rows below.
     if (updates.Phat !== undefined) luong.Phat = Number(updates.Phat);
 
-    // When an admin edits the "Tạm ứng trong kỳ" field, reconcile the underlying
-    // approved advance ledger too; otherwise syncTamUngToLuong would restore the old amount.
-    if (updates.TamUng !== undefined) {
-      const target = Number(updates.TamUng);
-      if (!Number.isFinite(target) || target < 0) throw new Error('Số tiền tạm ứng không hợp lệ.');
-      const approvedItems = this.db.TAM_UNG
-        .filter((item) => item.NhanVienID === luong.NhanVienID && item.Thang === luong.Thang && (!item.TrangThai || item.TrangThai === 'Đã duyệt'))
-        .sort((a, b) => b.Ngay.localeCompare(a.Ngay) || b.TaoLuc.localeCompare(a.TaoLuc));
-      const currentTotal = approvedItems.reduce((sum, item) => sum + (Number(item.SoTien) || 0), 0);
-      const roundedTarget = Math.round(target);
-
-      if (roundedTarget < currentTotal) {
-        let amountToRemove = currentTotal - roundedTarget;
-        for (const item of approvedItems) {
-          if (amountToRemove <= 0) break;
-          const itemAmount = Math.max(0, Number(item.SoTien) || 0);
-          const reduction = Math.min(itemAmount, amountToRemove);
-          item.SoTien = itemAmount - reduction;
-          amountToRemove -= reduction;
-          if (item.SoTien <= 0) {
-            const index = this.db.TAM_UNG.findIndex((entry) => entry.TamUngID === item.TamUngID);
-            if (index >= 0) this.db.TAM_UNG.splice(index, 1);
-          }
-        }
-      } else if (roundedTarget > currentTotal) {
-        const delta = roundedTarget - currentTotal;
-        const nv = this.findNhanVienById(luong.NhanVienID);
-        if (!nv) throw new Error('Không tìm thấy nhân viên để điều chỉnh tạm ứng.');
-        const [month, year] = luong.Thang.split('/');
-        const today = new Date();
-        const date = `${year}-${month}-01`;
-        this.db.TAM_UNG.unshift({
-          TamUngID: `TU-ADJ-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
-          NhanVienID: luong.NhanVienID,
-          HoTen: luong.HoTen,
-          Ngay: date,
-          Thang: luong.Thang,
-          SoTien: delta,
-          LyDo: 'Điều chỉnh tạm ứng từ bảng lương',
-          GhiChu: 'Khoản điều chỉnh phát sinh khi quản trị viên sửa bảng lương.',
-          TaoLuc: new Date().toISOString(),
-          TaoBoi: adminUser.HoTen,
-          TrangThai: 'Đã duyệt',
-        });
-      }
-    }
+    // TamUng is ledger-derived and cannot be edited directly on the payroll row.
+    // Use the advance register to create, approve, reject or remove an advance.
     if (updates.GhiChu !== undefined) luong.GhiChu = updates.GhiChu;
 
     this.syncTamUngToLuong(luong);
