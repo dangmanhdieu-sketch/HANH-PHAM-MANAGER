@@ -752,92 +752,110 @@ class DatabaseService {
   private async persistToFirestoreNow(
     tablesToWrite: readonly (typeof this.firestoreTables)[number][] = this.firestoreTables
   ): Promise<void> {
-    if (!this.firestoreEnabled || !this.firestore) return;
-    if (tablesToWrite.length === 0) return;
+    if (!this.firestoreEnabled || !this.firestore || tablesToWrite.length === 0) return;
 
     const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
     const committedAt = new Date().toISOString();
+    const PART_SIZE = 200000;
+    const smallTables: Array<{ table: (typeof this.firestoreTables)[number]; data: any; bytes: number }> = [];
+    const largeTables: Array<{ table: (typeof this.firestoreTables)[number]; encoded: string; bytes: number }> = [];
 
     try {
-      // Persist one table at a time. A single transaction containing multiple
-      // large tables can exceed Firestore's 10 MiB transaction request limit.
+      // Prepare changed tables once. Small tables are committed together in one
+      // lease-checked transaction to avoid one network round-trip per table.
       for (const table of tablesToWrite) {
         const value = (this.db as any)[table];
         if (value === undefined) continue;
-
-        const tableRef = rootRef.collection('tables').doc(table);
-        const sanitized = sanitizeFirestoreValue(value);
-        const serialized = JSON.stringify(sanitized);
+        const serialized = JSON.stringify(sanitizeFirestoreValue(value));
+        const bytes = Buffer.byteLength(serialized, 'utf8');
         const encoded = Buffer.from(serialized, 'utf8').toString('base64');
-
-        // Small payloads remain in the legacy-compatible single-document format.
-        const PART_SIZE = 200000;
         if (encoded.length <= PART_SIZE) {
-          await this.firestore.runTransaction(async (transaction) => {
-            await this.assertFirestoreWriterLease(transaction);
-            transaction.set(tableRef, {
-              data: sanitized,
-              updatedAt: committedAt,
-            }, { merge: false });
-            transaction.set(rootRef, {
-              __schemaVersion: 3,
-              __updatedAt: committedAt,
-              __storage: 'Firestore split tables',
-            }, { merge: true });
-          });
+          smallTables.push({ table, data: JSON.parse(serialized), bytes });
         } else {
-          // Write immutable versioned chunks first. The table metadata is
-          // switched only after every chunk has committed, so readers never
-          // observe a half-written employee/attendance table.
-          const revision = committedAt.replace(/[^0-9A-Za-z]/g, '') + '-' +
-            Math.random().toString(36).slice(2, 8);
-          const parts: string[] = [];
-          for (let offset = 0; offset < encoded.length; offset += PART_SIZE) {
-            parts.push(encoded.slice(offset, offset + PART_SIZE));
-          }
+          largeTables.push({ table, encoded, bytes });
+        }
+      }
 
-          const versionRef = tableRef.collection('versions').doc(revision);
-          const PARTS_PER_TRANSACTION = 25;
-          for (let offset = 0; offset < parts.length; offset += PARTS_PER_TRANSACTION) {
-            const batchParts = parts.slice(offset, offset + PARTS_PER_TRANSACTION);
-            await this.firestore.runTransaction(async (transaction) => {
-              await this.assertFirestoreWriterLease(transaction);
-              batchParts.forEach((payload, batchIndex) => {
-                const partIndex = offset + batchIndex;
-                transaction.set(
-                  versionRef.collection('parts').doc(String(partIndex).padStart(6, '0')),
-                  { payload, index: partIndex, revision, updatedAt: committedAt },
-                  { merge: false }
-                );
-              });
-            });
+      if (smallTables.length > 0) {
+        // Each document is below 1 MiB and the aggregate is kept comfortably
+        // below Firestore's 10 MiB transaction request limit.
+        const aggregateBytes = smallTables.reduce((sum, item) => sum + item.bytes, 0);
+        if (aggregateBytes > 7 * 1024 * 1024) {
+          throw new Error(`Small Firestore table batch is too large (${aggregateBytes} bytes); refusing unsafe combined write.`);
+        }
+        await this.firestore.runTransaction(async (transaction) => {
+          await this.assertFirestoreWriterLease(transaction);
+          for (const item of smallTables) {
+            transaction.set(
+              rootRef.collection('tables').doc(item.table),
+              { data: item.data, updatedAt: committedAt },
+              { merge: false }
+            );
           }
+          transaction.set(rootRef, {
+            __schemaVersion: 3,
+            __updatedAt: committedAt,
+            __storage: 'Firestore split tables',
+          }, { merge: true });
+        });
+        for (const item of smallTables) {
+          console.log('[Firebase] TABLE SAVE COMMITTED:', item.table, {
+            bytes: item.bytes,
+            chunks: 0,
+          });
+        }
+      }
 
-          // Atomic pointer switch: until this commits, the previous table
-          // version remains authoritative and readable.
+      // Large tables are written as immutable chunks, then atomically switched
+      // by updating the table metadata only after every chunk is committed.
+      for (const item of largeTables) {
+        const parts: string[] = [];
+        for (let offset = 0; offset < item.encoded.length; offset += PART_SIZE) {
+          parts.push(item.encoded.slice(offset, offset + PART_SIZE));
+        }
+
+        const revision = committedAt.replace(/[^0-9A-Za-z]/g, '') + '-' +
+          Math.random().toString(36).slice(2, 8);
+        const versionRef = rootRef.collection('tables').doc(item.table)
+          .collection('versions').doc(revision);
+        const PARTS_PER_TRANSACTION = 25;
+
+        for (let offset = 0; offset < parts.length; offset += PARTS_PER_TRANSACTION) {
+          const batchParts = parts.slice(offset, offset + PARTS_PER_TRANSACTION);
           await this.firestore.runTransaction(async (transaction) => {
             await this.assertFirestoreWriterLease(transaction);
-            transaction.set(tableRef, {
-              storage: 'chunked-json-base64',
-              revision,
-              chunkCount: parts.length,
-              updatedAt: committedAt,
-            }, { merge: false });
-            transaction.set(rootRef, {
-              __schemaVersion: 3,
-              __updatedAt: committedAt,
-              __storage: 'Firestore split tables',
-            }, { merge: true });
+            batchParts.forEach((payload, batchIndex) => {
+              const partIndex = offset + batchIndex;
+              transaction.set(
+                versionRef.collection('parts').doc(String(partIndex).padStart(6, '0')),
+                { payload, index: partIndex, revision, updatedAt: committedAt },
+                { merge: false }
+              );
+            });
           });
         }
 
-        console.log('[Firebase] TABLE SAVE COMMITTED:', table, {
-          bytes: Buffer.byteLength(serialized, 'utf8'),
-          chunks: encoded.length > PART_SIZE ? Math.ceil(encoded.length / PART_SIZE) : 0,
+        await this.firestore.runTransaction(async (transaction) => {
+          await this.assertFirestoreWriterLease(transaction);
+          transaction.set(rootRef.collection('tables').doc(item.table), {
+            storage: 'chunked-json-base64',
+            revision,
+            chunkCount: parts.length,
+            updatedAt: committedAt,
+          }, { merge: false });
+          transaction.set(rootRef, {
+            __schemaVersion: 3,
+            __updatedAt: committedAt,
+            __storage: 'Firestore split tables',
+          }, { merge: true });
+        });
+
+        console.log('[Firebase] TABLE SAVE COMMITTED:', item.table, {
+          bytes: item.bytes,
+          chunks: parts.length,
         });
       }
 
-      // Update fingerprints only after every requested table has committed.
       for (const table of tablesToWrite) {
         this.firestorePersistedSnapshots[table] = JSON.stringify((this.db as any)[table]);
       }
