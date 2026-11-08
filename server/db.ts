@@ -960,8 +960,10 @@ class DatabaseService {
       }
 
       // Large tables are written as immutable chunks, then atomically switched
-      // by updating the table metadata only after every chunk is committed.
-      for (const item of largeTables) {
+      // by updating each table's metadata only after every chunk has committed.
+      // Process at most two large tables concurrently: this avoids serial waits
+      // for unrelated tables while keeping memory and Firestore transaction load bounded.
+      const persistLargeTable = async (item: typeof largeTables[number]) => {
         const parts: string[] = [];
         for (let offset = 0; offset < item.encoded.length; offset += PART_SIZE) {
           parts.push(item.encoded.slice(offset, offset + PART_SIZE));
@@ -969,15 +971,9 @@ class DatabaseService {
 
         const revision = committedAt.replace(/[^0-9A-Za-z]/g, '') + '-' +
           Math.random().toString(36).slice(2, 8);
-        const versionRef = rootRef.collection('tables').doc(item.table)
-          .collection('versions').doc(revision);
+        const tableRef = rootRef.collection('tables').doc(item.table);
+        const versionRef = tableRef.collection('versions').doc(revision);
         const PARTS_PER_TRANSACTION = 25;
-
-        // Write independent immutable chunk batches concurrently. Every batch
-        // still verifies the active Render writer lease before committing, and
-        // the table pointer is switched only after ALL chunks have succeeded.
-        // This reduces the serial network round-trips for large tables while
-        // preserving the previous committed revision if any batch fails.
         const chunkBatches: Array<{ offset: number; payloads: string[] }> = [];
         for (let offset = 0; offset < parts.length; offset += PARTS_PER_TRANSACTION) {
           chunkBatches.push({
@@ -985,6 +981,7 @@ class DatabaseService {
             payloads: parts.slice(offset, offset + PARTS_PER_TRANSACTION),
           });
         }
+
         await Promise.all(chunkBatches.map(async ({ offset, payloads }) => {
           await this.firestore!.runTransaction(async (transaction) => {
             await this.assertFirestoreWriterLease(transaction);
@@ -999,25 +996,40 @@ class DatabaseService {
           });
         }));
 
-        await this.firestore.runTransaction(async (transaction) => {
+        // Switch only this table's pointer after all of its immutable chunks
+        // are durable. Do not update the shared root document here; doing so in
+        // parallel creates avoidable transaction contention between tables.
+        await this.firestore!.runTransaction(async (transaction) => {
           await this.assertFirestoreWriterLease(transaction);
-          transaction.set(rootRef.collection('tables').doc(item.table), {
+          transaction.set(tableRef, {
             storage: 'chunked-json-base64',
             encoding: item.encoding,
             revision,
             chunkCount: parts.length,
             updatedAt: committedAt,
           }, { merge: false });
-          transaction.set(rootRef, {
-            __schemaVersion: 3,
-            __updatedAt: committedAt,
-            __storage: 'Firestore split tables',
-          }, { merge: true });
         });
 
         console.log('[Firebase] TABLE SAVE COMMITTED:', item.table, {
           bytes: item.bytes,
           chunks: parts.length,
+        });
+      };
+
+      for (let offset = 0; offset < largeTables.length; offset += 2) {
+        await Promise.all(largeTables.slice(offset, offset + 2).map(persistLargeTable));
+      }
+
+      if (largeTables.length > 0) {
+        // Publish the root timestamp once after all large-table pointers have
+        // switched successfully. Readers continue using the existing schema.
+        await this.firestore.runTransaction(async (transaction) => {
+          await this.assertFirestoreWriterLease(transaction);
+          transaction.set(rootRef, {
+            __schemaVersion: 3,
+            __updatedAt: committedAt,
+            __storage: 'Firestore split tables',
+          }, { merge: true });
         });
       }
 
