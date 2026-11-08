@@ -1940,7 +1940,8 @@ class DatabaseService {
     const noiDung = String(data.NoiDung || '').trim();
     if (!noiDung) throw new Error('Vui lòng nhập nội dung khoản thu nhập.');
     const ngay = String(data.Ngay || '');
-    if (!/^\d{4}-\\d{2}-\\d{2}$/.test(ngay) || Number.isNaN(Date.parse(ngay + 'T00:00:00Z'))) {
+    const parsedDate = new Date(ngay + 'T00:00:00Z');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ngay) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== ngay) {
       throw new Error('Ngày ghi nhận hoa hồng không hợp lệ.');
     }
 
