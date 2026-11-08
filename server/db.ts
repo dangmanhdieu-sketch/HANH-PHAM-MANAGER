@@ -1770,8 +1770,8 @@ class DatabaseService {
   ): Luong {
     const luong = this.findLuongById(luongId);
     if (!luong) throw new Error('Không tìm thấy bảng lương');
-    if (luong.TrangThai === 'Đã thanh toán') {
-      throw new Error('Bảng lương đã thanh toán, không thể chỉnh sửa');
+    if (luong.TrangThai !== 'Chờ duyệt') {
+      throw new Error('Chỉ được chỉnh sửa bảng lương đang Chờ duyệt. Bảng lương đã duyệt/đã thanh toán phải được giữ nguyên lịch sử.');
     }
 
     if (updates.LuongCoBan !== undefined) luong.LuongCoBan = Number(updates.LuongCoBan);
@@ -2078,9 +2078,12 @@ class DatabaseService {
     const hh = this.db.HOAHONG.find((h) => h.HoaHongID === id);
     if (!hh) throw new Error('Hoa hồng không tồn tại');
 
-    const linkedLuong = hh.LuongID ? this.findLuongById(hh.LuongID) : undefined;
+    const [year, month] = String(hh.Ngay || '').split('-');
+    const thangStr = month && year ? `${month}/${year}` : '';
+    const linkedLuong = (hh.LuongID ? this.findLuongById(hh.LuongID) : undefined) ||
+      this.db.LUONG.find((item) => item.NhanVienID === hh.NhanVienID && item.Thang === thangStr);
     if (hh.TrangThai === 'Đã duyệt' && linkedLuong && linkedLuong.TrangThai !== 'Chờ duyệt') {
-      throw new Error('Khoản hoa hồng đã nằm trong bảng lương đã duyệt/thanh toán. Không thể xóa làm sai lệch lịch sử tài chính.');
+      throw new Error('Khoản hoa hồng thuộc kỳ lương đã duyệt/thanh toán. Không thể xóa làm sai lệch lịch sử tài chính.');
     }
 
     this.db.HOAHONG = this.db.HOAHONG.filter((h) => h.HoaHongID !== id);
