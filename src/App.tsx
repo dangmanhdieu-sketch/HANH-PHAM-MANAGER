@@ -168,7 +168,7 @@ function AppContent() {
           if (stats.status === 'fulfilled') {
             setKpis(stats.value.kpis || []);
             setAttendanceList(stats.value.todayChamCong || []);
-            setPayrollList(stats.value.pendingLuong || []);
+            setPayrollList([...(stats.value.pendingLuong || []), ...(stats.value.paidLuong || [])]);
             setAutomationStatus(stats.value.automation || null);
             setDashboardFinanceSummary({
               approvedCommissionTotal: Number(stats.value.approvedCommissionTotal || 0),
@@ -452,8 +452,8 @@ function AppContent() {
                 todayAttendance={attendanceList.filter((c) => c.Ngay === todayStr)}
                 pendingPayroll={payrollList.filter((l) => l.TrangThai === 'Chờ duyệt')}
                 paidPayroll={payrollList.filter((l) => l.TrangThai === 'Đã thanh toán')}
-                allPayroll={payrollList}
-                allCommissions={commissionList}
+                approvedCommissionTotal={dashboardFinanceSummary.approvedCommissionTotal}
+                pendingPayrollTotal={dashboardFinanceSummary.pendingPayrollTotal}
                 staffList={staffList}
                 automationStatus={automationStatus}
                 onGeneratePayroll={() => setConfirmGeneratePayrollOpen(true)}
