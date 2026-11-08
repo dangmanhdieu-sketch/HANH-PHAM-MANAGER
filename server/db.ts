@@ -1902,24 +1902,37 @@ class DatabaseService {
     adminUser: { HoTen: string; Email: string }
   ): Luong {
     const luong = this.findLuongById(luongId);
-    if (!luong) throw new Error('Không tìm thấy bảng lương');
+    if (!luong) throw new Error('Không tìm thấy duy nhất một bảng lương.');
     if (luong.TrangThai !== 'Chờ duyệt') {
       throw new Error('Chỉ được chỉnh sửa bảng lương đang Chờ duyệt. Bảng lương đã duyệt/đã thanh toán phải được giữ nguyên lịch sử.');
     }
 
-    if (updates.LuongCoBan !== undefined) luong.LuongCoBan = Number(updates.LuongCoBan);
-    if (updates.SoNgayCong !== undefined) luong.SoNgayCong = Number(updates.SoNgayCong);
-    if (updates.SoGioLam !== undefined) luong.SoGioLam = Number(updates.SoGioLam);
-    if (updates.PhuCap !== undefined) luong.PhuCap = Number(updates.PhuCap);
-    if (updates.Thuong !== undefined) luong.Thuong = Number(updates.Thuong);
-    // HoaHong is never accepted as a manually editable payroll number.
-    // It is always recalculated from approved HOAHONG ledger rows below.
-    if (updates.Phat !== undefined) luong.Phat = Number(updates.Phat);
+    const parseNonNegative = (value: unknown, label: string) => {
+      const amount = Number(value);
+      if (!Number.isFinite(amount) || amount < 0) {
+        throw new Error(`${label} phải là số hợp lệ và không âm.`);
+      }
+      return Math.round(amount);
+    };
+    // Validate every editable number before mutating the live payroll record.
+    // HoaHong and TamUng are deliberately ignored: they come from their ledgers.
+    const next = {
+      ...(updates.LuongCoBan !== undefined ? { LuongCoBan: parseNonNegative(updates.LuongCoBan, 'Lương cơ bản') } : {}),
+      ...(updates.SoNgayCong !== undefined ? { SoNgayCong: Number(updates.SoNgayCong) } : {}),
+      ...(updates.SoGioLam !== undefined ? { SoGioLam: Number(updates.SoGioLam) } : {}),
+      ...(updates.PhuCap !== undefined ? { PhuCap: parseNonNegative(updates.PhuCap, 'Phụ cấp') } : {}),
+      ...(updates.Thuong !== undefined ? { Thuong: parseNonNegative(updates.Thuong, 'Thưởng') } : {}),
+      ...(updates.Phat !== undefined ? { Phat: parseNonNegative(updates.Phat, 'Khấu trừ') } : {}),
+      ...(updates.GhiChu !== undefined ? { GhiChu: String(updates.GhiChu) } : {}),
+    };
+    if (next.SoNgayCong !== undefined && (!Number.isFinite(next.SoNgayCong) || next.SoNgayCong < 0)) {
+      throw new Error('Số ngày công phải là số hợp lệ và không âm.');
+    }
+    if (next.SoGioLam !== undefined && (!Number.isFinite(next.SoGioLam) || next.SoGioLam < 0)) {
+      throw new Error('Số giờ làm phải là số hợp lệ và không âm.');
+    }
 
-    // TamUng is ledger-derived and cannot be edited directly on the payroll row.
-    // Use the advance register to create, approve, reject or remove an advance.
-    if (updates.GhiChu !== undefined) luong.GhiChu = updates.GhiChu;
-
+    Object.assign(luong, next);
     this.syncTamUngToLuong(luong);
     this.syncHoaHongToLuong(luong);
     this.refreshKPIs();
