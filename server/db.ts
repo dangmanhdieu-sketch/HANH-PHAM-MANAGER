@@ -1709,15 +1709,31 @@ class DatabaseService {
       const attendance = this.db.CHAMCONG.filter(
         (cc) => cc.NhanVienID === nv.NhanVienID && cc.Ngay.startsWith(monthPrefix)
       );
+      const attendanceDates = attendance.map((cc) => cc.Ngay);
+      if (new Set(attendanceDates).size !== attendanceDates.length) {
+        throw new Error(`Nhân viên ${nv.HoTen} có nhiều bản ghi chấm công trong cùng một ngày của kỳ ${thang}. Đã dừng tạo lương để tránh tính trùng; hãy đối soát chấm công trước.`);
+      }
       const attendanceByDate = new Map(attendance.map((cc) => [cc.Ngay, cc]));
-      const isHalfDayLate = (cc: ChamCong) => {
-        if (!cc.CheckIn || cc.TrangThai === 'Nghỉ' || cc.KetQuaGiaiTrinh === 'Chấp nhận') return false;
+      const getCheckInMinutes = (cc: ChamCong) => {
+        if (!cc.CheckIn || !/^\\d{2}:\\d{2}/.test(cc.CheckIn)) return null;
         const [hour, minute] = cc.CheckIn.split(':').map(Number);
-        const minutes = hour * 60 + minute;
-        return minutes > 9 * 60 + 30 && minutes <= 13 * 60;
+        if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+        return hour * 60 + minute;
+      };
+      const isExcused = (cc: ChamCong) =>
+        cc.KetQuaGiaiTrinh === 'Chấp nhận' || cc.TrangThai === 'Nghỉ';
+      const isFullDayLate = (cc: ChamCong) => {
+        if (!cc.CheckIn || isExcused(cc)) return false;
+        const minutes = getCheckInMinutes(cc);
+        return minutes !== null && minutes > 13 * 60;
+      };
+      const isHalfDayLate = (cc: ChamCong) => {
+        if (!cc.CheckIn || isExcused(cc)) return false;
+        const minutes = getCheckInMinutes(cc);
+        return minutes !== null && minutes > 8 * 60 + 30 && minutes <= 13 * 60;
       };
       const soNgayCong = attendance.reduce((sum, cc) => {
-        if (!cc.CheckIn || cc.TrangThai === 'Nghỉ') return sum;
+        if (!cc.CheckIn || cc.TrangThai === 'Nghỉ' || isFullDayLate(cc)) return sum;
         return sum + (isHalfDayLate(cc) ? 0.5 : 1);
       }, 0);
       const soGioLam = attendance.reduce((sum, cc) => sum + (cc.SoGioLam || 0), 0);
@@ -1744,12 +1760,15 @@ class DatabaseService {
 
       const fullAbsenceDays = new Set<string>(approvedLeaveDays);
       attendance.forEach((cc) => {
-        if ((cc.TrangThai === 'Nghỉ' || cc.TrangThai === 'Nghỉ phép') && cc.KetQuaGiaiTrinh !== 'Chấp nhận') fullAbsenceDays.add(cc.Ngay);
+        if (((cc.TrangThai === 'Nghỉ' || cc.TrangThai === 'Nghỉ phép') && cc.KetQuaGiaiTrinh !== 'Chấp nhận') || isFullDayLate(cc)) {
+          fullAbsenceDays.add(cc.Ngay);
+        }
       });
       const ngayNghi = fullAbsenceDays.size;
       const ngayDiTreKhauTru = attendance.filter(isHalfDayLate).length;
       // Two full leave/absence days per month are salary-neutral; every further
-      // day is deducted at base salary / 30. Late arrivals after 09:30 add half-day deductions.
+      // day is deducted at base salary / 30. Arrivals after 08:30 through 13:00
+      // deduct half a day; arrivals after 13:00 count as a full absence.
       const donGiaNgay = Math.max(0, Number(nv.LuongCoBan || 0)) / 30;
       const ngayNghiVuotMien = Math.max(0, ngayNghi - 2);
       const khauTruNghi = Math.round(ngayNghiVuotMien * donGiaNgay);
@@ -1782,7 +1801,7 @@ class DatabaseService {
         ThucLanh: 0,
         TrangThai: 'Chờ duyệt',
         NgayTao: new Date().toISOString(),
-        GhiChu: `Bảng lương ${thang} tạo tự động. Nghỉ/ phép đã duyệt: ${ngayNghi} ngày (miễn 2 ngày, trừ ${khauTruNghi.toLocaleString('vi-VN')}đ); đi trễ sau 09:30: ${ngayDiTreKhauTru} lần (trừ ${khauTruDiTre.toLocaleString('vi-VN')}đ). Không có bản ghi chấm công không tự động tính nghỉ.`,
+        GhiChu: `Bảng lương ${thang} tạo tự động. Nghỉ/vắng mặt: ${ngayNghi} ngày (miễn 2 ngày, trừ ${khauTruNghi.toLocaleString('vi-VN')}đ); đến sau 08:30 đến 13:00: ${ngayDiTreKhauTru} lần (trừ ${khauTruDiTre.toLocaleString('vi-VN')}đ); sau 13:00 tính nghỉ nguyên ngày. Không có bản ghi chấm công không tự động tính nghỉ.`,
       };
 
       this.recalculateLuong(newLuong);
