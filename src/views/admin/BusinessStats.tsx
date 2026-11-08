@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { formatMoney, formatNumber } from '../../utils/format';
 import { BarChart3, TrendingUp, FileText, CheckSquare, CalendarClock } from 'lucide-react';
-import type { HoaHong, Luong, NhanVien, QuanLyRecord } from '../../types';
+import type { NhanVien, QuanLyRecord } from '../../types';
 import { api } from '../../api';
 
 interface Props {
   staffList: NhanVien[];
-  payrollList: Luong[];
-  commissionList: HoaHong[];
+  approvedCommissionTotal: number;
+  pendingPayrollTotal: number;
 }
 
 interface Card {
@@ -19,8 +19,8 @@ interface Card {
 
 export const BusinessStats: React.FC<Props> = ({
   staffList,
-  payrollList,
-  commissionList,
+  approvedCommissionTotal,
+  pendingPayrollTotal,
 }) => {
   const [records, setRecords] = useState<QuanLyRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,22 +54,14 @@ export const BusinessStats: React.FC<Props> = ({
     const count = (module: string) =>
       records.filter((record) => record.Module === module).length;
 
-    const approvedCommission = commissionList
-      .filter((item) => item.TrangThai === 'Đã duyệt')
-      .reduce((sum, item) => sum + Number(item.SoTienHoaHong || 0), 0);
-
-    const pendingPayroll = payrollList
-      .filter((item) => item.TrangThai === 'Chờ duyệt')
-      .reduce((sum, item) => sum + Number(item.ThucLanh || 0), 0);
-
     return {
       staff: staffList.filter((item) => item.TrangThai === 'Đang Làm').length,
       tasks: count('CONG_VIEC'),
       contracts: count('HOP_DONG'),
-      approvedCommission,
-      pendingPayroll,
+      approvedCommission: approvedCommissionTotal,
+      pendingPayroll: pendingPayrollTotal,
     };
-  }, [records, staffList, payrollList, commissionList]);
+  }, [records, staffList, approvedCommissionTotal, pendingPayrollTotal]);
 
   const upcomingTasks = useMemo(() => {
     const today = new Date();
