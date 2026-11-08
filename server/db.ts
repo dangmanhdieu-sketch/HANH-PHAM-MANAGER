@@ -2418,6 +2418,13 @@ class DatabaseService {
       }
     });
 
+    this.db.TAM_UNG.forEach((item) => {
+      const amount = Number(item.SoTien);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        add('INVALID_ADVANCE_AMOUNT', 'critical', `Tạm ứng ${item.TamUngID} có số tiền không hợp lệ.`, [item.TamUngID]);
+      }
+    });
+
     const contracts = (this.db.QUAN_LY || []).filter((row) => row.Module === 'HOP_DONG');
     const receipts = (this.db.QUAN_LY || []).filter((row) => row.Module === 'THU_CHI');
     duplicates(contracts, (row) => String(row.DuLieu?.MaHopDong || ''), 'DUPLICATE_CONTRACT_CODE', 'Mã hợp đồng');
@@ -2477,6 +2484,13 @@ class DatabaseService {
     });
 
     this.db.LUONG.forEach((payroll) => {
+      const payrollAmountFields = ['LuongCoBan', 'PhuCap', 'Thuong', 'HoaHong', 'Phat', 'TamUng', 'TongLuong', 'ThucLanh'];
+      payrollAmountFields.forEach((field) => {
+        const amount = Number((payroll as any)[field]);
+        if (!Number.isFinite(amount) || amount < 0) {
+          add('INVALID_PAYROLL_AMOUNT', 'critical', `Bảng lương ${payroll.LuongID} có trường ${field} không hợp lệ.`, [payroll.LuongID, field]);
+        }
+      });
       const monthPrefix = (() => {
         const [month, year] = String(payroll.Thang || '').split('/');
         return month && year ? `${year}-${month.padStart(2, '0')}` : '';
