@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'node:crypto';
+import { gzipSync, gunzipSync } from 'node:zlib';
 import bcrypt from 'bcryptjs';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
@@ -257,6 +258,8 @@ function restoreFirestoreValue(value: any): any {
   }
   return value;
 }
+
+type FirestoreTableName = 'NHANVIEN' | 'CHAMCONG' | 'LUONG' | 'TAM_UNG' | 'HOAHONG' | 'THONGKE' | 'AUDIT_LOG' | 'NOTIFICATIONS' | 'QUAN_LY' | 'SYSTEM_CONFIG' | 'THEME';
 
 class DatabaseService {
   private db: DatabaseSchema;
@@ -633,7 +636,10 @@ class DatabaseService {
               continue;
             }
             const encoded = partSnaps.map((part) => String(part.data()?.payload || '')).join('');
-            const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+            const decodedBuffer = Buffer.from(encoded, 'base64');
+            const decoded = tableMeta.encoding === 'gzip-base64'
+              ? gunzipSync(decodedBuffer).toString('utf8')
+              : decodedBuffer.toString('utf8');
             (loaded as any)[table] = restoreFirestoreValue(JSON.parse(decoded));
             continue;
           }
@@ -757,8 +763,8 @@ class DatabaseService {
     const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
     const committedAt = new Date().toISOString();
     const PART_SIZE = 200000;
-    const smallTables: Array<{ table: (typeof this.firestoreTables)[number]; data: any; bytes: number }> = [];
-    const largeTables: Array<{ table: (typeof this.firestoreTables)[number]; encoded: string; bytes: number }> = [];
+    const smallTables: Array<{ table: FirestoreTableName; data: any; bytes: number }> = [];
+    const largeTables: Array<{ table: FirestoreTableName; encoded: string; bytes: number; encoding: string }> = [];
 
     try {
       // Prepare changed tables once. Small tables are committed together in one
@@ -768,11 +774,16 @@ class DatabaseService {
         if (value === undefined) continue;
         const serialized = JSON.stringify(sanitizeFirestoreValue(value));
         const bytes = Buffer.byteLength(serialized, 'utf8');
-        const encoded = Buffer.from(serialized, 'utf8').toString('base64');
+        // Compress large JSON tables before chunking to reduce Firestore writes and latency.
+        // Small tables retain the existing native Firestore representation.
+        const rawEncoded = Buffer.from(serialized, 'utf8').toString('base64');
+        const compressedEncoded = gzipSync(Buffer.from(serialized, 'utf8')).toString('base64');
+        const encoded = compressedEncoded.length < rawEncoded.length ? compressedEncoded : rawEncoded;
+        const encoding = encoded === compressedEncoded ? 'gzip-base64' : 'base64';
         if (encoded.length <= PART_SIZE) {
           smallTables.push({ table, data: JSON.parse(serialized), bytes });
         } else {
-          largeTables.push({ table, encoded, bytes });
+          largeTables.push({ table, encoded, bytes, encoding });
         }
       }
 
@@ -839,6 +850,7 @@ class DatabaseService {
           await this.assertFirestoreWriterLease(transaction);
           transaction.set(rootRef.collection('tables').doc(item.table), {
             storage: 'chunked-json-base64',
+            encoding: item.encoding,
             revision,
             chunkCount: parts.length,
             updatedAt: committedAt,
