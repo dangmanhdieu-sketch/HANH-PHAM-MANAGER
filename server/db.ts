@@ -692,8 +692,14 @@ class DatabaseService {
             await this.initializeHoaHongRecordStorage(rootRef);
             console.log('[Firebase] HOAHONG incremental persistence enabled from verified marker.');
           } else {
-            this.hoaHongRecordStorageEnabled = false;
-            console.warn('[Firebase] HOAHONG incremental persistence is not enabled; keeping legacy table as source of truth.');
+            // The API readiness gate is still closed while loadFromFirestore runs.
+            // Complete the one-time record migration here so the first commission
+            // approval does not rewrite the entire 28MB legacy HOAHONG table.
+            // The legacy table remains untouched as a rollback copy; the marker is
+            // published only after all records have been copied and count-verified.
+            console.warn('[Firebase] HOAHONG record migration required; starting one-time verified migration before API readiness.');
+            await this.initializeHoaHongRecordStorage(rootRef);
+            console.log('[Firebase] HOAHONG incremental persistence enabled after verified migration.');
           }
           this.captureFirestoreSnapshots();
 
