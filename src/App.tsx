@@ -145,7 +145,7 @@ function AppContent() {
 
   // Load only the data needed by the active screen. This avoids downloading
   // every business table on login, tab changes, and after small edits.
-  const refreshTabData = useCallback(async (tab: string) => {
+  const refreshTabData = useCallback(async (tab: string, commissionMonth?: string) => {
     if (!currentUser) return;
 
     const loadNotifications = async () => {
@@ -195,16 +195,28 @@ function AppContent() {
           setStaffList(staff);
           return;
         }
-        case 'luong':
-        case 'luongchoduyet':
-        case 'dathanhtoan': {
+        case 'luong': {
+          const month = commissionMonth || (() => {
+            const now = new Date();
+            return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+          })();
           const [payroll, commission, staff] = await Promise.all([
             api.payroll.getAll(),
-            api.commission.getAll(),
+            api.commission.getAll({ month }),
             api.staff.getAll(),
           ]);
           setPayrollList(payroll);
           setCommissionList(commission);
+          setStaffList(staff);
+          return;
+        }
+        case 'luongchoduyet':
+        case 'dathanhtoan': {
+          const [payroll, staff] = await Promise.all([
+            api.payroll.getAll(),
+            api.staff.getAll(),
+          ]);
+          setPayrollList(payroll);
           setStaffList(staff);
           return;
         }
