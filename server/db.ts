@@ -2255,6 +2255,24 @@ class DatabaseService {
     checkReferences(this.db.LUONG, 'Bảng lương', 'LuongID');
     checkReferences(this.db.TAM_UNG, 'Tạm ứng', 'TamUngID');
 
+    const checkEmployeeLabels = (rows: any[], table: string, idField: string) => {
+      rows.forEach((row) => {
+        const matches = this.db.NHANVIEN.filter((staff) => staff.NhanVienID === row.NhanVienID);
+        if (matches.length !== 1) return;
+        const savedName = String(row.HoTen || row.NhanVien || '').trim().toLocaleLowerCase('vi-VN');
+        const currentName = String(matches[0].HoTen || '').trim().toLocaleLowerCase('vi-VN');
+        if (savedName && currentName && savedName !== currentName) {
+          add('EMPLOYEE_ID_NAME_MISMATCH', 'warning',
+            `${table} ${row[idField] || '(không mã)'} có mã nhân viên ${row.NhanVienID} nhưng tên lưu là "${row.HoTen || row.NhanVien}" (hiện tại: "${matches[0].HoTen}"). Cần xác nhận đây là đổi tên hợp lệ hay gán nhầm nhân viên.`,
+            [String(row[idField] || ''), String(row.NhanVienID)]);
+        }
+      });
+    };
+    checkEmployeeLabels(this.db.CHAMCONG, 'Chấm công', 'ChamCongID');
+    checkEmployeeLabels(this.db.HOAHONG, 'Hoa hồng', 'HoaHongID');
+    checkEmployeeLabels(this.db.LUONG, 'Bảng lương', 'LuongID');
+    checkEmployeeLabels(this.db.TAM_UNG, 'Tạm ứng', 'TamUngID');
+
     this.db.HOAHONG.forEach((item) => {
       const amount = Number(item.SoTienHoaHong);
       if (!Number.isFinite(amount) || amount < 0) add('INVALID_COMMISSION_AMOUNT', 'critical', `Hoa hồng ${item.HoaHongID} có số tiền không hợp lệ.`, [item.HoaHongID]);
