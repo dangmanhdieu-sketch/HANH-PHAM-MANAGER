@@ -79,14 +79,17 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
       return;
     }
     const canvas = document.createElement('canvas');
-    const maxSize = 1280;
+    // Keep proof photos readable while limiting Base64 payload size. Smaller
+    // images reduce Firestore serialization, network transfer and mobile load time.
+    // Existing stored photos are untouched; this applies only to new captures.
+    const maxSize = 960;
     const scale = Math.min(1, maxSize / Math.max(video.videoWidth, video.videoHeight));
     canvas.width = Math.round(video.videoWidth * scale);
     canvas.height = Math.round(video.videoHeight * scale);
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.62);
     setFormData((prev) => ({ ...prev, AnhChungTu: dataUrl }));
     stopCamera();
     setCameraOpen(false);
