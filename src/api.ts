@@ -566,6 +566,8 @@ export const api = {
       AnhChungTu?: string;
       GhiChu?: string;
       TaoBoi?: string;
+      TrangThaiThanhToan?: 'Đã thanh toán' | 'Chưa thanh toán';
+      PhuongThucThanhToan?: 'Chuyển khoản' | 'Tiền mặt' | '';
     }): Promise<HoaHong> {
       return request<HoaHong>(
         '/api/hoahong',
