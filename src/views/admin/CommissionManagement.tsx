@@ -36,6 +36,11 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
+  // Match the payroll screen's current-month default; allow an explicit all-time view.
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteConfirmHH, setDeleteConfirmHH] = useState<HoaHong | null>(null);
   const [approveConfirmHH, setApproveConfirmHH] = useState<{ hh: HoaHong; dongY: boolean } | null>(null);
@@ -115,13 +120,14 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const filteredList = commissionList.filter((hh) => {
     const matchStaff = selectedStaffId === 'ALL' || hh.NhanVienID === selectedStaffId;
     const matchStatus = selectedStatus === 'ALL' || hh.TrangThai === selectedStatus;
+    const matchMonth = selectedMonth === 'ALL' || (hh.Ngay || '').slice(0, 7) === selectedMonth;
     const isShow = hh.LoaiKhoan === 'Tiền Show' || hh.NoiDung.includes('Tiền Show');
     const matchType =
       selectedType === 'ALL' ||
       (selectedType === 'Tiền Show' && isShow) ||
       (selectedType === 'Hoa Hồng' && !isShow);
 
-    return matchStaff && matchStatus && matchType;
+    return matchStaff && matchStatus && matchType && matchMonth;
   });
 
   // Calculate metrics
@@ -129,8 +135,19 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
     .filter((hh) => hh.TrangThai === 'Đã duyệt')
     .reduce((sum, hh) => sum + hh.SoTienHoaHong, 0);
 
-  const pendingList = commissionList.filter((hh) => hh.TrangThai === 'Chờ duyệt');
-  const totalPendingMoney = pendingList.reduce((sum, hh) => sum + hh.SoTienHoaHong, 0);
+  // Pending count/amount follows the same employee, type and period filters,
+  // while remaining independent of the status dropdown so the queue count stays useful.
+  const pendingList = commissionList.filter((hh) => {
+    const matchStaff = selectedStaffId === 'ALL' || hh.NhanVienID === selectedStaffId;
+    const matchMonth = selectedMonth === 'ALL' || (hh.Ngay || '').slice(0, 7) === selectedMonth;
+    const isShow = hh.LoaiKhoan === 'Tiền Show' || hh.NoiDung.includes('Tiền Show');
+    const matchType = selectedType === 'ALL' ||
+      (selectedType === 'Tiền Show' && isShow) ||
+      (selectedType === 'Hoa Hồng' && !isShow);
+    return hh.TrangThai === 'Chờ duyệt' && matchStaff && matchMonth && matchType;
+  });
+  const totalPendingMoney = pendingList.reduce((sum, hh) => sum + Number(hh.SoTienHoaHong || 0), 0);
+  const availableMonths = Array.from(new Set(commissionList.map((hh) => (hh.Ngay || '').slice(0, 7)).filter(Boolean))).sort().reverse();
 
   // Computed amount for form preview
   const computedAmount =
@@ -308,6 +325,20 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
       {/* Filter Toolbar */}
       <div className="bg-white p-4 rounded-xl border border-[#E7DFD5] shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between text-xs">
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-stone-600">Kỳ:</span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] bg-white text-xs"
+            >
+              <option value="ALL">Tất cả thời gian</option>
+              {availableMonths.map((month) => (
+                <option key={month} value={month}>{month.slice(5, 7)}/{month.slice(0, 4)}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-stone-600">Nhân viên:</span>
             <select
