@@ -127,6 +127,11 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const [loading, setLoading] = useState(true);
   const [cashflowType, setCashflowType] = useState<'THU' | 'CHI'>('THU');
   const [cashflowSection, setCashflowSection] = useState<'ALL' | 'CONTRACT' | 'INTERNAL'>('ALL');
+  const [cashflowStaffFilter, setCashflowStaffFilter] = useState('ALL');
+  const [cashflowMonthFilter, setCashflowMonthFilter] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [selectedContract, setSelectedContract] = useState<QuanLyRecord | null>(null);
   const contractPrintRef = useRef<HTMLElement | null>(null);
   const [downloadingJpeg, setDownloadingJpeg] = useState(false);
@@ -256,10 +261,25 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     if (module === 'THU_CHI' && cashflowSection !== 'ALL') {
       rows = rows.filter(record => cashflowSection === 'CONTRACT' ? isContractReceipt(record) : !isContractReceipt(record));
     }
+    if (module === 'THU_CHI' && !isEmployee) {
+      if (cashflowMonthFilter) {
+        rows = rows.filter((record) => String(record.DuLieu?.Ngay || record.TaoLuc || '').slice(0, 7) === cashflowMonthFilter);
+      }
+      if (cashflowStaffFilter !== 'ALL') {
+        const selectedStaff = staffList.find((staff) => staff.NhanVienID === cashflowStaffFilter);
+        rows = rows.filter((record) => {
+          const data = record.DuLieu || {};
+          const employeeId = String(data.NhanVienID || data.NguoiTaoID || data.NguoiLapID || '');
+          const employeeName = String(data.NhanVien || data.NguoiTao || data.NguoiLap || '').trim().toLowerCase();
+          return employeeId === cashflowStaffFilter ||
+            (!!selectedStaff && employeeName === String(selectedStaff.HoTen || '').trim().toLowerCase());
+        });
+      }
+    }
     const keyword = search.trim().toLowerCase();
     if (!keyword) return rows;
     return rows.filter((record) => JSON.stringify(record.DuLieu).toLowerCase().includes(keyword));
-  }, [visibleRecords, search, module, cashflowSection]);
+  }, [visibleRecords, search, module, cashflowSection, cashflowMonthFilter, cashflowStaffFilter, isEmployee, staffList]);
 
   const getTodayLocal = () => {
     const now = new Date();
@@ -392,9 +412,14 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         }
       }
 
-      closeForm();
-      await loadRecords();
-      onRefresh();
+      // Đóng form ngay sau khi server xác nhận đã lưu; tải lại danh sách/KPI ở nền
+      // để người dùng không bị kẹt trạng thái "Đang gửi" dù bản ghi đã tạo thành công.
+      setFormOpen(false);
+      setEditing(null);
+      setFormData({});
+      setSaving(false);
+      void loadRecords();
+      void Promise.resolve(onRefresh()).catch((refreshError) => console.error('Làm mới dữ liệu thu chi thất bại:', refreshError));
     } catch (error: any) {
       alert(error?.message || 'Không thể lưu dữ liệu.');
     } finally {
@@ -668,6 +693,39 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
           <div className="rounded-xl border bg-rose-50 p-3"><div className="text-xs font-bold text-rose-800">CHI ĐÃ DUYỆT</div><div className="mt-1 font-bold text-rose-700">-{totalChi.toLocaleString('vi-VN')} đ</div></div>
         </div>}
       </section>}
+      {module === 'THU_CHI' && !isEmployee && (
+        <section className="bg-white rounded-2xl border border-[#E7DFD5] p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <label className="flex-1 text-xs font-semibold text-stone-600">
+              Lọc nhân viên
+              <select value={cashflowStaffFilter} onChange={(e) => setCashflowStaffFilter(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900">
+                <option value="ALL">Tất cả nhân viên</option>
+                {staffList.map((staff) => <option key={staff.NhanVienID} value={staff.NhanVienID}>{staff.HoTen} ({staff.NhanVienID})</option>)}
+              </select>
+            </label>
+            <label className="flex-1 text-xs font-semibold text-stone-600">
+              Chọn tháng
+              <input type="month" value={cashflowMonthFilter} onChange={(e) => setCashflowMonthFilter(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900" />
+            </label>
+            <div className="flex items-end">
+              <button type="button" onClick={() => { setCashflowStaffFilter('ALL'); const now = new Date(); setCashflowMonthFilter(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`); }} className="rounded-lg border border-stone-200 px-3 py-2.5 text-xs font-semibold text-stone-600 hover:bg-stone-50">Đặt lại</button>
+            </div>
+          </div>
+          {(() => {
+            const thu = filteredRecords.filter((r) => String(r.DuLieu?.Loai || '').toUpperCase() === 'THU').reduce((sum, r) => sum + Math.max(0, Number(r.DuLieu?.SoTien || 0)), 0);
+            const chi = filteredRecords.filter((r) => String(r.DuLieu?.Loai || '').toUpperCase() === 'CHI').reduce((sum, r) => sum + Math.max(0, Number(r.DuLieu?.SoTien || 0)), 0);
+            const approved = filteredRecords.filter((r) => ['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(r.DuLieu?.TrangThaiDuyet || '')));
+            const approvedThu = approved.filter((r) => String(r.DuLieu?.Loai || '').toUpperCase() === 'THU').reduce((sum, r) => sum + Math.max(0, Number(r.DuLieu?.SoTien || 0)), 0);
+            const approvedChi = approved.filter((r) => String(r.DuLieu?.Loai || '').toUpperCase() === 'CHI').reduce((sum, r) => sum + Math.max(0, Number(r.DuLieu?.SoTien || 0)), 0);
+            return <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+              <div className="rounded-xl bg-emerald-50 p-3"><div className="text-[11px] font-bold text-emerald-800">TỔNG THU</div><div className="mt-1 font-bold text-emerald-700">{thu.toLocaleString('vi-VN')} đ</div></div>
+              <div className="rounded-xl bg-rose-50 p-3"><div className="text-[11px] font-bold text-rose-800">TỔNG CHI</div><div className="mt-1 font-bold text-rose-700">{chi.toLocaleString('vi-VN')} đ</div></div>
+              <div className="rounded-xl border border-emerald-100 p-3"><div className="text-[11px] font-bold text-stone-600">THU ĐÃ DUYỆT</div><div className="mt-1 font-bold text-stone-800">{approvedThu.toLocaleString('vi-VN')} đ</div></div>
+              <div className="rounded-xl border border-rose-100 p-3"><div className="text-[11px] font-bold text-stone-600">CHI ĐÃ DUYỆT</div><div className="mt-1 font-bold text-stone-800">{approvedChi.toLocaleString('vi-VN')} đ</div></div>
+            </div>;
+          })()}
+        </section>
+      )}
       <div className="bg-white p-3 rounded-xl border border-[#E7DFD5] flex items-center gap-2">
         <Search className="w-4 h-4 text-stone-400" />
         <input
