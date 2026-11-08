@@ -28,10 +28,15 @@ export const BusinessStats: React.FC<Props> = ({
   useEffect(() => {
     let active = true;
 
-    api.quanLy
-      .getAll()
-      .then((data) => {
-        if (active) setRecords(data);
+    // The API requires a module on every request. Fetch only the two
+    // modules used by this dashboard, in parallel, instead of issuing an
+    // invalid unfiltered request.
+    Promise.all([
+      api.quanLy.getAll('CONG_VIEC'),
+      api.quanLy.getAll('HOP_DONG'),
+    ])
+      .then(([tasks, contracts]) => {
+        if (active) setRecords([...tasks, ...contracts]);
       })
       .catch((error: any) => {
         console.error('Không thể tải thống kê nghiệp vụ:', error);
