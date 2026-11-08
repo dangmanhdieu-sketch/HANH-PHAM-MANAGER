@@ -2459,6 +2459,12 @@ class DatabaseService {
     const contracts = (this.db.QUAN_LY || []).filter((row) => row.Module === 'HOP_DONG');
     const receipts = (this.db.QUAN_LY || []).filter((row) => row.Module === 'THU_CHI');
     duplicates(contracts, (row) => String(row.DuLieu?.MaHopDong || ''), 'DUPLICATE_CONTRACT_CODE', 'Mã hợp đồng');
+    receipts.forEach((receipt) => {
+      const amount = Number(receipt.DuLieu?.SoTien);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        add('INVALID_CASHFLOW_AMOUNT', 'critical', `Phiếu thu/chi ${receipt.QuanLyID} có số tiền không hợp lệ.`, [receipt.QuanLyID]);
+      }
+    });
 
     const contractTotal = (data: any) => {
       const base = Math.max(0, Number(data?.GiaGoiBanDau ?? data?.TongGiaTri ?? 0) || 0);
@@ -2500,6 +2506,10 @@ class DatabaseService {
         .filter((receipt) => !['Từ chối', 'Đã từ chối', 'Đã hủy', 'Hủy'].includes(String(receipt.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt')))
         .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
       const value = contractTotal(data);
+      const rawContractValue = Number(data.GiaGoiBanDau ?? data.TongGiaTri);
+      if (!Number.isFinite(rawContractValue) || rawContractValue <= 0) {
+        add('INVALID_CONTRACT_VALUE', 'critical', `Hợp đồng ${data.MaHopDong || contract.QuanLyID} có giá trị hợp đồng không hợp lệ.`, [contract.QuanLyID]);
+      }
       if (reserved > value) {
         add('CONTRACT_OVERPAID', 'critical', `Hợp đồng ${data.MaHopDong || contract.QuanLyID} có phiếu thu đã duyệt/đang chờ vượt giá trị hợp đồng ${(reserved - value).toLocaleString('vi-VN')} đ.`, [contract.QuanLyID, ...linked.map((receipt) => receipt.QuanLyID)]);
       }
