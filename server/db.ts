@@ -410,33 +410,12 @@ class DatabaseService {
       });
     }
 
-    // Migration: Ensure all staff have bank account & credential fields.
-    const defaultBanks = [
-      { stk: '0071000888999', bank: 'Vietcombank', name: 'PHAM THI HANH', branch: 'TP. Hồ Chí Minh' },
-      { stk: '19036888666011', bank: 'Techcombank', name: 'DO MAI LINH', branch: 'Bến Nghé, Q.1' },
-    ];
-
-    if (this.db.NHANVIEN && Array.isArray(this.db.NHANVIEN)) {
-      this.db.NHANVIEN.forEach((nv, idx) => {
-        const def = defaultBanks[idx % defaultBanks.length];
-        if (!nv.SoTaiKhoan) {
-          nv.SoTaiKhoan = def.stk;
-          hasMigration = true;
-        }
-        if (!nv.NganHang) {
-          nv.NganHang = def.bank;
-          hasMigration = true;
-        }
-        if (!nv.TenChuTaiKhoan) {
-          nv.TenChuTaiKhoan = nv.HoTen ? nv.HoTen.toUpperCase() : def.name;
-          hasMigration = true;
-        }
-        if (!nv.ChiNhanhNganHang) {
-          nv.ChiNhanhNganHang = def.branch;
-          hasMigration = true;
-        }
-        if (!nv.MatKhauHienThi) {
-          nv.MatKhauHienThi = nv.Quyen === 'Admin' ? 'admin123' : '123456';
+    // Never invent bank details or store recoverable plaintext passwords.
+    // Existing bank fields remain exactly as recorded; missing values stay blank.
+    if (Array.isArray(this.db.NHANVIEN)) {
+      this.db.NHANVIEN.forEach((nv) => {
+        if (Object.prototype.hasOwnProperty.call(nv, 'MatKhauHienThi')) {
+          delete (nv as any).MatKhauHienThi;
           hasMigration = true;
         }
       });
@@ -1131,9 +1110,8 @@ class DatabaseService {
       AnhNhanVien: data.AnhNhanVien || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
       Quyen: data.Quyen || 'Nhân viên',
       MatKhau: hashedPassword,
-      MatKhauHienThi: password,
       SoTaiKhoan: data.SoTaiKhoan?.trim() || '',
-      NganHang: data.NganHang?.trim() || 'Vietcombank',
+      NganHang: data.NganHang?.trim() || '',
       TenChuTaiKhoan: data.TenChuTaiKhoan?.trim() || (data.HoTen ? data.HoTen.toUpperCase() : ''),
       ChiNhanhNganHang: data.ChiNhanhNganHang?.trim() || '',
       BiKhoa: false,
@@ -1202,11 +1180,9 @@ class DatabaseService {
     }
 
     let hashedPassword = current.MatKhau;
-    let plainPassword = current.MatKhauHienThi;
     if (updates.MatKhau && updates.MatKhau.trim() !== '') {
       const salt = bcrypt.genSaltSync(10);
       hashedPassword = bcrypt.hashSync(updates.MatKhau.trim(), salt);
-      plainPassword = updates.MatKhau.trim();
     }
 
     const updated: NhanVien = {
@@ -1228,7 +1204,6 @@ class DatabaseService {
       TenChuTaiKhoan: updates.TenChuTaiKhoan !== undefined ? updates.TenChuTaiKhoan.trim() : current.TenChuTaiKhoan,
       ChiNhanhNganHang: updates.ChiNhanhNganHang !== undefined ? updates.ChiNhanhNganHang.trim() : current.ChiNhanhNganHang,
       MatKhau: hashedPassword,
-      MatKhauHienThi: plainPassword,
     };
 
     this.db.NHANVIEN[index] = updated;
