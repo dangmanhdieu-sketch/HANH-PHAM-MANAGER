@@ -907,7 +907,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Chi tiết hợp đồng</p><h1 className="mt-2 text-3xl font-bold text-stone-900">{code}</h1><p className="mt-2 text-lg text-stone-700">{customer}</p><p className="mt-1 text-sm text-stone-600">Ngày tạo: {String(d.NgayTao || selectedContract.CapNhatLuc || '').slice(0,10) || '—'}</p></div>
                 <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-semibold text-emerald-800">{getStatus(selectedContract)}</span>
               </div>
-              {collected > value && <div className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800"><b>Cảnh báo thu vượt hợp đồng:</b> Đã thu ${money(collected - value)} vượt giá trị hợp đồng. Không tạo thêm phiếu thu; cần Admin đối soát khoản chênh lệch.</div>}
+              {collected > value && <div className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800"><b>Cảnh báo thu vượt hợp đồng:</b> Đã thu {money(collected - value)} vượt giá trị hợp đồng. Không tạo thêm phiếu thu; cần Admin đối soát khoản chênh lệch.</div>}
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="rounded-xl border border-stone-200 bg-stone-50 p-4"><p className="text-xs text-stone-600">Giá trị hợp đồng</p><p className="mt-2 text-xl font-bold text-stone-900">{money(value)}</p></div>
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="text-xs text-emerald-800">Đã thu được Admin duyệt</p><p className="mt-2 text-xl font-bold text-emerald-700">{money(collected)}</p></div>
