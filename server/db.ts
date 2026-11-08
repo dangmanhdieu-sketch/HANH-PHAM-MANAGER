@@ -703,12 +703,19 @@ class DatabaseService {
           if (migrated) {
             await this.persistToFirestoreNow();
           } else {
-            const oversizedTables = this.firestoreTables.filter((table) => {
+            // Only migrate a large table when its Firestore document is still in
+            // the legacy inline format. A table already stored as chunked JSON
+            // must not be rewritten on every Render restart: doing so creates a
+            // fresh 100+ chunk revision and can keep the API startup gate closed
+            // for minutes (especially for the HOAHONG history).
+            const oversizedTables = this.firestoreTables.filter((table, index) => {
+              const tableMeta = tableSnaps[index]?.data() || {};
+              if (tableMeta.storage === 'chunked-json-base64') return false;
               const serialized = JSON.stringify(sanitizeFirestoreValue((this.db as any)[table]));
               return Buffer.from(serialized, 'utf8').toString('base64').length > 600000;
             });
             if (oversizedTables.length > 0) {
-              console.warn('[Firebase] Migrating oversized table documents to chunked storage:', oversizedTables);
+              console.warn('[Firebase] Migrating legacy oversized table documents to chunked storage:', oversizedTables);
               await this.persistToFirestoreNow(oversizedTables);
             }
           }
