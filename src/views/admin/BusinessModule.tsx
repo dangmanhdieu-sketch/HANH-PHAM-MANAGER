@@ -145,20 +145,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const loadRecords = async () => {
     try {
       setLoading(true);
-      let data = await api.quanLy.getAll(module);
-      // Migration an toàn: hợp đồng cũ đang chờ duyệt được chuyển sang đã xác nhận.
-      // Chỉ cập nhật trạng thái hợp đồng; không thay đổi phiếu thu hay trạng thái thu/chi.
-      if (module === 'HOP_DONG' && !isEmployee) {
-        const pendingContracts = data.filter((record) =>
-          ['Chờ admin duyệt', 'Chờ Admin duyệt'].includes(String(record.DuLieu?.TrangThai || '').trim())
-        );
-        for (const record of pendingContracts) {
-          await api.quanLy.update(record.QuanLyID, { TrangThai: 'Đã xác nhận' });
-        }
-        if (pendingContracts.length > 0) {
-          data = await api.quanLy.getAll(module);
-        }
-      }
+      const data = await api.quanLy.getAll(module);
       setRecords(data);
       if (module === 'HOP_DONG') {
         let receipts = await api.quanLy.getAll('THU_CHI');
@@ -378,29 +365,6 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       } else {
         const createdRecord = await api.quanLy.create(module, payload);
 
-        // Tự tạo phiếu thu cho khoản cọc trên hợp đồng, bất kể người tạo.
-        // Mọi khoản thu từ hợp đồng đều chờ Admin duyệt trước khi tính doanh thu.
-        if (module === 'HOP_DONG') {
-          const deposit = getContractDeposit(payload);
-          if (deposit > 0) {
-            const savedContract = createdRecord?.DuLieu || payload;
-            const contractCode = String(savedContract.MaHopDong || payload.MaHopDong || createdRecord?.QuanLyID || '');
-            const contractName = String(savedContract.KhachHang || payload.KhachHang || '');
-            await api.quanLy.create('THU_CHI', {
-              Ngay: getTodayLocal(), Loai: 'THU',
-              DanhMuc: `Thu tiền cọc · ${contractCode} · ${contractName}`,
-              NoiDungThu: `Thu tiền cọc hợp đồng ${contractCode} - ${contractName}`,
-              SoTien: deposit, HopDongID: contractCode, MaHopDong: contractCode,
-              TenHopDong: contractName, DoiTuong: contractName,
-              NhanVienID: currentUser?.NhanVienID || '', NhanVien: loggedInStaffName,
-              NguoiTao: loggedInStaffName, NguoiTaoID: currentUser?.NhanVienID || '',
-              PhuongThucThanhToan: payload.PhuongThucThanhToan || 'Tiền mặt',
-              TrangThaiDuyet: 'Chờ Admin duyệt',
-              GhiChu: `Phiếu thu tự tạo từ hợp đồng ${contractCode} - ${contractName}`,
-              NguonTao: 'TIEN_COC_HOP_DONG', HopDongQuanLyID: createdRecord?.QuanLyID || '',
-            });
-          }
-        }
       }
 
       closeForm();
