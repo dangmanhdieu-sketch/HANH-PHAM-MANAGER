@@ -514,13 +514,13 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const getContractCollected = (record: QuanLyRecord) => {
     const contractCode = String(record.DuLieu?.MaHopDong || record.QuanLyID);
     const approvedReceipts = receiptRecords
-      .filter((receipt) =>
-        String(receipt.DuLieu?.Loai || '').toUpperCase() === 'THU' &&
-        receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt' &&
-        receipt.DuLieu?.HopDongQuanLyID
-          ? String(receipt.DuLieu.HopDongQuanLyID) === String(record.QuanLyID)
-          : String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === contractCode
-      )
+      .filter((receipt) => {
+        const data = receipt.DuLieu || {};
+        if (String(data.Loai || '').toUpperCase() !== 'THU' || data.TrangThaiDuyet !== 'Đã duyệt') return false;
+        return data.HopDongQuanLyID
+          ? String(data.HopDongQuanLyID) === String(record.QuanLyID)
+          : String(data.HopDongID || data.MaHopDong || '') === contractCode;
+      })
       .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
     // Return the real approved amount. Never cap it at contract value:
     // overpayments must remain visible for financial reconciliation.
