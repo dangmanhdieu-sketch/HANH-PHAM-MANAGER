@@ -104,6 +104,8 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
     SoTienHoaHong: 1000000,
     AnhChungTu: '',
     GhiChu: '',
+    TrangThaiThanhToan: 'Chưa thanh toán' as 'Đã thanh toán' | 'Chưa thanh toán',
+    PhuongThucThanhToan: '' as '' | 'Chuyển khoản' | 'Tiền mặt',
   });
 
   const [saving, setSaving] = useState(false);
@@ -229,6 +231,8 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                 SoTienHoaHong: 800000,
                 AnhChungTu: '',
                 GhiChu: '',
+                TrangThaiThanhToan: 'Chưa thanh toán',
+                PhuongThucThanhToan: '',
               });
               setFormError(null);
               setModalOpen(true);
@@ -541,17 +545,28 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block font-semibold text-stone-700 mb-1">
-                    Nội dung công việc / Tên show cưới <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.NoiDung}
-                    onChange={(e) => setFormData({ ...formData, NoiDung: e.target.value })}
-                    placeholder="VD: Show makeup tiệc tối cô dâu - Khách hàng Lê Thanh Trúc"
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f]"
-                  />
+                  <label className="block font-semibold text-stone-700 mb-1">Nội dung công việc / Tên show cưới <span className="text-rose-500">*</span></label>
+                  {formData.LoaiKhoan === 'Tiền Show' ? <>
+                    <select required value={formData.NoiDung && !['MK đám hỏi, rước dâu, nhà thờ','MK cô dâu Đám cưới','MK chụp cổng 1c','MK chụp cổng 2c','MK tiệc tại tiệm','MK tiệc tại nhà khách','MK bà sui','Chụp TT Máy lẻ','Chụp TT máy Tặng','Chụp PS máy Lẻ','Chụp PS Kèm Máy TT','Quay PS','Quay TT'].includes(formData.NoiDung) ? 'Khác' : formData.NoiDung} onChange={(e) => {
+                      const fees: Record<string, number> = {'MK đám hỏi, rước dâu, nhà thờ':800000,'MK cô dâu Đám cưới':1000000,'MK chụp cổng 1c':300000,'MK chụp cổng 2c':500000,'MK tiệc tại tiệm':300000,'MK tiệc tại nhà khách':300000,'MK bà sui':500000,'Chụp TT Máy lẻ':1200000,'Chụp TT máy Tặng':500000,'Chụp PS máy Lẻ':2000000,'Chụp PS Kèm Máy TT':1500000,'Quay PS':3500000,'Quay TT':2500000};
+                      const value=e.target.value; setFormData(prev=>({...prev,NoiDung:value==='Khác'?'':value,SoTienHoaHong:fees[value]??prev.SoTienHoaHong}));
+                    }} className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-white">
+                      <option value="">-- Chọn công việc --</option>
+                      <option value="MK đám hỏi, rước dâu, nhà thờ">MK đám hỏi, rước dâu, nhà thờ — 800.000đ</option>
+                      <option value="MK cô dâu Đám cưới">MK cô dâu Đám cưới — 1.000.000đ</option>
+                      <option value="MK chụp cổng 1c">MK chụp cổng 1c — 300.000đ</option>
+                      <option value="MK chụp cổng 2c">MK chụp cổng 2c — 500.000đ</option>
+                      <option value="MK tiệc tại tiệm">MK tiệc tại tiệm — 300.000đ</option>
+                      <option value="MK tiệc tại nhà khách">MK tiệc tại nhà khách — 300.000đ</option>
+                      <option value="MK bà sui">MK bà sui — 500.000đ</option>
+                      <option value="Chụp TT Máy lẻ">Chụp TT Máy lẻ — 1.200.000đ</option>
+                      <option value="Chụp TT máy Tặng">Chụp TT máy Tặng — 500.000đ</option>
+                      <option value="Chụp PS máy Lẻ">Chụp PS máy Lẻ — 2.000.000đ</option>
+                      <option value="Chụp PS Kèm Máy TT">Chụp PS Kèm Máy TT — 1.500.000đ</option>
+                      <option value="Quay PS">Quay PS — 3.500.000đ</option><option value="Quay TT">Quay TT — 2.500.000đ</option><option value="Khác">Khác (tự nhập)</option>
+                    </select>
+                    {(formData.NoiDung === '' || !['MK đám hỏi, rước dâu, nhà thờ','MK cô dâu Đám cưới','MK chụp cổng 1c','MK chụp cổng 2c','MK tiệc tại tiệm','MK tiệc tại nhà khách','MK bà sui','Chụp TT Máy lẻ','Chụp TT máy Tặng','Chụp PS máy Lẻ','Chụp PS Kèm Máy TT','Quay PS','Quay TT'].includes(formData.NoiDung)) && <input type="text" required value={formData.NoiDung} onChange={e=>setFormData(prev=>({...prev,NoiDung:e.target.value}))} placeholder="Nhập nội dung công việc khác" className="mt-2 w-full px-3 py-2 border border-stone-200 rounded-lg" />}
+                  </> : <input type="text" required value={formData.NoiDung} onChange={e=>setFormData({...formData,NoiDung:e.target.value})} placeholder="VD: Tên hợp đồng / khách hàng" className="w-full px-3 py-2 border border-stone-200 rounded-lg" />}
                 </div>
 
                 <div>
@@ -604,6 +619,10 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                   </div>
                 )}
 
+                <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-stone-200 p-3">
+                  <div><label className="block font-semibold text-stone-700 mb-1">Trạng thái thanh toán</label><select value={formData.TrangThaiThanhToan} onChange={e=>setFormData(prev=>({...prev,TrangThaiThanhToan:e.target.value as 'Đã thanh toán'|'Chưa thanh toán',PhuongThucThanhToan:e.target.value==='Chưa thanh toán'?'':prev.PhuongThucThanhToan}))} className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-white"><option value="Chưa thanh toán">Chưa thanh toán</option><option value="Đã thanh toán">Đã thanh toán</option></select></div>
+                  {formData.TrangThaiThanhToan==='Đã thanh toán' && <div><label className="block font-semibold text-stone-700 mb-1">Phương thức thanh toán</label><select required value={formData.PhuongThucThanhToan} onChange={e=>setFormData(prev=>({...prev,PhuongThucThanhToan:e.target.value as 'Chuyển khoản'|'Tiền mặt'|''}))} className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-white"><option value="">-- Chọn phương thức --</option><option value="Chuyển khoản">Chuyển khoản</option><option value="Tiền mặt">Tiền mặt</option></select></div>}
+                </div>
                 <div className="col-span-2">
                   <label className="block font-semibold text-stone-700 mb-1">Ảnh Chứng Từ / Nghiệm Thu</label>
                   <div className="flex flex-wrap gap-2">
