@@ -30,6 +30,17 @@ const formatMoneyInput = (value: unknown) => { const digits = String(value ?? ''
 const parseMoneyInput = (value: string) => { const digits = value.replace(/[^0-9]/g, ''); return digits ? Number(digits) : 0; };
 const defaultInstallments = () => [{Dot:1,TenDot:'Đợt 1',HanThanhToan:'',SoTienDuKien:0,GhiChu:''}];
 // Hợp đồng cũ chưa có TienDatCoc: dùng số tiền đợt thanh toán đầu tiên làm tiền cọc đã nhập trước đây.
+const getContractTotalValue = (data: Record<string, any> | undefined) => {
+  const base = Math.max(0, Number(data?.GiaGoiBanDau ?? data?.TongGiaTri ?? 0) || 0);
+  const hasStoredFinal = data?.GiaGoiBanDau !== undefined && data?.TongGiaTri !== undefined;
+  if (hasStoredFinal) return Math.max(0, Number(data?.TongGiaTri) || 0);
+  const direct = Math.max(0, Number(data?.GiamGiaTrucTiep || 0));
+  const rate = Math.min(100, Math.max(0, Number(data?.ChietKhauPhanTram || 0)));
+  const promo = Math.max(0, Number(data?.KhuyenMaiBoSung || 0));
+  const surcharge = Math.max(0, Number(data?.PhuThuDichVu || 0));
+  return Math.max(0, base - direct - Math.round(base * rate / 100) - promo + surcharge);
+};
+
 const getContractDeposit = (data: Record<string, any> | undefined) => {
   const explicitDeposit = Number(data?.TienDatCoc || 0);
   // Form mới có trường TienDatCoc; form cũ có thể chỉ lưu cọc ở đợt thanh toán đầu.
@@ -413,6 +424,12 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       alert('Số tiền thanh toán phải lớn hơn 0.');
       return;
     }
+    const contractValue = getContractTotalValue(data);
+    const reserved = getContractReserved(record);
+    if (amount + reserved > contractValue) {
+      alert(`Số tiền nhập vượt phần còn có thể thu. Giá trị hợp đồng: ${contractValue.toLocaleString('vi-VN')} đ; đã duyệt + đang chờ duyệt: ${reserved.toLocaleString('vi-VN')} đ.`);
+      return;
+    }
     const paymentLabel = window.prompt('Khoản thanh toán này là gì?', 'Thanh toán đợt tiếp theo');
     if (paymentLabel === null) return;
     try {
@@ -586,9 +603,22 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         )
       )
       .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
-    const contractValue = Math.max(0, Number(record.DuLieu?.TongGiaTri ?? record.DuLieu?.GiaGoiBanDau ?? 0));
-    // Chỉ tiền có phiếu thu được Admin duyệt mới được tính là đã thu.
-    return Math.min(contractValue, approvedReceipts);
+    // Return the real approved amount. Never cap it at contract value:
+    // overpayments must remain visible for financial reconciliation.
+    return approvedReceipts;
+  };
+  const getContractReserved = (record: QuanLyRecord) => {
+    const contractCode = String(record.DuLieu?.MaHopDong || record.QuanLyID);
+    return receiptRecords
+      .filter((receipt) => {
+        const d = receipt.DuLieu || {};
+        const status = String(d.TrangThaiDuyet || 'Chờ Admin duyệt');
+        return String(d.Loai || '').toUpperCase() === 'THU' &&
+          !['Từ chối', 'Đã hủy', 'Hủy'].includes(status) &&
+          (String(d.HopDongID || d.MaHopDong || '') === contractCode ||
+           String(d.HopDongQuanLyID || '') === String(record.QuanLyID));
+      })
+      .reduce((sum, receipt) => sum + Math.max(0, Number(receipt.DuLieu?.SoTien || 0)), 0);
   };
   const getInstallmentsTotal = (data: Record<string, any> | undefined) => (Array.isArray(data?.LichThanhToan) ? data.LichThanhToan : []).reduce((sum: number, row: any) => sum + Math.max(0, Number(row?.SoTienDuKien || 0)), 0);
 
@@ -772,7 +802,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         const d = selectedContract.DuLieu || {};
         const code = String(d.MaHopDong || selectedContract.QuanLyID);
         const customer = String(d.KhachHang || 'Chưa có tên');
-        const value = Math.max(0, Number(d.TongGiaTri ?? d.GiaGoiBanDau ?? 0) - Number(d.GiamGiaTrucTiep || 0) - Math.round(Number(d.GiaGoiBanDau ?? d.TongGiaTri ?? 0) * Number(d.ChietKhauPhanTram || 0) / 100) - Number(d.KhuyenMaiBoSung || 0) + Number(d.PhuThuDichVu || 0));
+        const value = getContractTotalValue(d);
         const collected = getContractCollected(selectedContract);
         const receipts = receiptRecords.filter((receipt) => String(receipt.DuLieu?.Loai || '').toUpperCase() === 'THU' && (String(receipt.DuLieu?.HopDongQuanLyID || '') === String(selectedContract.QuanLyID) || String(receipt.DuLieu?.HopDongID || receipt.DuLieu?.MaHopDong || '') === code));
         const money = (n: unknown) => Number(n || 0).toLocaleString('vi-VN') + ' đ';
@@ -877,6 +907,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Chi tiết hợp đồng</p><h1 className="mt-2 text-3xl font-bold text-stone-900">{code}</h1><p className="mt-2 text-lg text-stone-700">{customer}</p><p className="mt-1 text-sm text-stone-600">Ngày tạo: {String(d.NgayTao || selectedContract.CapNhatLuc || '').slice(0,10) || '—'}</p></div>
                 <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-semibold text-emerald-800">{getStatus(selectedContract)}</span>
               </div>
+              {collected > value && <div className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800"><b>Cảnh báo thu vượt hợp đồng:</b> Đã thu ${money(collected - value)} vượt giá trị hợp đồng. Không tạo thêm phiếu thu; cần Admin đối soát khoản chênh lệch.</div>}
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="rounded-xl border border-stone-200 bg-stone-50 p-4"><p className="text-xs text-stone-600">Giá trị hợp đồng</p><p className="mt-2 text-xl font-bold text-stone-900">{money(value)}</p></div>
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="text-xs text-emerald-800">Đã thu được Admin duyệt</p><p className="mt-2 text-xl font-bold text-emerald-700">{money(collected)}</p></div>
@@ -899,7 +930,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
             <section className="rounded-2xl border border-stone-200 bg-white shadow-sm p-5">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div><h2 className="text-base font-bold">Lịch sử phiếu thu</h2><p className="mt-1 text-xs text-stone-600">Thêm khoản khách vừa thanh toán tại đây; phiếu sẽ chờ Admin duyệt.</p></div>
-                <button type="button" disabled={saving || collected >= value} onClick={() => void createContractPaymentReceipt(selectedContract)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold hover:bg-emerald-600 disabled:opacity-40"><Plus className="w-4 h-4"/> Thêm cọc / thanh toán</button>
+                <button type="button" disabled={saving || getContractReserved(selectedContract) >= value} onClick={() => void createContractPaymentReceipt(selectedContract)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold hover:bg-emerald-600 disabled:opacity-40"><Plus className="w-4 h-4"/> Thêm cọc / thanh toán</button>
                 <span className="text-xs text-stone-600">{receipts.length} phiếu</span>
               </div>
               {receipts.length ? <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-stone-200 text-left text-stone-600"><th className="p-3">Ngày thu</th><th className="p-3">Nội dung</th><th className="p-3 text-right">Số tiền</th><th className="p-3">Trạng thái</th></tr></thead><tbody>{receipts.map(receipt=><tr key={receipt.QuanLyID} className="border-b border-stone-900"><td className="p-3">{String(receipt.DuLieu?.Ngay || '').slice(0,10) || '—'}</td><td className="p-3">{String(receipt.DuLieu?.NoiDungThu || receipt.DuLieu?.DanhMuc || 'Phiếu thu')}</td><td className="p-3 text-right font-semibold">{money(receipt.DuLieu?.SoTien)}</td><td className="p-3"><span className={receipt.DuLieu?.TrangThaiDuyet === 'Đã duyệt' ? 'text-emerald-400' : 'text-amber-400'}>{String(receipt.DuLieu?.TrangThaiDuyet || 'Chờ Admin duyệt')}</span></td></tr>)}</tbody></table></div> : <p className="text-sm text-stone-600">Chưa có phiếu thu liên kết với hợp đồng này.</p>}
