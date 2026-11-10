@@ -161,6 +161,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <HanhPhamLogo
                 size={theme.logoSize}
                 variant="gold"
+                logoUrl={theme.customLogoUrl}
               />
             </div>
 
@@ -423,6 +424,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <HanhPhamLogo
                 size={theme.logoSize}
                 variant="gold"
+                logoUrl={theme.customLogoUrl}
               />
 
               <div className="flex items-center gap-2">
@@ -645,6 +647,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <HanhPhamLogo
                     size="sm"
                     variant="gold"
+                    logoUrl={theme.customLogoUrl}
                   />
 
                   <div>
