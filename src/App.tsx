@@ -29,6 +29,7 @@ import { AttendanceManagement } from './views/admin/AttendanceManagement';
 import { PayrollManagement } from './views/admin/PayrollManagement';
 import { AuditAndAutomation } from './views/admin/AuditAndAutomation';
 import { BusinessModule } from './views/admin/BusinessModule';
+import { BridalInventoryManagement } from './views/admin/BridalInventoryManagement';
 const BridalInventory = React.lazy(() => import('./views/admin/BridalInventory').then(module => ({ default: module.BridalInventory })));
 
 // Employee Views
@@ -505,6 +506,8 @@ function AppContent() {
                 onRefresh={() => refreshTabData(currentTab)}
               />
             )}
+
+            {currentTab === 'vaycuoi' && <BridalInventoryManagement />}
 
             {currentTab === 'luong' && (
               <PayrollManagement
