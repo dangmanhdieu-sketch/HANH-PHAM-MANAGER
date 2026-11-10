@@ -346,33 +346,6 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
         </div>
       )}
 
-      {/* KPI mini strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="p-4 bg-white rounded-2xl border border-[#E7DFD5] shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase font-bold text-stone-400">Khoản Đã Duyệt (Cộng Vào Lương)</p>
-            <p className="text-2xl font-bold font-bridal text-emerald-800 mt-1">
-              +{formatNumber(totalApprovedMoney)} VNĐ
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <CheckCircle className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 bg-white rounded-2xl border border-[#E7DFD5] shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase font-bold text-stone-400">Khoản Chờ Admin Duyệt</p>
-            <p className="text-2xl font-bold font-bridal text-amber-800 mt-1">
-              {formatNumber(totalPendingMoney)} VNĐ
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
-            <AlertCircle className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
-
       {/* Overall commission summary for all employees */}
       <section className="overflow-hidden rounded-2xl border border-[#E7DFD5] bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E7DFD5] px-4 py-3">
@@ -409,6 +382,33 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           </div>
         </div>
       </section>
+
+      {/* KPI mini strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="p-4 bg-white rounded-2xl border border-[#E7DFD5] shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[10px] uppercase font-bold text-stone-400">Khoản Đã Duyệt (Cộng Vào Lương)</p>
+            <p className="text-2xl font-bold font-bridal text-emerald-800 mt-1">
+              +{formatNumber(totalApprovedMoney)} VNĐ
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <CheckCircle className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-4 bg-white rounded-2xl border border-[#E7DFD5] shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[10px] uppercase font-bold text-stone-400">Khoản Chờ Admin Duyệt</p>
+            <p className="text-2xl font-bold font-bridal text-amber-800 mt-1">
+              {formatNumber(totalPendingMoney)} VNĐ
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
 
       {/* Filters: one employee, month, day and status */}
       <div className="bg-white p-4 rounded-xl border border-[#E7DFD5] shadow-sm flex flex-col gap-3 text-xs">
