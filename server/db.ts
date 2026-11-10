@@ -698,11 +698,17 @@ class DatabaseService {
             THEME: loaded.THEME,
           };
           const migrated = this.applyMigrations();
-          // Activate the record-level commission ledger only after its one-time
-          // migration has been fully verified. The original HOAHONG table is
-          // deliberately retained as a rollback copy and is never deleted here.
-          await this.initializeHoaHongRecordStorage(rootRef);
           this.refreshKPIs();
+          // SAFETY: keep the legacy Firestore HOAHONG table authoritative during
+          // normal startup. A full hoaHongRecords collection scan can exceed
+          // Firestore's 60-second RPC deadline and block every API route.
+          // Record-level migration must run as a separately controlled,
+          // paginated maintenance task; never make app readiness depend on it.
+          this.hoaHongRecordStorageEnabled = false;
+          this.hoaHongPersistedSnapshots.clear();
+          this.hoaHongDirtyIds.clear();
+          this.hoaHongDeletedIds.clear();
+          console.warn('[Firebase] HOAHONG record-store migration deferred; using verified legacy table to keep API available.');
           this.captureFirestoreSnapshots();
 
           // Upgrade any legacy table document that is already too large for
