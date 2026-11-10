@@ -1899,7 +1899,7 @@ class DatabaseService {
           }
         } else if (item.LuongID === luong.LuongID) {
           delete item.LuongID;
-          if (this.hoaHongRecordStorageEnabled) this.hoaHongDirtyIds.add(item.HoaHongID);
+          this.hoaHongDirtyIds.add(item.HoaHongID);
         }
       }
     });
