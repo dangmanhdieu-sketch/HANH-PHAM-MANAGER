@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import { getFirestore, type Firestore, type Query, type Transaction } from 'firebase-admin/firestore';
 import type { InventoryCategory, InventoryEvent, InventoryItem, InventoryStatus } from '../src/types.ts';
 
 const ROOT_COLLECTION = process.env.FIREBASE_COLLECTION || 'hanh_pham_manager';
@@ -36,7 +36,7 @@ class InventoryService {
     return this.firestore.collection(ROOT_COLLECTION).doc(ROOT_DOCUMENT).collection('inventoryEvents');
   }
 
-  private async assertActiveWriter(transaction: FirebaseFirestore.Transaction) {
+  private async assertActiveWriter(transaction: Transaction) {
     if (!this.firestore) throw new Error('Firestore chưa kết nối.');
     const lease = this.firestore.collection(ROOT_COLLECTION).doc(ROOT_DOCUMENT).collection('_runtime').doc('activeWriter');
     const snapshot = await transaction.get(lease);
@@ -68,7 +68,7 @@ class InventoryService {
     // Keep the primary query on the single-field updatedAt index. Category/status
     // filters are applied to the small page in memory to avoid requiring composite
     // indexes or scanning the complete 3,000-item collection.
-    let query: FirebaseFirestore.Query = this.items().orderBy('updatedAt', 'desc').limit(limit + 1);
+    let query: Query = this.items().orderBy('updatedAt', 'desc').limit(limit + 1);
     if (options.cursor) {
       const cursor = await this.items().doc(options.cursor).get();
       if (cursor.exists) query = query.startAfter(cursor);
@@ -146,6 +146,7 @@ class InventoryService {
       updatedAt: new Date().toISOString(),
     };
     if (!next.name || !['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'].includes(next.category)) throw new Error('Tên hoặc danh mục sản phẩm không hợp lệ.');
+    if (!['Có sẵn', 'Đang đặt', 'Đang thuê', 'Đang giặt', 'Đang sửa', 'Hư hỏng', 'Thanh lý'].includes(next.status)) throw new Error('Tình trạng sản phẩm không hợp lệ.');
     if (this.firestore) {
       await this.firestore.runTransaction(async transaction => {
         await this.assertActiveWriter(transaction);
