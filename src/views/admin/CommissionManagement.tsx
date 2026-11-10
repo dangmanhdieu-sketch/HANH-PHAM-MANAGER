@@ -374,55 +374,40 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
         </div>
       </div>
 
-      {/* Detailed commission statistics */}
+      {/* Overall commission summary for all employees */}
       <section className="overflow-hidden rounded-2xl border border-[#E7DFD5] bg-white shadow-sm">
-        <div className="flex flex-col gap-1 border-b border-[#E7DFD5] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E7DFD5] px-4 py-3">
           <div>
-            <h2 className="font-bold text-stone-900">Thống kê hoa hồng chi tiết theo nhân viên</h2>
-            <p className="text-[11px] text-stone-500">Tổng hợp hoa hồng và tiền show trong tháng đang chọn, không phụ thuộc bộ lọc ngày hoặc trạng thái bên dưới.</p>
+            <h2 className="font-bold text-stone-900">Tổng hợp hoa hồng toàn studio</h2>
+            <p className="text-[11px] text-stone-500">Số liệu cộng gộp tất cả nhân viên trong tháng đang chọn</p>
           </div>
           <span className="text-xs font-semibold text-stone-600">{selectedMonth}</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-xs">
-            <thead className="bg-[#FAF8F5] text-stone-500">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Nhân viên</th>
-                <th className="px-4 py-3 text-center font-semibold">Số phiếu</th>
-                <th className="px-4 py-3 text-right font-semibold">Tiền show</th>
-                <th className="px-4 py-3 text-right font-semibold">Hoa hồng hợp đồng</th>
-                <th className="px-4 py-3 text-right font-semibold">Đã duyệt</th>
-                <th className="px-4 py-3 text-right font-semibold">Chờ duyệt</th>
-                <th className="px-4 py-3 text-right font-semibold">Tổng đề nghị</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E7DFD5]">
-              {commissionStats.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-stone-400">Chưa có dữ liệu hoa hồng trong tháng này.</td></tr>
-              ) : commissionStats.map((item) => (
-                <tr key={item.id} className="hover:bg-[#FAF8F5]">
-                  <td className="px-4 py-3"><p className="font-semibold text-stone-900">{item.name}</p><p className="text-[10px] text-stone-400">{item.id}</p></td>
-                  <td className="px-4 py-3 text-center tabular-nums">{item.count}</td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">{formatNumber(item.show)} đ</td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">{formatNumber(item.hoaHong)} đ</td>
-                  <td className="px-4 py-3 text-right font-mono font-semibold text-emerald-700 tabular-nums">{formatNumber(item.approved)} đ</td>
-                  <td className="px-4 py-3 text-right font-mono font-semibold text-amber-700 tabular-nums">{formatNumber(item.pending)} đ</td>
-                  <td className="px-4 py-3 text-right font-mono font-bold text-stone-900 tabular-nums">{formatNumber(item.total)} đ</td>
-                </tr>
-              ))}
-            </tbody>
-            {commissionStats.length > 0 && <tfoot className="border-t-2 border-[#E7DFD5] bg-[#FAF8F5] font-bold text-stone-900">
-              <tr>
-                <td className="px-4 py-3">TỔNG CỘNG</td>
-                <td className="px-4 py-3 text-center">{commissionStatsTotal.count}</td>
-                <td className="px-4 py-3 text-right font-mono">{formatNumber(commissionStatsTotal.show)} đ</td>
-                <td className="px-4 py-3 text-right font-mono">{formatNumber(commissionStatsTotal.hoaHong)} đ</td>
-                <td className="px-4 py-3 text-right font-mono text-emerald-700">{formatNumber(commissionStatsTotal.approved)} đ</td>
-                <td className="px-4 py-3 text-right font-mono text-amber-700">{formatNumber(commissionStatsTotal.pending)} đ</td>
-                <td className="px-4 py-3 text-right font-mono">{formatNumber(commissionStatsTotal.total)} đ</td>
-              </tr>
-            </tfoot>}
-          </table>
+        <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 xl:grid-cols-5">
+          <div className="rounded-xl bg-[#FAF8F5] p-3">
+            <p className="text-[10px] font-semibold uppercase text-stone-500">Tổng số phiếu</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-stone-900">{commissionStatsTotal.count}</p>
+          </div>
+          <div className="rounded-xl bg-[#FAF8F5] p-3">
+            <p className="text-[10px] font-semibold uppercase text-stone-500">Tiền show</p>
+            <p className="mt-1 text-lg font-bold tabular-nums text-stone-900">{formatNumber(commissionStatsTotal.show)} đ</p>
+          </div>
+          <div className="rounded-xl bg-[#FAF8F5] p-3">
+            <p className="text-[10px] font-semibold uppercase text-stone-500">Hoa hồng hợp đồng</p>
+            <p className="mt-1 text-lg font-bold tabular-nums text-stone-900">{formatNumber(commissionStatsTotal.hoaHong)} đ</p>
+          </div>
+          <div className="rounded-xl bg-emerald-50 p-3">
+            <p className="text-[10px] font-semibold uppercase text-emerald-700">Đã duyệt</p>
+            <p className="mt-1 text-lg font-bold tabular-nums text-emerald-800">{formatNumber(commissionStatsTotal.approved)} đ</p>
+          </div>
+          <div className="rounded-xl bg-amber-50 p-3">
+            <p className="text-[10px] font-semibold uppercase text-amber-700">Chờ duyệt</p>
+            <p className="mt-1 text-lg font-bold tabular-nums text-amber-800">{formatNumber(commissionStatsTotal.pending)} đ</p>
+          </div>
+          <div className="col-span-2 rounded-xl border border-[#E7DFD5] bg-white p-3 sm:col-span-1">
+            <p className="text-[10px] font-semibold uppercase text-stone-500">Tổng đề nghị</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-stone-900">{formatNumber(commissionStatsTotal.total)} đ</p>
+          </div>
         </div>
       </section>
 
