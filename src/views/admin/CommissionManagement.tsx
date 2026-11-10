@@ -342,55 +342,35 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
         </div>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="bg-white p-4 rounded-xl border border-[#E7DFD5] shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between text-xs">
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto"><div className="flex items-center gap-1.5"><span className="font-semibold text-stone-600">Chi nhánh:</span><select value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)} className="px-3 py-2 border border-stone-200 rounded-lg bg-white text-xs"><option value="ALL">Tất cả chi nhánh</option><option value="HP_DONG_XOAI">HP Đồng Xoài</option><option value="HP_BINH_LONG">HP Bình Long</option></select></div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-stone-600">Nhân viên:</span>
-            <select
-              value={selectedStaffId}
-              onChange={(e) => setSelectedStaffId(e.target.value)}
-              className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] bg-white text-xs"
-            >
+      {/* Filters: one employee, month, day and status */}
+      <div className="bg-white p-4 rounded-xl border border-[#E7DFD5] shadow-sm flex flex-col gap-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <label className="font-semibold text-stone-600">Nhân viên
+            <select value={selectedStaffId} onChange={(e) => { setSelectedStaffId(e.target.value); setShowPendingQueue(false); }} className="mt-1 w-full px-3 py-2 border border-stone-200 rounded-lg bg-white font-normal">
               <option value="">-- Chọn nhân viên --</option>
-              {staffList.map((s) => (
-                <option key={s.NhanVienID} value={s.NhanVienID}>
-                  {s.HoTen} ({s.NhanVienID})
-                </option>
-              ))}
+              {staffList.map((staff) => <option key={staff.NhanVienID} value={staff.NhanVienID}>{staff.HoTen}</option>)}
             </select>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-stone-600">Phân loại:</span>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] bg-white text-xs"
-            >
-              <option value="ALL">Tất cả (Tiền Show & Hoa Hồng)</option>
-              <option value="Tiền Show">Chỉ Tiền Đi Show</option>
-              <option value="Hoa Hồng">Chỉ Hoa Hồng Hợp Đồng</option>
+          </label>
+          <label className="font-semibold text-stone-600">Tháng
+            <input type="month" value={selectedMonth} onChange={(e) => { setSelectedMonth(e.target.value); setSelectedDate(''); setShowPendingQueue(false); }} className="mt-1 w-full px-3 py-2 border border-stone-200 rounded-lg bg-white font-normal" />
+          </label>
+          <label className="font-semibold text-stone-600">Ngày
+            <input type="date" value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setShowPendingQueue(false); }} className="mt-1 w-full px-3 py-2 border border-stone-200 rounded-lg bg-white font-normal" />
+          </label>
+          <label className="font-semibold text-stone-600">Trạng thái
+            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="mt-1 w-full px-3 py-2 border border-stone-200 rounded-lg bg-white font-normal">
+              <option value="ALL">Tất cả</option><option value="Chờ duyệt">Chờ duyệt ({pendingList.length})</option><option value="Đã duyệt">Đã duyệt</option><option value="Từ chối">Từ chối</option>
             </select>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-stone-600">Trạng thái:</span>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] bg-white text-xs"
-            >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="Chờ duyệt">Chờ duyệt ({pendingList.length})</option>
-              <option value="Đã duyệt">Đã duyệt</option>
-              <option value="Từ chối">Từ chối</option>
+          </label>
+          <label className="font-semibold text-stone-600">Loại khoản
+            <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} className="mt-1 w-full px-3 py-2 border border-stone-200 rounded-lg bg-white font-normal">
+              <option value="ALL">Tất cả</option><option value="Tiền Show">Tiền Show</option><option value="Hoa Hồng">Hoa Hồng</option>
             </select>
-          </div>
+          </label>
         </div>
-          <div className="flex items-center gap-1.5"><span className="font-semibold text-stone-600">Tháng:</span><input type="month" value={selectedMonth} onChange={(e) => { setSelectedMonth(e.target.value); setSelectedDate(''); setShowPendingQueue(false); }} className="px-3 py-2 border border-stone-200 rounded-lg bg-white text-xs" /></div>
-          <div className="flex items-center gap-1.5"><span className="font-semibold text-stone-600">Ngày:</span><input type="date" value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setShowPendingQueue(false); }} className="px-3 py-2 border border-stone-200 rounded-lg bg-white text-xs" /></div>
-          {showPendingQueue && <button type="button" onClick={() => { setShowPendingQueue(false); setSelectedStaffId(staffList[0]?.NhanVienID || ''); setSelectedDate(new Date().toISOString().slice(0, 10)); setSelectedStatus('ALL'); }} className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white">Quay lại xem theo nhân viên</button>}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] text-stone-500">{showPendingQueue ? 'Danh sách tất cả phiếu đang chờ duyệt trong tháng đã chọn.' : 'Chọn một nhân viên để xem các khoản thu nhập theo tháng và ngày.'}</p>
+          {showPendingQueue && <button type="button" onClick={() => { setShowPendingQueue(false); setSelectedStaffId(staffList[0]?.NhanVienID || ''); setSelectedDate(new Date().toISOString().slice(0, 10)); setSelectedStatus('ALL'); }} className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white">Quay lại theo nhân viên</button>}
         </div>
       </div>
 
