@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { gzipSync } from 'node:zlib';
 import dotenv from 'dotenv';
 import { dbService } from './server/db.ts';
+import { inventoryService } from './server/inventory.ts';
 import { automationManager } from './server/automation.ts';
 import type { NhanVien } from './src/types.ts';
 
@@ -659,6 +660,66 @@ app.get('/api/reports/contracts-revenue', authenticateToken, requireAdmin, (_req
   res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Server-Timing', `report;dur=${elapsedMs}`);
   return res.json({ contracts, receipts });
+});
+
+// Isolated bridal inventory API. Inventory records are stored in their own Firestore collections.
+app.get('/api/inventory/items', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await inventoryService.list({
+      limit: Number(req.query.limit) || 25,
+      cursor: String(req.query.cursor || ''),
+      category: String(req.query.category || ''),
+      status: String(req.query.status || ''),
+      q: String(req.query.q || ''),
+    });
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.json(result);
+  } catch (error: any) {
+    console.error('[INVENTORY] List failed:', error);
+    return res.status(500).json({ error: error.message || 'Không thể tải danh sách kho.' });
+  }
+});
+
+app.get('/api/inventory/items/:qrCode', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const item = await inventoryService.get(String(req.params.qrCode || '').toUpperCase());
+    if (!item) return res.status(404).json({ error: 'Không tìm thấy sản phẩm.' });
+    return res.json(item);
+  } catch (error: any) {
+    console.error('[INVENTORY] Detail failed:', error);
+    return res.status(500).json({ error: 'Không thể tải hồ sơ sản phẩm.' });
+  }
+});
+
+app.get('/api/inventory/items/:qrCode/history', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const item = await inventoryService.get(String(req.params.qrCode || '').toUpperCase());
+    if (!item) return res.status(404).json({ error: 'Không tìm thấy sản phẩm.' });
+    return res.json(await inventoryService.history(item.id));
+  } catch (error: any) {
+    console.error('[INVENTORY] History failed:', error);
+    return res.status(500).json({ error: 'Không thể tải lịch sử sản phẩm.' });
+  }
+});
+
+app.post('/api/inventory/items', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const item = await inventoryService.create(req.body || {}, req.user!.HoTen);
+    return res.status(201).json(item);
+  } catch (error: any) {
+    console.error('[INVENTORY] Create failed:', error);
+    return res.status(400).json({ error: error.message || 'Không thể tạo sản phẩm.' });
+  }
+});
+
+app.put('/api/inventory/items/:qrCode', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const item = await inventoryService.update(String(req.params.qrCode || '').toUpperCase(), req.body || {}, req.user!.HoTen);
+    return res.json(item);
+  } catch (error: any) {
+    console.error('[INVENTORY] Update failed:', error);
+    return res.status(400).json({ error: error.message || 'Không thể cập nhật sản phẩm.' });
+  }
 });
 
 app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => {
