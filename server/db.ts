@@ -790,7 +790,7 @@ class DatabaseService {
     for (const doc of docs) {
       const record = restoreFirestoreValue(doc.data()?.record) as HoaHong | undefined;
       const id = String(record?.HoaHongID || '').trim();
-      if (!id || id !== doc.id || ids.has(id)) {
+      if (!record || !id || id !== doc.id || ids.has(id)) {
         throw new Error(`[Firebase] Invalid/duplicate HOAHONG record in Firestore document ${doc.id}. Refusing unsafe migration/load.`);
       }
       ids.add(id);
