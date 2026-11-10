@@ -60,7 +60,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'chamcong', label: 'Chấm công', shortLabel: 'Chấm công', icon: Clock },
     { id: 'nghiphep', label: 'Duyệt nghỉ phép', shortLabel: 'Nghỉ phép', icon: CheckSquare },
     { id: 'luong', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
-    { id: 'vaycuoi', label: 'Kho váy & QR', shortLabel: 'Kho váy', icon: Shirt },
     { id: 'congviec', label: 'Công việc', shortLabel: 'Công việc', icon: CheckSquare },
     { id: 'hopdong', label: 'Hợp đồng', shortLabel: 'Hợp đồng', icon: FileText },
     { id: 'khovay', label: 'Váy & Phụ kiện', shortLabel: 'Kho váy', icon: Shirt },
