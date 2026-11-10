@@ -697,11 +697,11 @@ class DatabaseService {
             SYSTEM_CONFIG: loaded.SYSTEM_CONFIG || DEFAULT_CONFIG,
             THEME: loaded.THEME,
           };
+          const migrated = this.applyMigrations();
           // Activate the record-level commission ledger only after its one-time
           // migration has been fully verified. The original HOAHONG table is
           // deliberately retained as a rollback copy and is never deleted here.
           await this.initializeHoaHongRecordStorage(rootRef);
-          const migrated = this.applyMigrations();
           this.refreshKPIs();
           this.captureFirestoreSnapshots();
 
