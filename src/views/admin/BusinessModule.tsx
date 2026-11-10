@@ -741,27 +741,6 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
 
       {module === 'THU_CHI' && (
         <section className="space-y-4">
-          {!isEmployee && (() => {
-            const approved = filteredRecords.filter(r => ['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(r.DuLieu?.TrangThaiDuyet || '')));
-            const pending = filteredRecords.filter(r => !['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(r.DuLieu?.TrangThaiDuyet || '')));
-            const sum = (rows: QuanLyRecord[], type: string) => rows.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === type).reduce((n,r)=>n+Math.max(0,Number(r.DuLieu?.SoTien||0)),0);
-            const thu = sum(approved,'THU'), chi = sum(approved,'CHI');
-            return <div className="rounded-2xl border border-[#E7DFD5] bg-white p-4 sm:p-5 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-500">Tổng quan tài chính</p><h2 className="mt-1 text-lg font-bold text-stone-900">Thu chi đã được duyệt</h2></div>
-                <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">{cashflowMonthFilter || 'Tất cả thời gian'}</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4"><p className="text-xs font-semibold text-emerald-800">TỔNG THU ĐÃ DUYỆT</p><p className="mt-2 text-xl font-bold text-emerald-700">+{thu.toLocaleString('vi-VN')} đ</p></div>
-                <div className="rounded-xl bg-rose-50 border border-rose-100 p-4"><p className="text-xs font-semibold text-rose-800">TỔNG CHI ĐÃ DUYỆT</p><p className="mt-2 text-xl font-bold text-rose-700">-{chi.toLocaleString('vi-VN')} đ</p></div>
-                <div className="rounded-xl bg-stone-50 border border-stone-200 p-4"><p className="text-xs font-semibold text-stone-600">CHÊNH LỆCH THU – CHI</p><p className={`mt-2 text-xl font-bold ${thu-chi>=0?'text-stone-900':'text-rose-700'}`}>{(thu-chi).toLocaleString('vi-VN')} đ</p></div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-stone-600">
-                <span className="rounded-full bg-amber-50 px-3 py-1.5 font-semibold text-amber-800">{pending.length} phiếu chờ duyệt</span>
-                <span className="rounded-full bg-emerald-50 px-3 py-1.5 font-semibold text-emerald-800">{approved.length} phiếu đã duyệt</span>
-              </div>
-            </div>;
-          })()}
           <div className="rounded-2xl border border-[#E7DFD5] bg-white p-3 sm:p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div><h2 className="font-bold text-stone-900">Phân loại phiếu</h2><p className="mt-1 text-xs text-stone-500">Chọn nhóm để xem đúng khoản thu hoặc chi.</p></div>
