@@ -48,6 +48,8 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
   });
   const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
+  const [commissionHistoryDate, setCommissionHistoryDate] = useState<string>('');
+  const [commissionHistoryStaffId, setCommissionHistoryStaffId] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>(initialFilterStatus);
 
   // The commission ledger can be very large. Load only the selected payroll
@@ -252,6 +254,9 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
   const approvedCommissionTotal = monthCommissions
     .filter((item) => item.TrangThai === 'Đã duyệt')
     .reduce((sum, item) => sum + Number(item.SoTienHoaHong || 0), 0);
+  const approvedCommissionDates = Array.from(new Set(monthCommissions.filter((item) => item.TrangThai === 'Đã duyệt' && item.Ngay).map((item) => item.Ngay.slice(0, 10)))).sort((a, b) => b.localeCompare(a));
+  const activeCommissionDate = approvedCommissionDates.includes(commissionHistoryDate) ? commissionHistoryDate : (approvedCommissionDates[0] || '');
+  const selectedDayCommissions = monthCommissions.filter((item) => item.TrangThai === 'Đã duyệt' && (item.Ngay || '').slice(0, 10) === activeCommissionDate && (commissionHistoryStaffId === 'ALL' || item.NhanVienID === commissionHistoryStaffId));
   const pendingCommissionTotal = monthCommissions
     .filter((item) => item.TrangThai === 'Chờ duyệt')
     .reduce((sum, item) => sum + Number(item.SoTienHoaHong || 0), 0);
