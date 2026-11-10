@@ -1125,6 +1125,18 @@ app.post('/api/hoahong', authenticateToken, (req: AuthRequest, res: Response) =>
   }
 });
 
+app.put('/api/hoahong/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+  try {
+    const updated = dbService.updateHoaHong(req.params.id, req.body, {
+      HoTen: req.user!.HoTen,
+      Email: req.user!.Email,
+    });
+    return res.json({ message: 'Cập nhật phiếu hoa hồng thành công.', hoahong: updated });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
 app.post('/api/hoahong/:id/duyet', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   try {
     const { dongY } = req.body;
