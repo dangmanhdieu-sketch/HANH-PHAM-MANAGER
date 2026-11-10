@@ -496,14 +496,17 @@ function AppContent() {
               />
             )}
 
-            {currentTab === 'nghiphep' && <LeaveRequests currentUser={currentUser} isAdmin onRefresh={() => refreshTabData(currentTab)} />}
-
             {currentTab === 'chamcong' && (
-              <AttendanceManagement
-                attendanceList={attendanceList}
-                staffList={staffList}
-                onRefresh={() => refreshTabData(currentTab)}
-              />
+              <>
+                <AttendanceManagement
+                  attendanceList={attendanceList}
+                  staffList={staffList}
+                  onRefresh={() => refreshTabData(currentTab)}
+                />
+                <div className="mt-6">
+                  <LeaveRequests currentUser={currentUser} isAdmin onRefresh={() => refreshTabData(currentTab)} />
+                </div>
+              </>
             )}
 
             {currentTab === 'luong' && (
