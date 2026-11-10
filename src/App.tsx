@@ -29,6 +29,7 @@ import { AttendanceManagement } from './views/admin/AttendanceManagement';
 import { PayrollManagement } from './views/admin/PayrollManagement';
 import { AuditAndAutomation } from './views/admin/AuditAndAutomation';
 import { BusinessModule } from './views/admin/BusinessModule';
+import { BridalInventory } from './views/admin/BridalInventory';
 
 // Employee Views
 import { EmployeeDashboard } from './views/employee/EmployeeDashboard';
@@ -540,6 +541,7 @@ function AppContent() {
               />
             )}
 
+            {currentTab === 'khovay' && <BridalInventory />}
             {currentTab === 'congviec' && <BusinessModule module="CONG_VIEC" staffList={staffList} onRefresh={() => refreshTabData(currentTab)} />}
             {currentTab === 'hopdong' && <BusinessModule module="HOP_DONG" staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
             {currentTab === 'thuchi' && <BusinessModule module="THU_CHI" staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
