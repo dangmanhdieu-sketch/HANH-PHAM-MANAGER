@@ -1,0 +1,166 @@
+import { randomUUID } from 'node:crypto';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import type { InventoryCategory, InventoryEvent, InventoryItem, InventoryStatus } from '../src/types.ts';
+
+const ROOT_COLLECTION = process.env.FIREBASE_COLLECTION || 'hanh_pham_manager';
+const ROOT_DOCUMENT = process.env.FIREBASE_DOCUMENT || 'database';
+
+class InventoryService {
+  private firestore: Firestore | null = null;
+  private localItems = new Map<string, InventoryItem>();
+  private localEvents = new Map<string, InventoryEvent[]>();
+
+  constructor() {
+    try {
+      if (getApps().length > 0) {
+        this.firestore = getFirestore(getApps()[0]);
+      } else if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+        const credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+        const projectId = process.env.FIREBASE_EXPECTED_PROJECT_ID || 'hanhpham-manager-new';
+        if (credentials.project_id !== projectId) throw new Error('Firebase project mismatch.');
+        this.firestore = getFirestore(initializeApp({ credential: cert(credentials), projectId }));
+      }
+    } catch (error) {
+      console.error('[INVENTORY] Firestore initialization failed:', error);
+    }
+  }
+
+  private items() {
+    if (!this.firestore) throw new Error('Kho QR cần kết nối Firebase Firestore.');
+    return this.firestore.collection(ROOT_COLLECTION).doc(ROOT_DOCUMENT).collection('inventoryItems');
+  }
+
+  private events() {
+    if (!this.firestore) throw new Error('Kho QR cần kết nối Firebase Firestore.');
+    return this.firestore.collection(ROOT_COLLECTION).doc(ROOT_DOCUMENT).collection('inventoryEvents');
+  }
+
+  private async assertActiveWriter(transaction: FirebaseFirestore.Transaction) {
+    if (!this.firestore) throw new Error('Firestore chưa kết nối.');
+    const lease = this.firestore.collection(ROOT_COLLECTION).doc(ROOT_DOCUMENT).collection('_runtime').doc('activeWriter');
+    const snapshot = await transaction.get(lease);
+    if (snapshot.data()?.owner == null) throw new Error('Không xác nhận được máy chủ đang có quyền ghi dữ liệu.');
+  }
+
+  async list(options: { limit?: number; cursor?: string; category?: string; status?: string; q?: string }) {
+    const limit = Math.min(50, Math.max(1, Number(options.limit) || 25));
+    const q = String(options.q || '').trim().toLocaleLowerCase('vi');
+    if (!this.firestore) {
+      let rows = [...this.localItems.values()];
+      if (options.category) rows = rows.filter(x => x.category === options.category);
+      if (options.status) rows = rows.filter(x => x.status === options.status);
+      if (q) rows = rows.filter(x => x.qrCode.toLowerCase().includes(q) || x.name.toLocaleLowerCase('vi').includes(q));
+      const offset = Math.max(0, Number(options.cursor) || 0);
+      return { items: rows.slice(offset, offset + limit), nextCursor: offset + limit < rows.length ? String(offset + limit) : null };
+    }
+    if (q) {
+      const exact = await this.items().doc(q.toUpperCase()).get();
+      if (exact.exists) {
+        const item = exact.data() as InventoryItem;
+        if ((!options.category || item.category === options.category) && (!options.status || item.status === options.status)) return { items: [item], nextCursor: null };
+      }
+      const prefix = await this.items().orderBy('nameSearch').startAt(q).endAt(q + '\uf8ff').limit(limit).get();
+      const rows = prefix.docs.map(doc => doc.data() as InventoryItem)
+        .filter(item => (!options.category || item.category === options.category) && (!options.status || item.status === options.status));
+      return { items: rows, nextCursor: null };
+    }
+    let query: FirebaseFirestore.Query = this.items().orderBy('updatedAt', 'desc').limit(limit + 1);
+    if (options.category) query = query.where('category', '==', options.category);
+    if (options.status) query = query.where('status', '==', options.status);
+    if (options.cursor) {
+      const cursor = await this.items().doc(options.cursor).get();
+      if (cursor.exists) query = query.startAfter(cursor);
+    }
+    const snapshot = await query.get();
+    const docs = snapshot.docs.slice(0, limit);
+    return {
+      items: docs.map(doc => doc.data() as InventoryItem),
+      nextCursor: snapshot.docs.length > limit ? docs[docs.length - 1]?.id || null : null,
+    };
+  }
+
+  async get(id: string) {
+    if (!this.firestore) return this.localItems.get(id) || null;
+    const snapshot = await this.items().doc(id).get();
+    return snapshot.exists ? snapshot.data() as InventoryItem : null;
+  }
+
+  async create(input: Partial<InventoryItem>, actor: string) {
+    const name = String(input.name || '').trim();
+    if (!name) throw new Error('Vui lòng nhập tên sản phẩm.');
+    const category = String(input.category || '') as InventoryCategory;
+    if (!['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'].includes(category)) throw new Error('Danh mục sản phẩm không hợp lệ.');
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const item: InventoryItem = {
+      id,
+      qrCode: `HP-${category === 'Váy cưới' ? 'VAY' : category === 'Vest' ? 'VEST' : category === 'Áo dài' ? 'AODAI' : 'PK'}-${id.slice(0, 8).toUpperCase()}`,
+      name,
+      category,
+      size: String(input.size || '').trim(),
+      color: String(input.color || '').trim(),
+      collection: String(input.collection || '').trim(),
+      rentalPrice: Math.max(0, Number(input.rentalPrice) || 0),
+      salePrice: Math.max(0, Number(input.salePrice) || 0),
+      status: 'Có sẵn',
+      imageUrl: String(input.imageUrl || '').trim(),
+      notes: String(input.notes || '').trim(),
+      createdAt: now,
+      updatedAt: now,
+      createdBy: actor,
+    };
+    if (this.firestore) {
+      await this.firestore.runTransaction(async transaction => {
+        await this.assertActiveWriter(transaction);
+        transaction.create(this.items().doc(item.qrCode), { ...item, nameSearch: name.toLocaleLowerCase('vi') });
+        const event: InventoryEvent = { id: randomUUID(), itemId: item.id, action: 'Nhập kho', note: 'Tạo hồ sơ sản phẩm', performedBy: actor, createdAt: now };
+        transaction.create(this.events().doc(event.id), event);
+      });
+    } else {
+      this.localItems.set(item.qrCode, item);
+      this.localEvents.set(item.id, [{ id: randomUUID(), itemId: item.id, action: 'Nhập kho', note: 'Tạo hồ sơ sản phẩm', performedBy: actor, createdAt: now }]);
+    }
+    return item;
+  }
+
+  async update(qrCode: string, input: Partial<InventoryItem>, actor: string) {
+    const current = await this.get(qrCode);
+    if (!current) throw new Error('Không tìm thấy sản phẩm.');
+    if (current.status === 'Thanh lý') throw new Error('Sản phẩm đã thanh lý, không thể chỉnh sửa.');
+    const next: InventoryItem = {
+      ...current,
+      name: input.name === undefined ? current.name : String(input.name).trim(),
+      category: input.category === undefined ? current.category : input.category,
+      size: input.size === undefined ? current.size : String(input.size).trim(),
+      color: input.color === undefined ? current.color : String(input.color).trim(),
+      collection: input.collection === undefined ? current.collection : String(input.collection).trim(),
+      rentalPrice: input.rentalPrice === undefined ? current.rentalPrice : Math.max(0, Number(input.rentalPrice) || 0),
+      salePrice: input.salePrice === undefined ? current.salePrice : Math.max(0, Number(input.salePrice) || 0),
+      status: input.status === undefined ? current.status : input.status as InventoryStatus,
+      imageUrl: input.imageUrl === undefined ? current.imageUrl : String(input.imageUrl).trim(),
+      notes: input.notes === undefined ? current.notes : String(input.notes).trim(),
+      updatedAt: new Date().toISOString(),
+    };
+    if (!next.name || !['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'].includes(next.category)) throw new Error('Tên hoặc danh mục sản phẩm không hợp lệ.');
+    if (this.firestore) {
+      await this.firestore.runTransaction(async transaction => {
+        await this.assertActiveWriter(transaction);
+        transaction.set(this.items().doc(qrCode), { ...next, nameSearch: next.name.toLocaleLowerCase('vi') }, { merge: false });
+        if (next.status !== current.status) {
+          const event: InventoryEvent = { id: randomUUID(), itemId: current.id, action: next.status === 'Đang thuê' ? 'Xuất thuê' : next.status === 'Có sẵn' ? 'Trả kho' : 'Cập nhật', note: `Đổi tình trạng: ${current.status} → ${next.status}`, performedBy: actor, createdAt: next.updatedAt };
+          transaction.create(this.events().doc(event.id), event);
+        }
+      });
+    } else this.localItems.set(qrCode, next);
+    return next;
+  }
+
+  async history(id: string) {
+    if (!this.firestore) return this.localEvents.get(id) || [];
+    const snapshot = await this.events().where('itemId', '==', id).orderBy('createdAt', 'desc').limit(100).get();
+    return snapshot.docs.map(doc => doc.data() as InventoryEvent);
+  }
+}
+
+export const inventoryService = new InventoryService();
