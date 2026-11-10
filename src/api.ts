@@ -12,6 +12,8 @@ import type {
   AppDesignTheme,
   QuanLyRecord,
   QuanLyModule,
+  InventoryItem,
+  InventoryEvent,
 } from './types';
 
 const TOKEN_KEY = 'hanhpham_auth_token';
@@ -611,6 +613,33 @@ export const api = {
           method: 'DELETE',
         }
       );
+    },
+  },
+
+  // =========================================================
+  // QUẢN LÝ KHO QR
+  // =========================================================
+  inventory: {
+    async list(params?: { limit?: number; cursor?: string; category?: string; status?: string; q?: string }): Promise<{ items: InventoryItem[]; nextCursor: string | null }> {
+      const query = new URLSearchParams();
+      if (params?.limit) query.set('limit', String(params.limit));
+      if (params?.cursor) query.set('cursor', params.cursor);
+      if (params?.category) query.set('category', params.category);
+      if (params?.status) query.set('status', params.status);
+      if (params?.q) query.set('q', params.q);
+      return request(`/api/inventory/items?${query.toString()}`);
+    },
+    async get(qrCode: string): Promise<InventoryItem> {
+      return request(`/api/inventory/items/${encodeURIComponent(qrCode)}`);
+    },
+    async create(data: Partial<InventoryItem>): Promise<InventoryItem> {
+      return request('/api/inventory/items', { method: 'POST', body: JSON.stringify(data) });
+    },
+    async update(qrCode: string, data: Partial<InventoryItem>): Promise<InventoryItem> {
+      return request(`/api/inventory/items/${encodeURIComponent(qrCode)}`, { method: 'PUT', body: JSON.stringify(data) });
+    },
+    async history(qrCode: string): Promise<InventoryEvent[]> {
+      return request(`/api/inventory/items/${encodeURIComponent(qrCode)}/history`);
     },
   },
 
