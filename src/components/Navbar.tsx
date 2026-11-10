@@ -58,7 +58,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'dashboard', label: 'Tổng quan', shortLabel: 'Tổng quan', icon: BarChart3 },
     { id: 'nhanvien', label: 'Nhân viên', shortLabel: 'Nhân viên', icon: Users },
     { id: 'chamcong', label: 'Chấm công', shortLabel: 'Chấm công', icon: Clock },
-    { id: 'nghiphep', label: 'Duyệt nghỉ phép', shortLabel: 'Nghỉ phép', icon: CheckSquare },
     { id: 'luong', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
     { id: 'congviec', label: 'Công việc', shortLabel: 'Công việc', icon: CheckSquare },
     { id: 'hopdong', label: 'Hợp đồng', shortLabel: 'Hợp đồng', icon: FileText },
