@@ -713,6 +713,7 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
     }
 
     if (module === 'HOP_DONG') {
+      if (!['HP_DONG_XOAI', 'HP_BINH_LONG'].includes(String(payload.ChiNhanh || ''))) return res.status(400).json({ error: 'Vui lòng chọn chi nhánh HP Đồng Xoài hoặc HP Bình Long.' });
       if (!String(payload.KhachHang || '').trim() || !String(payload.SDT || '').trim() ||
           !String(payload.GoiDichVu || '').trim() || !Number.isFinite(Number(payload.TongGiaTri)) ||
           Number(payload.TongGiaTri) <= 0) {
@@ -760,6 +761,7 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
     }
 
     if (module === 'THU_CHI') {
+      if (!['HP_DONG_XOAI', 'HP_BINH_LONG'].includes(String(payload.ChiNhanh || ''))) return res.status(400).json({ error: 'Vui lòng chọn chi nhánh HP Đồng Xoài hoặc HP Bình Long.' });
       // Người lập phiếu luôn lấy từ tài khoản đang đăng nhập, kể cả Admin.
       payload.NhanVienID = req.user!.NhanVienID;
       payload.NhanVien = req.user!.HoTen || req.user!.TenDangNhap || req.user!.NhanVienID || 'Chưa xác định';
@@ -1087,6 +1089,7 @@ app.post('/api/hoahong', authenticateToken, (req: AuthRequest, res: Response) =>
   try {
     const user = req.user!;
     const payload = { ...req.body };
+    if (!['HP_DONG_XOAI', 'HP_BINH_LONG'].includes(String(payload.ChiNhanh || ''))) return res.status(400).json({ error: 'Vui lòng chọn chi nhánh HP Đồng Xoài hoặc HP Bình Long.' });
 
     // The authenticated server-side account is the only source of truth for
     // employee-submitted claims. Never trust a staff ID cached in the browser:
