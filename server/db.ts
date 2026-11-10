@@ -708,7 +708,9 @@ class DatabaseService {
           this.hoaHongPersistedSnapshots.clear();
           this.hoaHongDirtyIds.clear();
           this.hoaHongDeletedIds.clear();
-          console.warn('[Firebase] HOAHONG record-store migration deferred; using verified legacy table to keep API available.');
+          // Apply only incremental commission changes; the historical legacy table stays untouched.
+          await this.loadHoaHongMutationDeltas(rootRef);
+          console.info('[Firebase] Loaded incremental HOAHONG deltas:', this.hoaHongDirtyIds.size);
           this.captureFirestoreSnapshots();
 
           // Upgrade any legacy table document that is already too large for
@@ -941,6 +943,57 @@ class DatabaseService {
     console.log('[Firebase] HOAHONG record changes committed:', writes.length);
   }
 
+  private async loadHoaHongMutationDeltas(rootRef: FirebaseFirestore.DocumentReference): Promise<void> {
+    const snapshot = await rootRef.collection('hoaHongMutations').get();
+    if (snapshot.empty) return;
+    const byId = new Map((this.db.HOAHONG || []).map((record) => [String(record.HoaHongID), record]));
+    for (const doc of snapshot.docs) {
+      const payload = doc.data() || {};
+      if (payload.deleted === true) {
+        byId.delete(doc.id);
+        continue;
+      }
+      const record = restoreFirestoreValue(payload.record) as HoaHong | undefined;
+      if (!record || String(record.HoaHongID || '') !== doc.id) {
+        throw new Error(`[Firebase] Invalid HOAHONG mutation delta ${doc.id}; refusing unsafe startup.`);
+      }
+      byId.set(doc.id, record);
+    }
+    this.db.HOAHONG = Array.from(byId.values());
+  }
+
+  private async persistHoaHongMutationDeltas(): Promise<void> {
+    if (!this.firestore) throw new Error('[Firebase] Firestore unavailable for HOAHONG delta writes.');
+    const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+    const collection = rootRef.collection('hoaHongMutations');
+    const writes: Array<{ id: string; record?: HoaHong; deleted: boolean }> = [];
+    for (const id of this.hoaHongDirtyIds) {
+      const record = this.db.HOAHONG.find((item) => String(item.HoaHongID) === id);
+      if (!record) throw new Error(`[Firebase] Dirty HOAHONG record ${id} is missing; refusing partial write.`);
+      writes.push({ id, record, deleted: false });
+    }
+    for (const id of this.hoaHongDeletedIds) writes.push({ id, deleted: true });
+    if (!writes.length) return;
+    for (const item of writes) {
+      await this.firestore.runTransaction(async (transaction) => {
+        await this.assertFirestoreWriterLease(transaction);
+        const ref = collection.doc(item.id);
+        if (item.deleted) {
+          transaction.set(ref, { deleted: true, updatedAt: new Date().toISOString() }, { merge: false });
+        } else {
+          transaction.set(ref, { deleted: false, record: sanitizeFirestoreValue(item.record), updatedAt: new Date().toISOString() }, { merge: false });
+        }
+      });
+    }
+    for (const item of writes) {
+      if (item.record) this.hoaHongPersistedSnapshots.set(item.id, JSON.stringify(item.record));
+      else this.hoaHongPersistedSnapshots.delete(item.id);
+    }
+    this.hoaHongDirtyIds.clear();
+    this.hoaHongDeletedIds.clear();
+    console.info('[Firebase] HOAHONG incremental mutations committed:', writes.length);
+  }
+
   private captureFirestoreSnapshots(): void {
     for (const table of this.firestoreTables) {
       this.firestorePersistedSnapshots[table] = JSON.stringify((this.db as any)[table]);
@@ -949,9 +1002,8 @@ class DatabaseService {
 
   private getChangedFirestoreTables(): (typeof this.firestoreTables)[number][] {
     return this.firestoreTables.filter((table) => {
-      if (table === 'HOAHONG' && this.hoaHongRecordStorageEnabled) {
-        return this.hoaHongDirtyIds.size > 0 || this.hoaHongDeletedIds.size > 0;
-      }
+      // HOAHONG is persisted separately as changed records, never as a full history rewrite.
+      if (table === 'HOAHONG') return false;
       const current = JSON.stringify((this.db as any)[table]);
       return current !== this.firestorePersistedSnapshots[table];
     });
@@ -1165,18 +1217,12 @@ class DatabaseService {
         const diffStartedAt = Date.now();
         const changedTables = this.getChangedFirestoreTables();
         const diffMs = Date.now() - diffStartedAt;
-        const hoaHongChanged = changedTables.includes('HOAHONG');
-        const otherChangedTables = changedTables.filter((table) => table !== 'HOAHONG');
+        const hoaHongChanged = this.hoaHongDirtyIds.size > 0 || this.hoaHongDeletedIds.size > 0;
         const persistStartedAt = Date.now();
-        if (otherChangedTables.length > 0) {
-          await this.persistToFirestoreNow(otherChangedTables);
+        if (changedTables.length > 0) {
+          await this.persistToFirestoreNow(changedTables);
         }
-        if (hoaHongChanged && this.hoaHongRecordStorageEnabled) {
-          await this.persistHoaHongRecordChanges();
-        } else if (hoaHongChanged) {
-          // Safe fallback until the record collection migration is verified.
-          await this.persistToFirestoreNow(['HOAHONG']);
-        }
+        if (hoaHongChanged) await this.persistHoaHongMutationDeltas();
         console.info('[PERF] firestore-mutation-save', {
           queueWaitMs,
           diffMs,
@@ -1849,7 +1895,7 @@ class DatabaseService {
         if (approvedIds.has(item.HoaHongID)) {
           if (item.LuongID !== luong.LuongID) {
             item.LuongID = luong.LuongID;
-            if (this.hoaHongRecordStorageEnabled) this.hoaHongDirtyIds.add(item.HoaHongID);
+            this.hoaHongDirtyIds.add(item.HoaHongID);
           }
         } else if (item.LuongID === luong.LuongID) {
           delete item.LuongID;
@@ -2279,7 +2325,7 @@ class DatabaseService {
     };
 
     this.db.HOAHONG.unshift(newHoaHong);
-    if (this.hoaHongRecordStorageEnabled) this.hoaHongDirtyIds.add(newHoaHong.HoaHongID);
+    this.hoaHongDirtyIds.add(newHoaHong.HoaHongID);
     this.save();
 
     this.logAudit(
@@ -2316,7 +2362,7 @@ class DatabaseService {
     hh.TrangThai = nextStatus;
     hh.NgayDuyet = new Date().toISOString();
     hh.NguoiDuyet = adminUser.HoTen;
-    if (this.hoaHongRecordStorageEnabled) this.hoaHongDirtyIds.add(hh.HoaHongID);
+    this.hoaHongDirtyIds.add(hh.HoaHongID);
 
     // Chỉ đồng bộ bảng lương một lần cho mỗi lần đổi trạng thái.
     // Trước đây nhánh duyệt gọi syncHoaHongToLuong rồi đoạn phía dưới gọi lại lần hai.
@@ -2347,10 +2393,8 @@ class DatabaseService {
     if (!hh) throw new Error('Hoa hồng không tồn tại');
 
     this.db.HOAHONG = this.db.HOAHONG.filter((h) => h.HoaHongID !== id);
-    if (this.hoaHongRecordStorageEnabled) {
-      this.hoaHongDirtyIds.delete(id);
-      this.hoaHongDeletedIds.add(id);
-    }
+    this.hoaHongDirtyIds.delete(id);
+    this.hoaHongDeletedIds.add(id);
     const [year, month] = hh.Ngay.split('-');
     this.syncHoaHongToLuong(hh.NhanVienID, `${month}/${year}`);
     this.refreshKPIs();
