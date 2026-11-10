@@ -733,7 +733,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <button type="button" onClick={() => setCashflowCreateMenu(cashflowCreateMenu === 'THU' ? null : 'THU')} className="px-4 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2">
                   <Plus className="w-4 h-4" /> PHIẾU THU
                 </button>
-                {cashflowCreateMenu === 'THU' && <div className="absolute right-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-xl">
+                {cashflowCreateMenu === 'THU' && <div className="absolute left-0 top-full z-40 mt-2 w-52 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-xl">
                   <button type="button" onClick={() => {setCashflowSection('INTERNAL');setCashflowCreateMenu(null);openCreate('THU');}} className="block w-full px-4 py-3 text-left text-xs font-semibold text-stone-700 hover:bg-emerald-50">Thu nội bộ</button>
                   <button type="button" onClick={() => {setCashflowSection('CONTRACT');setCashflowCreateMenu(null);openCreate('THU');}} className="block w-full border-t border-stone-100 px-4 py-3 text-left text-xs font-semibold text-stone-700 hover:bg-emerald-50">Thu hợp đồng</button>
                 </div>}
@@ -778,7 +778,14 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       {module === 'THU_CHI' && !isEmployee && (
         <section className="rounded-2xl border border-[#E7DFD5] bg-white p-4 space-y-3">
           <div className="flex items-center justify-between gap-2"><div><h3 className="text-sm font-bold text-stone-900">Bộ lọc dữ liệu</h3><p className="text-xs text-stone-500 mt-1">Lọc theo tháng và nhân viên lập phiếu.</p></div><button type="button" onClick={() => {setCashflowStaffFilter('ALL');const now=new Date();setCashflowMonthFilter(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);setSearch('');}} className="rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-600">Đặt lại</button></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label className="text-xs font-semibold text-stone-600">Loại phiếu
+              <select value={cashflowSection} onChange={e=>setCashflowSection(e.target.value as 'ALL' | 'INTERNAL' | 'CONTRACT')} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900">
+                <option value="ALL">Tất cả thu chi</option>
+                <option value="INTERNAL">Thu chi nội bộ</option>
+                <option value="CONTRACT">Thu chi hợp đồng</option>
+              </select>
+            </label>
             <label className="text-xs font-semibold text-stone-600">Tháng<input type="month" value={cashflowMonthFilter} onChange={e=>setCashflowMonthFilter(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900"/></label>
             <label className="text-xs font-semibold text-stone-600">Nhân viên<select value={cashflowStaffFilter} onChange={e=>setCashflowStaffFilter(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900"><option value="ALL">Tất cả nhân viên</option>{staffList.map(staff=><option key={staff.NhanVienID} value={staff.NhanVienID}>{staff.HoTen}</option>)}</select></label>
           </div>
