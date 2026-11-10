@@ -18,7 +18,7 @@ import {
   User,
   Upload,
 } from 'lucide-react';
-import type { HoaHong, NhanVien, LoaiKhoanThuNhap } from '../../types';
+import type { HoaHong, NhanVien, LoaiKhoanThuNhap, TrangThaiHoaHong } from '../../types';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { api } from '../../api';
 
@@ -45,7 +45,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const [approveError, setApproveError] = useState<string | null>(null);
   // Reflect a completed server-side review locally; avoid a full app-wide reload
   // (which can freeze the mobile screen when the commission ledger is large).
-  const [reviewedStatuses, setReviewedStatuses] = useState<Record<string, string>>({});
+  const [reviewedStatuses, setReviewedStatuses] = useState<Record<string, TrangThaiHoaHong>>({});
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
