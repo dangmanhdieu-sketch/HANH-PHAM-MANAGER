@@ -862,9 +862,9 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
       )}
       {/* Modal: Detailed Luxury Payslip View & Print */}
       {previewPayslip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-[#E7DFD5] overflow-hidden flex flex-col max-h-[95vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7DFD5] bg-[#FAF8F5] print:hidden">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in">
+          <div className="w-full max-w-xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl border border-[#E7DFD5] overflow-hidden flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[95vh]">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#E7DFD5] bg-[#FAF8F5] print:hidden shrink-0">
               <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
                 PHIẾU LƯƠNG NHÂN SỰ
               </span>
@@ -877,18 +877,11 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                   <Printer className="w-3.5 h-3.5" />
                   <span>In Phiếu Lương</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewPayslip(null)}
-                  className="p-1.5 text-stone-400 hover:text-stone-700 rounded-full"
-                >
-                  <X className="w-5 h-5" />
-                </button>
               </div>
             </div>
 
             {/* Printable Content */}
-            <div id="payslip-print-area" className="p-8 space-y-6 overflow-y-auto">
+            <div id="payslip-print-area" className="p-5 sm:p-8 space-y-6 overflow-y-auto flex-1 min-h-0">
               {/* Studio Header */}
               <div className="text-center pb-4 border-b border-stone-200">
                 <h2 className="text-2xl font-bold font-bridal tracking-wider text-stone-900 uppercase">
@@ -994,6 +987,16 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                   <p className="font-bold text-stone-800">{previewPayslip.HoTen}</p>
                 </div>
               </div>
+            </div>
+            <div className="shrink-0 border-t border-[#E7DFD5] bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] print:hidden">
+              <button
+                type="button"
+                onClick={() => setPreviewPayslip(null)}
+                className="w-full min-h-12 flex items-center justify-center gap-2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-bold text-white shadow-sm active:scale-[0.99]"
+              >
+                <X className="w-5 h-5" />
+                ĐÓNG PHIẾU LƯƠNG · QUAY LẠI
+              </button>
             </div>
           </div>
         </div>
