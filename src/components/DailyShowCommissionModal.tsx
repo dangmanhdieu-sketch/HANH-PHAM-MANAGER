@@ -31,7 +31,7 @@ interface DailyShowCommissionModalProps {
     GhiChu?: string;
     TrangThaiThanhToan: 'Đã thanh toán' | 'Chưa thanh toán';
     PhuongThucThanhToan?: 'Chuyển khoản' | 'Tiền mặt' | '';
-  }) => Promise<void>;
+  }) => Promise<unknown>;
 }
 
 export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> = ({
