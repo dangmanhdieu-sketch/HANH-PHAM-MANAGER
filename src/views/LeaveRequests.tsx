@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CalendarDays, Check, Clock3, FileText, RefreshCw, X } from 'lucide-react';
+import { CalendarDays, Check, Clock3, FileText, RefreshCw, X, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import type { NhanVien, QuanLyRecord } from '../types';
 
@@ -63,6 +63,21 @@ export const LeaveRequests: React.FC<LeaveRequestsProps> = ({ currentUser, isAdm
       void onRefresh().catch((refreshError) => console.error('Làm mới sau gửi đơn nghỉ phép thất bại:', refreshError));
     } catch (error: any) {
       alert(error?.message || 'Không gửi được đơn nghỉ phép.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeLeaveRequest = async (record: QuanLyRecord) => {
+    const employeeName = record.DuLieu?.HoTen || currentUser.HoTen;
+    if (!window.confirm(`Xóa đơn nghỉ phép của ${employeeName} từ ${record.DuLieu?.TuNgay || ''} đến ${record.DuLieu?.DenNgay || ''}? Thao tác này không thể hoàn tác.`)) return;
+    setSaving(true);
+    try {
+      await api.quanLy.delete(record.QuanLyID);
+      await load();
+      await onRefresh();
+    } catch (error: any) {
+      alert(error?.message || 'Không thể xóa đơn nghỉ phép.');
     } finally {
       setSaving(false);
     }
@@ -158,6 +173,14 @@ export const LeaveRequests: React.FC<LeaveRequestsProps> = ({ currentUser, isAdm
                     </div>
                   )}
                   <div className="text-[11px] text-stone-400 inline-flex items-center gap-1"><Clock3 className="h-3 w-3" /> Gửi lúc {d.NgayGui ? new Date(d.NgayGui).toLocaleString('vi-VN') : new Date(record.TaoLuc).toLocaleString('vi-VN')}</div>
+                  {isAdmin && (
+                    <div className="flex justify-end border-t border-stone-100 pt-2">
+                      <button type="button" disabled={saving} onClick={() => void removeLeaveRequest(record)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50">
+                        <Trash2 className="h-3.5 w-3.5" /> Xóa đơn
+                      </button>
+                    </div>
+                  )}
                 </article>
               );
             })}
