@@ -20,6 +20,7 @@ interface DailyShowCommissionModalProps {
   currentUser: NhanVien;
   onSubmit: (data: {
     NhanVienID: string;
+    ChiNhanh: string;
     Ngay: string;
     NoiDung: string;
     LoaiKhoan: LoaiKhoanThuNhap;
@@ -39,7 +40,9 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
   currentUser,
   onSubmit,
 }) => {
-  const [loaiKhoan, setLoaiKhoan] = useState<LoaiKhoanThuNhap>('Tiền Show');
+  // Daily claims use the existing Tiền Show calculation; category selector removed.
+  const [loaiKhoan] = useState<LoaiKhoanThuNhap>('Tiền Show');
+  const [chiNhanh, setChiNhanh] = useState('');
   const [ngay, setNgay] = useState(new Date().toISOString().split('T')[0]);
   const [tenDichVu, setTenDichVu] = useState('');
   const [showTaskCustom, setShowTaskCustom] = useState(false);
@@ -114,6 +117,10 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!['HP_DONG_XOAI', 'HP_BINH_LONG'].includes(chiNhanh)) {
+      setFormError('Vui lòng chọn chi nhánh trước khi gửi kê khai.');
+      return;
+    }
     if (!tenDichVu.trim()) {
       setFormError('Vui lòng nhập tên dịch vụ hoặc nội dung công việc.');
       return;
@@ -134,6 +141,7 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
     try {
       await onSubmit({
         NhanVienID: currentUser.NhanVienID,
+        ChiNhanh: chiNhanh,
         Ngay: ngay,
         NoiDung: fullDescription,
         LoaiKhoan: loaiKhoan,
@@ -189,63 +197,21 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
             </div>
           )}
 
-          {/* Type Switcher: Tiền Show vs Hoa Hồng */}
+          {/* Branch is mandatory for every new daily declaration. */}
           <div>
             <label className="block text-stone-600 font-semibold mb-1.5">
-              Phân loại khoản thu nhập <span className="text-rose-500">*</span>
+              Chi nhánh <span className="text-rose-500">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setLoaiKhoan('Tiền Show');
-                  setShowTaskCustom(false);
-                  setTenDichVu('');
-                  setTienShow(0);
-                  setFormError(null);
-                }}
-                className={`py-3 px-4 rounded-xl border text-left transition flex items-center gap-3 ${
-                  loaiKhoan === 'Tiền Show'
-                    ? 'bg-stone-900 text-white border-stone-900 shadow-md'
-                    : 'bg-[#FAF8F5] text-stone-700 border-[#E7DFD5] hover:bg-stone-100'
-                }`}
-              >
-                <div className={`p-2 rounded-lg ${loaiKhoan === 'Tiền Show' ? 'bg-white/10 text-[#dfc79f]' : 'bg-white text-stone-600'}`}>
-                  <Award className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="font-bold text-xs uppercase tracking-wide">1. Tiền Đi Show</p>
-                  <p className={`text-[10px] ${loaiKhoan === 'Tiền Show' ? 'text-stone-300' : 'text-stone-400'}`}>
-                    Show makeup, photo tiệc, may đo
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setLoaiKhoan('Hoa Hồng');
-                  setShowTaskCustom(false);
-                  setTenDichVu('');
-                  setFormError(null);
-                }}
-                className={`py-3 px-4 rounded-xl border text-left transition flex items-center gap-3 ${
-                  loaiKhoan === 'Hoa Hồng'
-                    ? 'bg-stone-900 text-white border-stone-900 shadow-md'
-                    : 'bg-[#FAF8F5] text-stone-700 border-[#E7DFD5] hover:bg-stone-100'
-                }`}
-              >
-                <div className={`p-2 rounded-lg ${loaiKhoan === 'Hoa Hồng' ? 'bg-white/10 text-[#dfc79f]' : 'bg-white text-stone-600'}`}>
-                  <DollarSign className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="font-bold text-xs uppercase tracking-wide">2. Hoa Hồng Hợp Đồng</p>
-                  <p className={`text-[10px] ${loaiKhoan === 'Hoa Hồng' ? 'text-stone-300' : 'text-stone-400'}`}>
-                    Chốt hợp đồng váy cưới & dịch vụ
-                  </p>
-                </div>
-              </button>
-            </div>
+            <select
+              required
+              value={chiNhanh}
+              onChange={(e) => setChiNhanh(e.target.value)}
+              className="w-full px-3 py-2.5 border border-stone-200 rounded-lg bg-white focus:ring-1 focus:ring-[#bf954f]"
+            >
+              <option value="">-- Chọn chi nhánh --</option>
+              <option value="HP_DONG_XOAI">HP Đồng Xoài</option>
+              <option value="HP_BINH_LONG">HP Bình Long</option>
+            </select>
           </div>
 
           {/* Date & Customer Info */}
