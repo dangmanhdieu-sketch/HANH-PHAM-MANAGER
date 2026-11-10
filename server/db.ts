@@ -18,6 +18,9 @@ import type {
   AppDesignTheme,
   QuanLyRecord,
   QuanLyModule,
+  VayCuoiItem,
+  LoaiSanPhamKho,
+  TrangThaiSanPhamKho,
 } from '../src/types.ts';
 
 export const DEFAULT_THEME: AppDesignTheme = {
@@ -2540,6 +2543,123 @@ class DatabaseService {
     this.save();
     this.logAudit(adminUser.HoTen, adminUser.Email, `Xóa ${removed.Module}`, id);
     return { message: 'Xóa dữ liệu thành công.' };
+  }
+
+  // Bridal inventory is stored in its own Firestore subcollection. It is
+  // intentionally excluded from the legacy database table snapshots so a
+  // 1,000-3,000 item catalog never gets serialized during payroll mutations.
+  private getVayCuoiCollection() {
+    if (!this.firestoreEnabled || !this.firestore) {
+      throw new Error('Kho váy cưới chưa kết nối Firestore. Dữ liệu chưa được lưu.');
+    }
+    return this.firestore
+      .collection(this.firestoreCollection)
+      .doc(this.firestoreDocument)
+      .collection('bridalInventory')
+      .doc('catalog')
+      .collection('items');
+  }
+
+  public async listVayCuoiItems(limit = 30, cursor?: string): Promise<{ items: VayCuoiItem[]; nextCursor: string | null }> {
+    await this.waitUntilReady();
+    const safeLimit = Math.min(50, Math.max(1, Math.floor(limit) || 30));
+    let query = this.getVayCuoiCollection().orderBy('CapNhatLuc', 'desc').limit(safeLimit);
+    if (cursor) {
+      const cursorSnap = await this.getVayCuoiCollection().doc(cursor).get();
+      if (!cursorSnap.exists) throw new Error('Mốc phân trang không còn tồn tại. Vui lòng tải lại danh sách.');
+      query = query.startAfter(cursorSnap);
+    }
+    const snap = await query.get();
+    const items = snap.docs.map((doc) => doc.data() as VayCuoiItem);
+    return { items, nextCursor: snap.docs.length === safeLimit ? snap.docs[snap.docs.length - 1].id : null };
+  }
+
+  public async getVayCuoiItemByQr(maQR: string): Promise<VayCuoiItem | null> {
+    await this.waitUntilReady();
+    const normalized = String(maQR || '').trim().toUpperCase();
+    if (!normalized) return null;
+    const snap = await this.getVayCuoiCollection().doc(normalized).get();
+    return snap.exists ? (snap.data() as VayCuoiItem) : null;
+  }
+
+  public async createVayCuoiItem(data: Partial<VayCuoiItem>, actor: string): Promise<VayCuoiItem> {
+    await this.waitUntilReady();
+    const name = String(data.TenSanPham || '').trim();
+    const category = String(data.LoaiSanPham || '') as LoaiSanPhamKho;
+    const allowedCategories: LoaiSanPhamKho[] = ['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'];
+    if (!name || !allowedCategories.includes(category)) throw new Error('Vui lòng nhập tên và loại sản phẩm hợp lệ.');
+    const now = new Date().toISOString();
+    const id = 'HP-' + randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase();
+    const item: VayCuoiItem = {
+      VayCuoiID: id,
+      MaQR: id,
+      TenSanPham: name.slice(0, 160),
+      LoaiSanPham: category,
+      BoSuuTap: String(data.BoSuuTap || '').slice(0, 100),
+      Size: String(data.Size || '').slice(0, 40),
+      MauSac: String(data.MauSac || '').slice(0, 60),
+      GiaNhap: Math.max(0, Number(data.GiaNhap || 0)),
+      GiaThue: Math.max(0, Number(data.GiaThue || 0)),
+      GiaBan: Math.max(0, Number(data.GiaBan || 0)),
+      AnhUrl: String(data.AnhUrl || '').trim().slice(0, 1500),
+      TrangThai: 'Có sẵn',
+      ViTri: String(data.ViTri || '').slice(0, 100),
+      TinhTrang: String(data.TinhTrang || 'Tốt').slice(0, 100),
+      GhiChu: String(data.GhiChu || '').slice(0, 1000),
+      TaoLuc: now,
+      CapNhatLuc: now,
+      TaoBoi: actor,
+      CapNhatBoi: actor,
+    };
+    const collection = this.getVayCuoiCollection();
+    const ref = collection.doc(id);
+    await this.firestore!.runTransaction(async (transaction) => {
+      await this.assertFirestoreWriterLease(transaction);
+      const existing = await transaction.get(ref);
+      if (existing.exists) throw new Error('Mã QR bị trùng. Vui lòng tạo lại sản phẩm.');
+      transaction.create(ref, item);
+    });
+    return item;
+  }
+
+  public async updateVayCuoiItem(id: string, data: Partial<VayCuoiItem>, actor: string): Promise<VayCuoiItem> {
+    await this.waitUntilReady();
+    const ref = this.getVayCuoiCollection().doc(String(id || '').trim().toUpperCase());
+    const allowedCategories: LoaiSanPhamKho[] = ['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'];
+    const allowedStatuses: TrangThaiSanPhamKho[] = ['Có sẵn', 'Đã đặt', 'Đang thuê', 'Đang giặt', 'Đang sửa', 'Hư hỏng', 'Thanh lý'];
+    let updated: VayCuoiItem | null = null;
+    await this.firestore!.runTransaction(async (transaction) => {
+      await this.assertFirestoreWriterLease(transaction);
+      const snap = await transaction.get(ref);
+      if (!snap.exists) throw new Error('Không tìm thấy sản phẩm trong kho.');
+      const current = snap.data() as VayCuoiItem;
+      const name = data.TenSanPham === undefined ? current.TenSanPham : String(data.TenSanPham).trim();
+      const category = (data.LoaiSanPham === undefined ? current.LoaiSanPham : data.LoaiSanPham) as LoaiSanPhamKho;
+      const status = (data.TrangThai === undefined ? current.TrangThai : data.TrangThai) as TrangThaiSanPhamKho;
+      if (!name || !allowedCategories.includes(category) || !allowedStatuses.includes(status)) {
+        throw new Error('Tên, loại sản phẩm hoặc tình trạng không hợp lệ.');
+      }
+      updated = {
+        ...current,
+        TenSanPham: name.slice(0, 160),
+        LoaiSanPham: category,
+        BoSuuTap: data.BoSuuTap === undefined ? current.BoSuuTap : String(data.BoSuuTap).slice(0, 100),
+        Size: data.Size === undefined ? current.Size : String(data.Size).slice(0, 40),
+        MauSac: data.MauSac === undefined ? current.MauSac : String(data.MauSac).slice(0, 60),
+        GiaNhap: data.GiaNhap === undefined ? current.GiaNhap : Math.max(0, Number(data.GiaNhap || 0)),
+        GiaThue: data.GiaThue === undefined ? current.GiaThue : Math.max(0, Number(data.GiaThue || 0)),
+        GiaBan: data.GiaBan === undefined ? current.GiaBan : Math.max(0, Number(data.GiaBan || 0)),
+        AnhUrl: data.AnhUrl === undefined ? current.AnhUrl : String(data.AnhUrl || '').trim().slice(0, 1500),
+        TrangThai: status,
+        ViTri: data.ViTri === undefined ? current.ViTri : String(data.ViTri).slice(0, 100),
+        TinhTrang: data.TinhTrang === undefined ? current.TinhTrang : String(data.TinhTrang).slice(0, 100),
+        GhiChu: data.GhiChu === undefined ? current.GhiChu : String(data.GhiChu).slice(0, 1000),
+        CapNhatLuc: new Date().toISOString(),
+        CapNhatBoi: actor,
+      };
+      transaction.set(ref, updated);
+    });
+    return updated!;
   }
 
   public getRawData(): DatabaseSchema {
