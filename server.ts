@@ -722,6 +722,58 @@ app.put('/api/inventory/items/:qrCode', authenticateToken, requireAdmin, async (
   }
 });
 
+// ==========================================
+// BRIDAL INVENTORY (ISOLATED FIRESTORE COLLECTION)
+// ==========================================
+app.get('/api/vay-cuoi', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const limit = Number(req.query.limit || 30);
+    const cursor = String(req.query.cursor || '');
+    const result = await dbService.listVayCuoiItems(limit, cursor || undefined);
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(503).json({ error: err.message || 'Không thể tải kho sản phẩm.' });
+  }
+});
+
+app.get('/api/vay-cuoi/qr/:maQR', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const item = await dbService.getVayCuoiItemByQr(String(req.params.maQR || ''));
+    if (!item) return res.status(404).json({ error: 'Không tìm thấy mã QR sản phẩm.' });
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.json(item);
+  } catch (err: any) {
+    return res.status(503).json({ error: err.message || 'Không thể tra cứu mã QR.' });
+  }
+});
+
+app.post('/api/vay-cuoi', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const payload = { ...(req.body || {}) };
+    if (payload.AnhUrl && !/^https?:\/\//i.test(String(payload.AnhUrl))) {
+      return res.status(400).json({ error: 'Đường dẫn ảnh phải bắt đầu bằng http:// hoặc https://.' });
+    }
+    const item = await dbService.createVayCuoiItem(payload, req.user!.HoTen);
+    return res.status(201).json(item);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Không thể thêm sản phẩm vào kho.' });
+  }
+});
+
+app.put('/api/vay-cuoi/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const payload = { ...(req.body || {}) };
+    if (payload.AnhUrl && !/^https?:\/\//i.test(String(payload.AnhUrl))) {
+      return res.status(400).json({ error: 'Đường dẫn ảnh phải bắt đầu bằng http:// hoặc https://.' });
+    }
+    const item = await dbService.updateVayCuoiItem(String(req.params.id || ''), payload, req.user!.HoTen);
+    return res.json(item);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Không thể cập nhật sản phẩm.' });
+  }
+});
+
 app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => {
   const module = req.query.module as any;
   let records = dbService.getQuanLyRecords(module || undefined);
