@@ -65,17 +65,20 @@ class InventoryService {
         .filter(item => (!options.category || item.category === options.category) && (!options.status || item.status === options.status));
       return { items: rows, nextCursor: null };
     }
+    // Keep the primary query on the single-field updatedAt index. Category/status
+    // filters are applied to the small page in memory to avoid requiring composite
+    // indexes or scanning the complete 3,000-item collection.
     let query: FirebaseFirestore.Query = this.items().orderBy('updatedAt', 'desc').limit(limit + 1);
-    if (options.category) query = query.where('category', '==', options.category);
-    if (options.status) query = query.where('status', '==', options.status);
     if (options.cursor) {
       const cursor = await this.items().doc(options.cursor).get();
       if (cursor.exists) query = query.startAfter(cursor);
     }
     const snapshot = await query.get();
     const docs = snapshot.docs.slice(0, limit);
+    const pageItems = docs.map(doc => doc.data() as InventoryItem)
+      .filter(item => (!options.category || item.category === options.category) && (!options.status || item.status === options.status));
     return {
-      items: docs.map(doc => doc.data() as InventoryItem),
+      items: pageItems,
       nextCursor: snapshot.docs.length > limit ? docs[docs.length - 1]?.id || null : null,
     };
   }
