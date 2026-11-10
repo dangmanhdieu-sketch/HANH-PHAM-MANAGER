@@ -295,6 +295,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     setCashflowType(loai);
     if (module === 'THU_CHI') {
       setFormData({
+        ChiNhanh: 'HP_DONG_XOAI',
         Ngay: getTodayLocal(),
         Loai: loai,
         NhanVienID: currentUser?.NhanVienID || '',
@@ -303,7 +304,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         TrangThaiDuyet: isEmployee ? 'Chờ Admin duyệt' : 'Đã duyệt',
       });
     } else {
-      setFormData(module === 'HOP_DONG' ? { NgayTao: getTodayLocal(), TongGiaTri: 0, GiaGoiBanDau: 0, GiamGiaTrucTiep: 0, ChietKhauPhanTram: 0, KhuyenMaiBoSung: 0, PhuThuDichVu: 0, TienDatCoc: 0, LichThanhToan: defaultInstallments(), TrangThai: 'Đã xác nhận', LoaiDichVu: 'Trọn gói cưới' } : {});
+      setFormData(module === 'HOP_DONG' ? { ChiNhanh: 'HP_DONG_XOAI', NgayTao: getTodayLocal(), TongGiaTri: 0, GiaGoiBanDau: 0, GiamGiaTrucTiep: 0, ChietKhauPhanTram: 0, KhuyenMaiBoSung: 0, PhuThuDichVu: 0, TienDatCoc: 0, LichThanhToan: defaultInstallments(), TrangThai: 'Đã xác nhận', LoaiDichVu: 'Trọn gói cưới' } : {});
     }
     setFormOpen(true);
   };
@@ -1076,7 +1077,6 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               <section className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4">
                 <label className="block text-sm font-bold text-stone-900 mb-2">CHI NHÁNH LẬP HỢP ĐỒNG *</label>
                 <select required={!editing} value={String(formData.ChiNhanh || '')} onChange={e => setFormData(prev => ({...prev, ChiNhanh: e.target.value}))} className="w-full rounded-lg border-2 border-stone-400 bg-white p-3 text-base">
-                  <option value="">-- BẮT BUỘC CHỌN CHI NHÁNH --</option>
                   <option value="HP_DONG_XOAI">HP Đồng Xoài</option>
                   <option value="HP_BINH_LONG">HP Bình Long</option>
                 </select>
@@ -1188,7 +1188,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <div><label className="block text-xs font-semibold mb-1">Phương thức thanh toán</label>
                   <select value={String(formData.PhuongThucThanhToan ?? 'Tiền mặt')} onChange={e=>setFormData({...formData,PhuongThucThanhToan:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option>Tiền mặt</option><option>Chuyển khoản</option></select></div>
                 <div><label className="block text-xs font-semibold mb-1">Liên kết hợp đồng</label>
-                  <select value={String(formData.HopDongQuanLyID || '')} onChange={e=>{const contract=contractRecords.find(r=>r.QuanLyID===e.target.value);const d=contract?.DuLieu||{};const code=String(d.MaHopDong||contract?.QuanLyID||'');const name=String(d.KhachHang||'');setFormData({...formData,HopDongQuanLyID:contract?.QuanLyID||'',HopDongID:code,MaHopDong:code,TenHopDong:name,DoiTuong:name,DanhMuc:cashflowType==='THU'?(`Thu tiền hợp đồng ${code} - ${name}`):String(formData.DanhMuc||''),NoiDungThu:cashflowType==='THU'?(`Thu tiền hợp đồng ${code} - ${name}`):String(formData.NoiDungThu||'')})}} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option value="">-- Không liên kết hợp đồng --</option>{contractRecords.map(r=>{const d=r.DuLieu||{};return <option key={r.QuanLyID} value={r.QuanLyID}>{String(d.MaHopDong||r.QuanLyID)} · {String(d.KhachHang||'Chưa có tên')}</option>})}</select>{Boolean(formData.HopDongID) && <p className="text-xs text-stone-500 mt-1">Mã: {String(formData.HopDongID)} · Khách hàng: {String(formData.TenHopDong||formData.DoiTuong||'')}</p>}</div>
+                  <select value={String(formData.HopDongQuanLyID || '')} onChange={e=>{const contract=contractRecords.find(r=>r.QuanLyID===e.target.value);const d=contract?.DuLieu||{};const code=String(d.MaHopDong||contract?.QuanLyID||'');const name=String(d.KhachHang||'');setFormData({...formData,ChiNhanh:String(d.ChiNhanh || formData.ChiNhanh || 'HP_DONG_XOAI'),HopDongQuanLyID:contract?.QuanLyID||'',HopDongID:code,MaHopDong:code,TenHopDong:name,DoiTuong:name,DanhMuc:cashflowType==='THU'?(`Thu tiền hợp đồng ${code} - ${name}`):String(formData.DanhMuc||''),NoiDungThu:cashflowType==='THU'?(`Thu tiền hợp đồng ${code} - ${name}`):String(formData.NoiDungThu||'')})}} className="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option value="">-- Không liên kết hợp đồng --</option>{contractRecords.map(r=>{const d=r.DuLieu||{};return <option key={r.QuanLyID} value={r.QuanLyID}>{String(d.MaHopDong||r.QuanLyID)} · {String(d.KhachHang||'Chưa có tên')}</option>})}</select>{Boolean(formData.HopDongID) && <p className="text-xs text-stone-500 mt-1">Mã: {String(formData.HopDongID)} · Khách hàng: {String(formData.TenHopDong||formData.DoiTuong||'')}</p>}</div>
                 <div>
                   <label className="block text-xs font-semibold mb-2">Ảnh chứng từ</label>
                   <div className="flex flex-wrap gap-2">
