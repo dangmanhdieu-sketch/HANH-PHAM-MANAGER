@@ -43,6 +43,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const [approveConfirmHH, setApproveConfirmHH] = useState<{ hh: HoaHong; dongY: boolean } | null>(null);
   const [approvingHH, setApprovingHH] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
+  const [reviewNotice, setReviewNotice] = useState<string | null>(null);
   // Reflect a completed server-side review locally; avoid a full app-wide reload
   // (which can freeze the mobile screen when the commission ledger is large).
   const [reviewedStatuses, setReviewedStatuses] = useState<Record<string, TrangThaiHoaHong>>({});
@@ -178,32 +179,35 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
 
   const handleApproveAction = async () => {
     if (!approveConfirmHH || approvingHH) return;
-    setApprovingHH(true);
+    const action = approveConfirmHH;
+    const reviewedId = action.hh.HoaHongID;
+    const previousStatus = action.hh.TrangThai;
+    const nextStatus: TrangThaiHoaHong = action.dongY ? 'Đã duyệt' : 'Từ chối';
+
+    // Close the confirmation immediately and reflect the decision locally.
+    // Firestore acknowledgement continues in the background so a slow write
+    // cannot leave the admin staring at a permanent loading dialog.
+    setReviewedStatuses((prev) => ({ ...prev, [reviewedId]: nextStatus }));
+    setApproveConfirmHH(null);
     setApproveError(null);
-    console.info('[Commission] Admin confirmed approval action:', {
-      commissionId: approveConfirmHH.hh.HoaHongID,
-      approve: approveConfirmHH.dongY,
+    setApprovingHH(false);
+    setReviewNotice('Đã ghi nhận thao tác. Đang đồng bộ quyết định và cập nhật bảng lương...');
+
+    void api.commission.approve(reviewedId, action.dongY).then((result) => {
+      console.info('[Commission] Background approval API completed:', result?.message || 'OK');
+      setReviewNotice('Máy chủ đã xác nhận lưu quyết định duyệt hoa hồng.');
+    }).catch((err: any) => {
+      console.error('[Commission] Background approval failed:', err);
+      setReviewedStatuses((prev) => {
+        const next = { ...prev };
+        if (previousStatus) next[reviewedId] = previousStatus;
+        else delete next[reviewedId];
+        return next;
+      });
+      setReviewNotice(err?.message
+        ? `Chưa xác nhận được quyết định từ máy chủ: ${err.message}. Vui lòng kiểm tra trạng thái trước khi thao tác lại.`
+        : 'Chưa xác nhận được quyết định từ máy chủ. Vui lòng kiểm tra trạng thái trước khi thao tác lại.');
     });
-    try {
-      const result = await api.commission.approve(
-        approveConfirmHH.hh.HoaHongID,
-        approveConfirmHH.dongY
-      );
-      console.info('[Commission] Approval API completed:', result?.message || 'OK');
-      // The server has already saved the decision and synchronized payroll.
-      // Update this ledger immediately instead of reloading every app module.
-      const reviewedId = approveConfirmHH.hh.HoaHongID;
-      const nextStatus = approveConfirmHH.dongY ? 'Đã duyệt' : 'Từ chối';
-      setReviewedStatuses((prev) => ({ ...prev, [reviewedId]: nextStatus }));
-      setApproveConfirmHH(null);
-      setApproveError(null);
-    } catch (err: any) {
-      const message = err?.message || 'Không thể kết nối máy chủ để duyệt hoa hồng.';
-      console.error('[Commission] Approval failed:', err);
-      setApproveError(message);
-    } finally {
-      setApprovingHH(false);
-    }
   };
 
   const handleDelete = async () => {
@@ -266,6 +270,13 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           </button>
         </div>
       </div>
+
+      {reviewNotice && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
+          {reviewNotice}
+          <button type="button" onClick={() => setReviewNotice(null)} className="ml-3 font-bold underline">Đóng</button>
+        </div>
+      )}
 
       {/* PENDING NOTIFICATION STRIP FOR ADMIN */}
       {pendingList.length > 0 && (
