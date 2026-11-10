@@ -43,7 +43,6 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const [approveConfirmHH, setApproveConfirmHH] = useState<{ hh: HoaHong; dongY: boolean } | null>(null);
   const [approvingHH, setApprovingHH] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
-  const [reviewNotice, setReviewNotice] = useState<string | null>(null);
   // Reflect a completed server-side review locally; avoid a full app-wide reload
   // (which can freeze the mobile screen when the commission ledger is large).
   const [reviewedStatuses, setReviewedStatuses] = useState<Record<string, TrangThaiHoaHong>>({});
@@ -179,34 +178,32 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
 
   const handleApproveAction = async () => {
     if (!approveConfirmHH || approvingHH) return;
-    const action = approveConfirmHH;
-    const reviewedId = action.hh.HoaHongID;
-    const nextStatus: TrangThaiHoaHong = action.dongY ? 'Đã duyệt' : 'Từ chối';
-
-    // Close the confirmation immediately and reflect the decision locally.
-    // Firestore acknowledgement continues in the background so a slow write
-    // cannot leave the admin staring at a permanent loading dialog.
-    setReviewedStatuses((prev) => ({ ...prev, [reviewedId]: nextStatus }));
-    setApproveConfirmHH(null);
+    setApprovingHH(true);
     setApproveError(null);
-    setApprovingHH(false);
-    setReviewNotice('Đã ghi nhận thao tác. Đang đồng bộ quyết định và cập nhật bảng lương...');
-
-    void api.commission.approve(reviewedId, action.dongY).then((result) => {
-      const confirmedStatus = result?.hoahong?.TrangThai || nextStatus;
-      setReviewedStatuses((prev) => ({ ...prev, [reviewedId]: confirmedStatus }));
-      console.info('[Commission] Background approval API completed:', result?.message || 'OK');
-      setReviewNotice('Máy chủ đã xác nhận lưu quyết định duyệt hoa hồng.');
-    }).catch((err: any) => {
-      console.error('[Commission] Background approval could not be confirmed:', err);
-      // Do not restore this item to the pending queue automatically. The server
-      // may have applied the decision even if the response/persistence check
-      // timed out. Re-showing it invites duplicate taps and duplicate payroll
-      // work. Backend duyetHoaHong is idempotent for an already-reviewed item.
-      setReviewNotice(err?.message
-        ? `Đã ghi nhận thao tác trên giao diện nhưng máy chủ chưa xác nhận: ${err.message}. Phiếu được giữ khỏi hàng chờ để tránh duyệt lặp; hãy kiểm tra dữ liệu trước khi thao tác lại.`
-        : 'Máy chủ chưa xác nhận phản hồi. Phiếu được giữ khỏi hàng chờ để tránh duyệt lặp; hãy kiểm tra dữ liệu trước khi thao tác lại.');
+    console.info('[Commission] Admin confirmed approval action:', {
+      commissionId: approveConfirmHH.hh.HoaHongID,
+      approve: approveConfirmHH.dongY,
     });
+    try {
+      const result = await api.commission.approve(
+        approveConfirmHH.hh.HoaHongID,
+        approveConfirmHH.dongY
+      );
+      console.info('[Commission] Approval API completed:', result?.message || 'OK');
+      // Only update the visible status and close the confirmation after the
+      // server confirms that the review and payroll synchronization completed.
+      const reviewedId = approveConfirmHH.hh.HoaHongID;
+      const nextStatus = approveConfirmHH.dongY ? 'Đã duyệt' : 'Từ chối';
+      setReviewedStatuses((prev) => ({ ...prev, [reviewedId]: nextStatus }));
+      setApproveConfirmHH(null);
+      setApproveError(null);
+    } catch (err: any) {
+      const message = err?.message || 'Không thể kết nối máy chủ để duyệt hoa hồng.';
+      console.error('[Commission] Approval failed:', err);
+      setApproveError(message);
+    } finally {
+      setApprovingHH(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -269,13 +266,6 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           </button>
         </div>
       </div>
-
-      {reviewNotice && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
-          {reviewNotice}
-          <button type="button" onClick={() => setReviewNotice(null)} className="ml-3 font-bold underline">Đóng</button>
-        </div>
-      )}
 
       {/* PENDING NOTIFICATION STRIP FOR ADMIN */}
       {pendingList.length > 0 && (
