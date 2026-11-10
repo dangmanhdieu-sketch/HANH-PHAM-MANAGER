@@ -29,7 +29,7 @@ import { AttendanceManagement } from './views/admin/AttendanceManagement';
 import { PayrollManagement } from './views/admin/PayrollManagement';
 import { AuditAndAutomation } from './views/admin/AuditAndAutomation';
 import { BusinessModule } from './views/admin/BusinessModule';
-import { BridalInventory } from './views/admin/BridalInventory';
+const BridalInventory = React.lazy(() => import('./views/admin/BridalInventory').then(module => ({ default: module.BridalInventory })));
 
 // Employee Views
 import { EmployeeDashboard } from './views/employee/EmployeeDashboard';
@@ -541,7 +541,7 @@ function AppContent() {
               />
             )}
 
-            {currentTab === 'khovay' && <BridalInventory />}
+            {currentTab === 'khovay' && <React.Suspense fallback={<div className="rounded-2xl border border-[#E7DFD5] bg-white p-8 text-center text-sm text-stone-500">Đang mở quản lý kho...</div>}><BridalInventory /></React.Suspense>}
             {currentTab === 'congviec' && <BusinessModule module="CONG_VIEC" staffList={staffList} onRefresh={() => refreshTabData(currentTab)} />}
             {currentTab === 'hopdong' && <BusinessModule module="HOP_DONG" staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
             {currentTab === 'thuchi' && <BusinessModule module="THU_CHI" staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
