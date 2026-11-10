@@ -16,6 +16,7 @@ import {
   CheckSquare,
   FileText,
   Wallet,
+  Shirt,
 } from 'lucide-react';
 
 import type { NhanVien, ThongBao } from '../types';
@@ -61,6 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'luong', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
     { id: 'congviec', label: 'Công việc', shortLabel: 'Công việc', icon: CheckSquare },
     { id: 'hopdong', label: 'Hợp đồng', shortLabel: 'Hợp đồng', icon: FileText },
+    { id: 'khovay', label: 'Váy & Phụ kiện', shortLabel: 'Kho váy', icon: Shirt },
     { id: 'thuchi', label: 'Thu chi', shortLabel: 'Thu chi', icon: Wallet },
     { id: 'thietlap', label: 'Setting', shortLabel: 'Setting', icon: Settings },
   ];
