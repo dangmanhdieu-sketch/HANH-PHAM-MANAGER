@@ -58,6 +58,7 @@ const CONFIG: Record<QuanLyModule, ModuleConfig> = {
     title: 'Hợp đồng',
     icon: FileText,
     fields: [
+      { key: 'ChiNhanh', label: 'Chi nhánh', options: [{ value: 'HP_DONG_XOAI', label: 'HP Đồng Xoài' }, { value: 'HP_BINH_LONG', label: 'HP Bình Long' }] },
       { key: 'MaHopDong', label: 'Mã hợp đồng' },
       { key: 'KhachHang', label: 'Tên khách hàng' },
       { key: 'SDT', label: 'Số điện thoại' },
@@ -75,6 +76,7 @@ const CONFIG: Record<QuanLyModule, ModuleConfig> = {
     title: 'Thu chi',
     icon: Wallet,
     fields: [
+      { key: 'ChiNhanh', label: 'Chi nhánh', options: [{ value: 'HP_DONG_XOAI', label: 'HP Đồng Xoài' }, { value: 'HP_BINH_LONG', label: 'HP Bình Long' }] },
       { key: 'Ngay', label: 'Ngày', type: 'date' },
       { key: 'Loai', label: 'Loại', options: [
         { value: 'THU', label: 'THU' },
@@ -344,6 +346,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
 
     try {
       const payload: Record<string, any> = { ...formData };
+      if ((module === 'THU_CHI' || module === 'HOP_DONG') && !editing && !['HP_DONG_XOAI', 'HP_BINH_LONG'].includes(String(payload.ChiNhanh || ''))) throw new Error('Vui lòng chọn chi nhánh HP Đồng Xoài hoặc HP Bình Long.');
       if (module === 'THU_CHI' && !editing && cashflowSection === 'CONTRACT' && payload.Loai === 'THU' && !payload.HopDongQuanLyID) {
         throw new Error('Vui lòng chọn mã hợp đồng cho khoản thu cọc/thanh toán cưới.');
       }
