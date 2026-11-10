@@ -6,6 +6,7 @@ import {
   CheckCircle,
   XCircle,
   Trash2,
+  Edit2,
   Download,
   DollarSign,
   Calendar,
@@ -186,6 +187,14 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  const openEditCommission = (hh: HoaHong) => {
+    setEditingCommission(hh);
+    setCustomShowTask(hh.LoaiKhoan === 'Tiền Show' && !['MK đám hỏi, rước dâu, nhà thờ','MK cô dâu Đám cưới','MK chụp cổng 1c','MK chụp cổng 2c','MK tiệc tại tiệm','MK tiệc tại nhà khách','MK bà sui','Chụp TT Máy lẻ','Chụp TT máy Tặng','Chụp PS máy Lẻ','Chụp PS Kèm Máy TT','Quay PS','Quay TT'].includes(hh.NoiDung));
+    setFormData({ NhanVienID: hh.NhanVienID, ChiNhanh: hh.ChiNhanh || 'HP_DONG_XOAI', Ngay: hh.Ngay, NoiDung: hh.NoiDung, LoaiKhoan: hh.LoaiKhoan || 'Hoa Hồng', DoanhThu: Number(hh.DoanhThu || 0), TyLeHoaHong: Number(hh.TyLeHoaHong || 0), SoTienHoaHong: Number(hh.SoTienHoaHong || 0), AnhChungTu: hh.AnhChungTu || '', GhiChu: hh.GhiChu || '', TrangThaiThanhToan: hh.TrangThaiThanhToan || 'Chưa thanh toán', PhuongThucThanhToan: hh.PhuongThucThanhToan || '' });
+    setFormError(null);
+    setModalOpen(true);
   };
 
   const handleApproveAction = async () => {
@@ -493,6 +502,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                               </button>
                             </>
                           )}
+                          <button type="button" onClick={() => openEditCommission(hh)} className="p-1.5 text-stone-500 hover:text-[#a97d3e] rounded-lg transition" title="Sửa phiếu"><Edit2 className="w-3.5 h-3.5" /></button>
                           <button
                             type="button"
                             onClick={() => setDeleteConfirmHH(hh)}
@@ -518,11 +528,11 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-[#E7DFD5] overflow-hidden flex flex-col max-h-[92vh]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7DFD5] bg-[#FAF8F5]">
               <h3 className="text-base font-bold font-bridal text-stone-900 uppercase">
-                GHI NHẬN TIỀN SHOW / HOA HỒNG MỚI (ADMIN)
+                {editingCommission ? 'CHỈNH SỬA PHIẾU HOA HỒNG' : 'GHI NHẬN TIỀN SHOW / HOA HỒNG MỚI (ADMIN)'}
               </h3>
               <button
                 type="button"
-                onClick={() => setModalOpen(false)}
+                onClick={() => { setModalOpen(false); setEditingCommission(null); }}
                 className="p-1.5 text-stone-400 hover:text-stone-700 rounded-full"
               >
                 <X className="w-5 h-5" />
@@ -771,7 +781,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                   disabled={saving}
                   className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-bold uppercase tracking-wider shadow-md"
                 >
-                  {saving ? 'Đang lưu...' : 'Lưu Bản Ghi'}
+                  {saving ? 'Đang lưu...' : editingCommission ? 'Lưu thay đổi' : 'Lưu Bản Ghi'}
                 </button>
               </div>
             </form>
