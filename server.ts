@@ -7,6 +7,7 @@ import { gzipSync } from 'node:zlib';
 import dotenv from 'dotenv';
 import { dbService } from './server/db.ts';
 import { inventoryService } from './server/inventory.ts';
+import { uploadInventoryImage } from './server/drive.ts';
 import { automationManager } from './server/automation.ts';
 import type { NhanVien } from './src/types.ts';
 
@@ -660,6 +661,16 @@ app.get('/api/reports/contracts-revenue', authenticateToken, requireAdmin, (_req
   res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Server-Timing', `report;dur=${elapsedMs}`);
   return res.json({ contracts, receipts });
+});
+
+app.post('/api/inventory/upload-image', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await uploadInventoryImage(String(req.body?.dataUrl || ''), String(req.body?.fileName || 'bridal-image.jpg'));
+    return res.status(201).json(result);
+  } catch (error: any) {
+    console.error('[INVENTORY] Google Drive upload failed:', error);
+    return res.status(400).json({ error: error.message || 'Không thể tải ảnh lên Google Drive.' });
+  }
 });
 
 // Isolated bridal inventory API. Inventory records are stored in their own Firestore collections.
