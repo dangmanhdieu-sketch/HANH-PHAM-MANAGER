@@ -181,7 +181,6 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
     if (!approveConfirmHH || approvingHH) return;
     const action = approveConfirmHH;
     const reviewedId = action.hh.HoaHongID;
-    const previousStatus = action.hh.TrangThai;
     const nextStatus: TrangThaiHoaHong = action.dongY ? 'Đã duyệt' : 'Từ chối';
 
     // Close the confirmation immediately and reflect the decision locally.
