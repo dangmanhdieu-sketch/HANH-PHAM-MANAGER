@@ -2347,6 +2347,41 @@ class DatabaseService {
     return newHoaHong;
   }
 
+  public updateHoaHong(
+    hoaHongId: string,
+    data: { NhanVienID: string; Ngay: string; NoiDung: string; LoaiKhoan?: 'Tiền Show' | 'Hoa Hồng'; DoanhThu?: number; TyLeHoaHong?: number; SoTienHoaHong?: number; GhiChu?: string },
+    adminUser: { HoTen: string; Email: string }
+  ): HoaHong {
+    const hh = this.db.HOAHONG.find((item) => item.HoaHongID === hoaHongId);
+    if (!hh) throw new Error('Không tìm thấy phiếu hoa hồng.');
+    const staff = this.findNhanVienById(data.NhanVienID);
+    if (!staff) throw new Error('Nhân viên không tồn tại.');
+    if (!data.Ngay || !/^\\d{4}-\\d{2}-\\d{2}$/.test(data.Ngay)) throw new Error('Ngày không hợp lệ.');
+    if (!data.NoiDung?.trim()) throw new Error('Vui lòng nhập nội dung.');
+    const oldStaffId = hh.NhanVienID;
+    const oldMonth = hh.Ngay.slice(0, 7);
+    const loai = data.LoaiKhoan || hh.LoaiKhoan || 'Hoa Hồng';
+    const doanhThu = Math.max(0, Number(data.DoanhThu) || 0);
+    const tyLe = Math.max(0, Number(data.TyLeHoaHong) || 0);
+    const amount = loai === 'Tiền Show'
+      ? Math.max(0, Number(data.SoTienHoaHong) || 0)
+      : (tyLe > 0 ? Math.round(doanhThu * tyLe / 100) : Math.max(0, Number(data.SoTienHoaHong) || 0));
+    Object.assign(hh, {
+      NhanVienID: staff.NhanVienID, HoTen: staff.HoTen, Ngay: data.Ngay,
+      NoiDung: data.NoiDung.trim(), LoaiKhoan: loai, DoanhThu: doanhThu,
+      TyLeHoaHong: tyLe, SoTienHoaHong: amount, GhiChu: data.GhiChu || '',
+    });
+    this.hoaHongDirtyIds.add(hh.HoaHongID);
+    const [oldYear, oldMonthNumber] = oldMonth.split('-');
+    this.syncHoaHongToLuong(oldStaffId, `${oldMonthNumber}/${oldYear}`);
+    const [newYear, newMonthNumber] = hh.Ngay.split('-');
+    this.syncHoaHongToLuong(hh.NhanVienID, `${newMonthNumber}/${newYear}`);
+    this.refreshKPIs();
+    this.save();
+    this.logAudit(adminUser.HoTen, adminUser.Email, 'Sửa phiếu hoa hồng', `Cập nhật phiếu ${hh.HoaHongID} của ${hh.HoTen}: ${amount.toLocaleString('vi-VN')} đ`);
+    return hh;
+  }
+
   public duyetHoaHong(
     hoaHongId: string,
     dongY: boolean,
