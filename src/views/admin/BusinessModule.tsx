@@ -738,15 +738,9 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                   <button type="button" onClick={() => {setCashflowSection('CONTRACT');setCashflowCreateMenu(null);openCreate('THU');}} className="block w-full border-t border-stone-100 px-4 py-3 text-left text-xs font-semibold text-stone-700 hover:bg-emerald-50">Thu hợp đồng</button>
                 </div>}
               </div>
-              <div className="relative">
-                <button type="button" onClick={() => setCashflowCreateMenu(cashflowCreateMenu === 'CHI' ? null : 'CHI')} className="px-4 py-2.5 bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-2">
-                  <Plus className="w-4 h-4" /> PHIẾU CHI
-                </button>
-                {cashflowCreateMenu === 'CHI' && <div className="absolute right-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-xl">
-                  <button type="button" onClick={() => {setCashflowSection('INTERNAL');setCashflowCreateMenu(null);openCreate('CHI');}} className="block w-full px-4 py-3 text-left text-xs font-semibold text-stone-700 hover:bg-rose-50">Chi nội bộ</button>
-                  <button type="button" onClick={() => {setCashflowSection('CONTRACT');setCashflowCreateMenu(null);openCreate('CHI');}} className="block w-full border-t border-stone-100 px-4 py-3 text-left text-xs font-semibold text-stone-700 hover:bg-rose-50">Chi hợp đồng</button>
-                </div>}
-              </div>
+              <button type="button" onClick={() => {setCashflowSection('INTERNAL');setCashflowCreateMenu(null);openCreate('CHI');}} className="px-4 py-2.5 bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-2">
+                <Plus className="w-4 h-4" /> PHIẾU CHI
+              </button>
             </div>
           )}
         </div>
