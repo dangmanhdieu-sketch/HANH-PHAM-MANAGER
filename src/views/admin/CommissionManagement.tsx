@@ -172,7 +172,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
       if (!['HP_DONG_XOAI', 'HP_BINH_LONG'].includes(formData.ChiNhanh)) throw new Error('Vui lòng chọn chi nhánh.');
       if (editingCommission) {
         await api.commission.update(editingCommission.HoaHongID, {
-          NhanVienID: formData.NhanVienID, Ngay: formData.Ngay, NoiDung: formData.NoiDung,
+          NhanVienID: formData.NhanVienID, Ngay: formData.Ngay, NoiDung: formData.NoiDung, ChiNhanh: formData.ChiNhanh as 'HP_DONG_XOAI' | 'HP_BINH_LONG',
           LoaiKhoan: formData.LoaiKhoan, DoanhThu: formData.DoanhThu,
           TyLeHoaHong: formData.TyLeHoaHong, SoTienHoaHong: computedAmount, GhiChu: formData.GhiChu,
         });
