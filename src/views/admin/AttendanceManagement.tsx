@@ -25,8 +25,10 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
   staffList,
   onRefresh,
 }) => {
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const nowLocal = new Date();
+  const todayStr = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
+  // Mặc định chỉ hiển thị chấm công của ngày hiện tại; ngày khác xem bằng bộ chọn ngày.
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
