@@ -408,63 +408,6 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
         </div>
       </div>
 
-      {/* Monthly employee income & advance ledger */}
-      <details className="group rounded-2xl border border-[#E7DFD5] bg-white p-4 shadow-sm sm:p-5"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold text-stone-800"><span className="flex items-center gap-2"><FileText className="h-4 w-4 text-[#bf954f]" /> Đối chiếu hoa hồng & tạm ứng</span><span className="text-xs font-medium text-[#a97d3e] group-open:hidden">Mở chi tiết</span><span className="hidden text-xs font-medium text-[#a97d3e] group-open:inline">Thu gọn</span></summary><div className="mt-4 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold text-stone-900 flex items-center gap-2"><FileText className="w-4 h-4 text-[#bf954f]" /> Sổ theo dõi hoa hồng & tạm ứng</h2>
-            <p className="text-xs text-stone-500 mt-1">Đối chiếu theo tháng và từng nhân viên; giao dịch cũ vẫn được lưu.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => exportMonthlyLedgerPdf()} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-stone-900 text-white text-xs font-bold"><Printer className="w-4 h-4" /> Xuất PDF toàn bộ</button>
-            {selectedStaffId !== 'ALL' && <button type="button" onClick={() => exportMonthlyLedgerPdf(selectedStaffId)} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[#c5a059] text-stone-800 text-xs font-bold"><Download className="w-4 h-4" /> PDF nhân viên</button>}
-          </div>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          <div className="rounded-xl bg-emerald-50 p-3"><p className="text-[10px] text-emerald-700 font-semibold">Hoa hồng đã duyệt</p><p className="text-sm font-bold text-emerald-900 mt-1">{formatMoney(approvedCommissionTotal)}</p></div>
-          <div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] text-amber-700 font-semibold">Hoa hồng chờ duyệt</p><p className="text-sm font-bold text-amber-900 mt-1">{formatMoney(pendingCommissionTotal)}</p></div>
-          <div className="rounded-xl bg-blue-50 p-3"><p className="text-[10px] text-blue-700 font-semibold">Tạm ứng đã duyệt</p><p className="text-sm font-bold text-blue-900 mt-1">{formatMoney(approvedAdvanceTotal)}</p></div>
-          <div className="rounded-xl bg-orange-50 p-3"><p className="text-[10px] text-orange-700 font-semibold">Tạm ứng chờ duyệt</p><p className="text-sm font-bold text-orange-900 mt-1">{formatMoney(pendingAdvanceTotal)}</p></div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-xs font-bold text-stone-700">Hoa hồng đã duyệt trong ngày ({selectedDayCommissions.length})</h3>
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">{activeCommissionDate ? activeCommissionDate.split('-').reverse().join('/') : 'Chưa có dữ liệu'}</span>
-            </div>
-            <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="text-[11px] font-semibold text-stone-500">Chọn ngày xem lịch sử
-                <select value={activeCommissionDate} onChange={(e) => setCommissionHistoryDate(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-xs text-stone-800">
-                  {approvedCommissionDates.length === 0 && <option value="">Chưa có hoa hồng đã duyệt</option>}
-                  {approvedCommissionDates.map((date) => <option key={date} value={date}>{date.split('-').reverse().join('/')}</option>)}
-                </select>
-              </label>
-              <label className="text-[11px] font-semibold text-stone-500">Chọn nhân viên
-                <select value={commissionHistoryStaffId} onChange={(e) => setCommissionHistoryStaffId(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-xs text-stone-800">
-                  <option value="ALL">Tất cả nhân viên trong ngày</option>
-                  {staffList.map((staff) => <option key={staff.NhanVienID} value={staff.NhanVienID}>{staff.HoTen}</option>)}
-                </select>
-              </label>
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-stone-100">
-              <table className="w-full text-xs">
-                <thead className="bg-stone-50"><tr><th className="p-2 text-left">Nhân viên</th><th className="p-2 text-left">Nội dung</th><th className="p-2 text-right">Số tiền</th></tr></thead>
-                <tbody className="divide-y">
-                  {selectedDayCommissions.map((item) => <tr key={item.HoaHongID}><td className="whitespace-nowrap p-2 font-medium">{item.HoTen}</td><td className="min-w-40 p-2">{item.NoiDung}</td><td className="whitespace-nowrap p-2 text-right font-semibold text-emerald-700">{formatMoney(item.SoTienHoaHong)}</td></tr>)}
-                  {selectedDayCommissions.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-stone-400">Không có hoa hồng đã duyệt trong ngày / nhân viên đã chọn.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-2 text-[10px] text-stone-400">Mặc định hiển thị ngày mới nhất có hoa hồng đã duyệt. Các ngày cũ chỉ xuất hiện khi chọn ngày ở bộ lọc.</p>
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-stone-700 mb-2">Tạm ứng ({monthAdvances.length})</h3>
-            <div className="overflow-x-auto border border-stone-100 rounded-xl"><table className="w-full text-xs"><thead className="bg-stone-50"><tr><th className="p-2 text-left">Ngày</th><th className="p-2 text-left">Nhân viên</th><th className="p-2 text-left">Lý do</th><th className="p-2 text-right">Số tiền</th><th className="p-2">Trạng thái</th></tr></thead><tbody className="divide-y">{monthAdvances.map((item) => <tr key={item.TamUngID}><td className="p-2 whitespace-nowrap">{item.Ngay}</td><td className="p-2 whitespace-nowrap">{item.HoTen}</td><td className="p-2 min-w-32">{item.LyDo || '—'}</td><td className="p-2 text-right whitespace-nowrap">{formatMoney(item.SoTien)}</td><td className="p-2 whitespace-nowrap">{item.TrangThai || 'Chờ duyệt'}</td></tr>)}{monthAdvances.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-stone-400">Chưa có khoản ứng trong kỳ.</td></tr>}</tbody></table></div>
-          </div>
-        </div>
-        <p className="text-[10px] text-stone-500">Chỉ khoản đã duyệt được tính vào tổng đối chiếu. Khi xuất PDF, trình duyệt mở hộp thoại in — chọn “Lưu dưới dạng PDF”.</p>
-      </div></details>
-
       {/* Formula Reminder Box */}
       <details className="rounded-xl border border-[#E7DFD5] bg-[#FAF8F5] px-4 py-3 text-xs"><summary className="cursor-pointer font-semibold text-stone-700">Xem công thức tính lương</summary><div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
@@ -478,6 +421,16 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
           * Hoa hồng được tự động cộng dồn từ các hợp đồng đã duyệt trong tháng
         </span>
       </div></details>
+
+      {/* GỘP HOA HỒNG & SHOW VÀO CÙNG TAB LƯƠNG */}
+      {initialFilterStatus === 'ALL' && (
+        <details className="group rounded-2xl border border-[#E7DFD5] bg-white p-3 shadow-sm sm:p-4"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-1 py-2 font-semibold text-stone-800"><span className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-[#bf954f]"/> Quản lý hoa hồng & tiền show</span><span className="text-xs font-medium text-[#a97d3e] group-open:hidden">Mở quản lý</span><span className="hidden text-xs font-medium text-[#a97d3e] group-open:inline">Thu gọn</span></summary><div className="mt-4"><CommissionManagement
+          commissionList={commissionList}
+          staffList={staffList}
+          onRefresh={onRefresh}
+        /></div></details>
+      )}
+
 
       {/* Payroll Table */}
       <section className="overflow-hidden rounded-2xl border border-[#E7DFD5] bg-white shadow-sm"><div className="flex items-center justify-between border-b border-[#E7DFD5] px-4 py-3"><div><h2 className="font-bold text-stone-900">Danh sách bảng lương</h2><p className="mt-0.5 text-[11px] text-stone-500">{filteredList.length} phiếu lương trong kỳ đã chọn</p></div><span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">{filteredList.length} phiếu</span></div><div className="hidden md:block">
@@ -1023,14 +976,6 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
         confirmText="XÁC NHẬN ĐÃ THANH TOÁN"
         type="success"
       />
-      {/* GỘP HOA HỒNG & SHOW VÀO CÙNG TAB LƯƠNG */}
-      {initialFilterStatus === 'ALL' && (
-        <details className="group rounded-2xl border border-[#E7DFD5] bg-white p-3 shadow-sm sm:p-4"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-1 py-2 font-semibold text-stone-800"><span className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-[#bf954f]"/> Quản lý hoa hồng & tiền show</span><span className="text-xs font-medium text-[#a97d3e] group-open:hidden">Mở quản lý</span><span className="hidden text-xs font-medium text-[#a97d3e] group-open:inline">Thu gọn</span></summary><div className="mt-4"><CommissionManagement
-          commissionList={commissionList}
-          staffList={staffList}
-          onRefresh={onRefresh}
-        /></div></details>
-      )}
     </div>
   );
 };
