@@ -135,14 +135,13 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
     const matchBranch = selectedBranch === 'ALL' || hh.ChiNhanh === selectedBranch;
     const matchStatus = showPendingQueue ? hh.TrangThai === 'Chờ duyệt' : (selectedStatus === 'ALL' || hh.TrangThai === selectedStatus);
     const matchMonth = (hh.Ngay || '').startsWith(selectedMonth);
-    const matchDate = showPendingQueue || !selectedDate || hh.Ngay === selectedDate;
     const isShow = hh.LoaiKhoan === 'Tiền Show' || hh.NoiDung.includes('Tiền Show');
     const matchType =
       selectedType === 'ALL' ||
       (selectedType === 'Tiền Show' && isShow) ||
       (selectedType === 'Hoa Hồng' && !isShow);
 
-    return matchStaff && matchBranch && matchStatus && matchType && matchMonth && matchDate;
+    return matchStaff && matchBranch && matchStatus && matchType && matchMonth;
   });
 
   // Calculate metrics
@@ -413,7 +412,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
 
       {/* Filters: one employee, month, day and status */}
       <div className="bg-white p-4 rounded-xl border border-[#E7DFD5] shadow-sm flex flex-col gap-3 text-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <label className="font-semibold text-stone-600">Nhân viên
             <select value={selectedStaffId} onChange={(e) => { setSelectedStaffId(e.target.value); setShowPendingQueue(false); }} className="mt-1 w-full px-3 py-2 border border-stone-200 rounded-lg bg-white font-normal">
               <option value="">-- Chọn nhân viên --</option>
@@ -422,9 +421,6 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           </label>
           <label className="font-semibold text-stone-600">Tháng
             <input type="month" value={selectedMonth} onChange={(e) => { setSelectedMonth(e.target.value); setSelectedDate(''); setShowPendingQueue(false); }} className="mt-1 w-full px-3 py-2 border border-stone-200 rounded-lg bg-white font-normal" />
-          </label>
-          <label className="font-semibold text-stone-600">Ngày
-            <input type="date" value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setShowPendingQueue(false); }} className="mt-1 w-full px-3 py-2 border border-stone-200 rounded-lg bg-white font-normal" />
           </label>
           <label className="font-semibold text-stone-600">Trạng thái
             <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="mt-1 w-full px-3 py-2 border border-stone-200 rounded-lg bg-white font-normal">
@@ -438,7 +434,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           </label>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[11px] text-stone-500">{showPendingQueue ? 'Danh sách tất cả phiếu đang chờ duyệt trong tháng đã chọn.' : 'Chọn một nhân viên để xem các khoản thu nhập theo tháng và ngày.'}</p>
+          <p className="text-[11px] text-stone-500">{showPendingQueue ? 'Danh sách tất cả phiếu đang chờ duyệt trong tháng đã chọn.' : 'Chọn nhân viên và tháng/năm để xem toàn bộ hoa hồng, tiền show trong tháng.'}</p>
           {showPendingQueue && <button type="button" onClick={() => { setShowPendingQueue(false); setSelectedStaffId(staffList[0]?.NhanVienID || ''); setSelectedDate(new Date().toISOString().slice(0, 10)); setSelectedStatus('ALL'); }} className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white">Quay lại theo nhân viên</button>}
         </div>
       </div>
