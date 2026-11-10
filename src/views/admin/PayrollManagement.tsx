@@ -48,6 +48,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
   });
   const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
+  const [selectedPayrollEmployeeId, setSelectedPayrollEmployeeId] = useState<string | null>(null);
   const [commissionHistoryDate, setCommissionHistoryDate] = useState<string>('');
   const [commissionHistoryStaffId, setCommissionHistoryStaffId] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>(initialFilterStatus);
@@ -171,6 +172,12 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     const matchStatus = statusFilter === 'ALL' || l.TrangThai === statusFilter;
     return matchMonth && matchStaff && matchStatus;
   });
+
+  const employeePayrollList = payrollList.filter((l) => (!selectedMonth || l.Thang === selectedMonth) && (statusFilter === 'ALL' || l.TrangThai === statusFilter));
+  const payrollEmployeeSummaries = staffList.map((staff) => {
+    const records = employeePayrollList.filter((item) => item.NhanVienID === staff.NhanVienID);
+    return { id: staff.NhanVienID, name: staff.HoTen, periods: records.length, totalNet: records.reduce((sum, item) => sum + Number(item.ThucLanh || 0), 0), pending: records.filter((item) => item.TrangThai === 'Chờ duyệt').length, approved: records.filter((item) => item.TrangThai === 'Đã duyệt').length, paid: records.filter((item) => item.TrangThai === 'Đã thanh toán').length };
+  }).filter((item) => item.periods > 0);
 
   const openEditModal = (luong: Luong) => {
     setEditingLuong(luong);
@@ -365,8 +372,24 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
         </section>
       )}
 
-      {/* Payroll Table */}
-      <section className="overflow-hidden rounded-2xl border border-[#E7DFD5] bg-white shadow-sm"><div className="flex items-center justify-between border-b border-[#E7DFD5] px-4 py-3"><div><h2 className="font-bold text-stone-900">Danh sách bảng lương</h2><p className="mt-0.5 text-[11px] text-stone-500">{filteredList.length} phiếu lương trong kỳ đã chọn</p></div><span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">{filteredList.length} phiếu</span></div><div className="hidden md:block">
+      {/* Payroll employee list and selected employee detail */}
+      <section className="overflow-hidden rounded-2xl border border-[#E7DFD5] bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E7DFD5] px-4 py-3">
+          <div><h2 className="font-bold text-stone-900">{selectedPayrollEmployeeId ? 'Chi tiết bảng lương nhân viên' : 'Danh sách nhân viên'}</h2><p className="mt-0.5 text-[11px] text-stone-500">{selectedPayrollEmployeeId ? (filteredList.length + ' phiếu lương của nhân viên đã chọn') : (payrollEmployeeSummaries.length + ' nhân viên có bảng lương trong kỳ')}</p></div>
+          {selectedPayrollEmployeeId && <button type="button" onClick={() => { setSelectedPayrollEmployeeId(null); setSelectedStaffId('ALL'); }} className="rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50">← Quay lại danh sách nhân viên</button>}
+        </div>
+        {!selectedPayrollEmployeeId ? (
+          <div className="divide-y divide-[#E7DFD5]">
+            {payrollEmployeeSummaries.length === 0 ? <p className="p-8 text-center text-sm text-stone-400">Chưa có bảng lương trong kỳ đã chọn.</p> : payrollEmployeeSummaries.map((employee) => (
+              <button key={employee.id} type="button" onClick={() => { setSelectedPayrollEmployeeId(employee.id); setSelectedStaffId(employee.id); }} className="flex w-full flex-col gap-3 px-4 py-4 text-left transition hover:bg-[#FAF8F5] sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FAF8F5] font-bold text-[#a97d3e]">{employee.name.trim().charAt(0).toUpperCase()}</div><div><p className="font-bold text-stone-900">{employee.name}</p><p className="text-[11px] text-stone-500">{employee.id} · {employee.periods} kỳ lương</p></div></div>
+                <div className="flex flex-wrap items-center gap-3 sm:gap-5"><span className="text-xs text-stone-500">Chờ duyệt: <b className="text-amber-700">{employee.pending}</b></span><span className="text-xs text-stone-500">Đã duyệt: <b className="text-blue-700">{employee.approved}</b></span><span className="text-xs text-stone-500">Đã thanh toán: <b className="text-emerald-700">{employee.paid}</b></span><span className="font-mono text-sm font-bold text-stone-900">{formatMoney(employee.totalNet)}</span><span className="text-xs font-semibold text-[#a97d3e]">Xem chi tiết →</span></div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <>
+          <div className="hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-[#FAF8F5] text-stone-500 uppercase tracking-wider border-b border-[#E7DFD5]">
@@ -527,7 +550,9 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl bg-stone-50 p-3 text-xs"><div><span className="text-stone-500">Lương cơ bản</span><p className="mt-0.5 font-semibold">{formatMoney(l.LuongCoBan)}</p></div><div><span className="text-stone-500">Hoa hồng</span><p className="mt-0.5 font-semibold text-[#a97d3e]">{formatMoney(l.HoaHong)}</p></div><div><span className="text-stone-500">Phụ cấp + thưởng</span><p className="mt-0.5 font-semibold text-emerald-700">{formatMoney(l.PhuCap + l.Thuong)}</p></div><div><span className="text-stone-500">Phạt + tạm ứng</span><p className="mt-0.5 font-semibold text-rose-600">{formatMoney(l.Phat + l.TamUng)}</p></div></div>
           <div className="flex items-center justify-between gap-2"><div><p className="text-[10px] font-semibold uppercase text-stone-500">Thực lãnh</p><p className="text-lg font-bold text-stone-900">{formatMoney(l.ThucLanh)}</p></div><div className="flex flex-wrap justify-end gap-1.5"><button type="button" onClick={() => setPreviewPayslip(l)} className="rounded-lg border border-stone-200 p-2 text-stone-600" title="Xem phiếu lương"><FileText className="h-4 w-4"/></button>{l.TrangThai === "Chờ duyệt" && <><button type="button" onClick={() => openEditModal(l)} className="rounded-lg border border-stone-200 p-2 text-stone-600" title="Chỉnh sửa"><Edit2 className="h-4 w-4"/></button><button type="button" onClick={() => setApprovingLuong(l)} className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-bold text-white">Duyệt</button></>}{l.TrangThai === "Đã duyệt" && <button type="button" onClick={() => setPayingLuong(l)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Đã thanh toán</button>}{l.TrangThai !== "Đã thanh toán" && l.TrangThai !== "Chờ duyệt" && <button type="button" onClick={() => openEditModal(l)} className="rounded-lg border border-stone-200 p-2 text-stone-600"><Edit2 className="h-4 w-4"/></button>}<button type="button" onClick={() => void handleDeleteLuong(l)} disabled={l.TrangThai !== "Chờ duyệt"} className="rounded-lg border border-rose-100 p-2 text-rose-600 disabled:opacity-30" title="Xóa phiếu"><Trash2 className="h-4 w-4"/></button></div></div>
         </article>)}
-      </div></section>
+          </>
+        )}
+      </section>
 
       {/* Modal: Edit Luong details */}
       {editingLuong && (
