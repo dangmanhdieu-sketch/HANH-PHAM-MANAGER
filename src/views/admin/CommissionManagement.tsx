@@ -157,7 +157,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const computedAmount =
     formData.LoaiKhoan === 'Tiền Show'
       ? formData.SoTienHoaHong
-      : Math.round((Number(formData.DoanhThu) * Number(formData.TyLeHoaHong)) / 100);
+      : (Number(formData.TyLeHoaHong) > 0 ? Math.round((Number(formData.DoanhThu) * Number(formData.TyLeHoaHong)) / 100) : Number(formData.SoTienHoaHong || 0));
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -388,7 +388,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
             </select>
           </div>
         </div>
-          <div className="flex items-center gap-1.5"><span className="font-semibold text-stone-600">Tháng:</span><input type="month" value={selectedMonth} onChange={(e) => { setSelectedMonth(e.target.value); setShowPendingQueue(false); }} className="px-3 py-2 border border-stone-200 rounded-lg bg-white text-xs" /></div>
+          <div className="flex items-center gap-1.5"><span className="font-semibold text-stone-600">Tháng:</span><input type="month" value={selectedMonth} onChange={(e) => { setSelectedMonth(e.target.value); setSelectedDate(''); setShowPendingQueue(false); }} className="px-3 py-2 border border-stone-200 rounded-lg bg-white text-xs" /></div>
           <div className="flex items-center gap-1.5"><span className="font-semibold text-stone-600">Ngày:</span><input type="date" value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setShowPendingQueue(false); }} className="px-3 py-2 border border-stone-200 rounded-lg bg-white text-xs" /></div>
           {showPendingQueue && <button type="button" onClick={() => { setShowPendingQueue(false); setSelectedStaffId(staffList[0]?.NhanVienID || ''); setSelectedDate(new Date().toISOString().slice(0, 10)); setSelectedStatus('ALL'); }} className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white">Quay lại xem theo nhân viên</button>}
         </div>
