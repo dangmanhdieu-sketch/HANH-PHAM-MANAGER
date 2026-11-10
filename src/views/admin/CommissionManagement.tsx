@@ -34,6 +34,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   onRefresh,
 }) => {
   const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
+  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [modalOpen, setModalOpen] = useState(false);
@@ -100,6 +101,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   // Form state
   const [formData, setFormData] = useState({
     NhanVienID: staffList[0]?.NhanVienID || 'NV002',
+    ChiNhanh: '',
     Ngay: new Date().toISOString().split('T')[0],
     NoiDung: '',
     LoaiKhoan: 'Hoa Hồng' as LoaiKhoanThuNhap,
@@ -118,6 +120,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   // Filtered list
   const filteredList = commissionList.filter((hh) => {
     const matchStaff = selectedStaffId === 'ALL' || hh.NhanVienID === selectedStaffId;
+    const matchBranch = selectedBranch === 'ALL' || hh.ChiNhanh === selectedBranch;
     const matchStatus = selectedStatus === 'ALL' || hh.TrangThai === selectedStatus;
     const isShow = hh.LoaiKhoan === 'Tiền Show' || hh.NoiDung.includes('Tiền Show');
     const matchType =
@@ -125,7 +128,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
       (selectedType === 'Tiền Show' && isShow) ||
       (selectedType === 'Hoa Hồng' && !isShow);
 
-    return matchStaff && matchStatus && matchType;
+    return matchStaff && matchBranch && matchStatus && matchType;
   });
 
   // Calculate metrics
@@ -152,6 +155,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
     setFormError(null);
 
     try {
+      if (!['HP_DONG_XOAI', 'HP_BINH_LONG'].includes(formData.ChiNhanh)) throw new Error('Vui lòng chọn chi nhánh.');
       await api.commission.create({
         ...formData,
         SoTienHoaHong: computedAmount,
@@ -305,7 +309,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
 
       {/* Filter Toolbar */}
       <div className="bg-white p-4 rounded-xl border border-[#E7DFD5] shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between text-xs">
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto"><div className="flex items-center gap-1.5"><span className="font-semibold text-stone-600">Chi nhánh:</span><select value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)} className="px-3 py-2 border border-stone-200 rounded-lg bg-white text-xs"><option value="ALL">Tất cả chi nhánh</option><option value="HP_DONG_XOAI">HP Đồng Xoài</option><option value="HP_BINH_LONG">HP Bình Long</option></select></div>
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-stone-600">Nhân viên:</span>
             <select
@@ -502,6 +506,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
                 </div>
               )}
 
+              <div><label className="block font-semibold text-stone-700 mb-1">Chi nhánh <span className="text-rose-500">*</span></label><select required value={formData.ChiNhanh} onChange={(e) => setFormData({ ...formData, ChiNhanh: e.target.value })} className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-white"><option value="">-- Chọn chi nhánh --</option><option value="HP_DONG_XOAI">HP Đồng Xoài</option><option value="HP_BINH_LONG">HP Bình Long</option></select></div>
               {/* LoaiKhoan selection */}
               <div>
                 <label className="block font-semibold text-stone-700 mb-1">Loại khoản</label>
