@@ -644,6 +644,27 @@ export const api = {
   },
 
   // =========================================================
+  // KHO VÁY CƯỚI / QR INVENTORY
+  // =========================================================
+  bridalInventory: {
+    async getPage(params?: { limit?: number; cursor?: string }): Promise<{ items: import('./types').VayCuoiItem[]; nextCursor: string | null }> {
+      const q = new URLSearchParams();
+      q.set('limit', String(params?.limit || 30));
+      if (params?.cursor) q.set('cursor', params.cursor);
+      return request('/api/vay-cuoi?' + q.toString());
+    },
+    async getByQr(code: string): Promise<import('./types').VayCuoiItem> {
+      return request('/api/vay-cuoi/qr/' + encodeURIComponent(code));
+    },
+    async create(data: Partial<import('./types').VayCuoiItem>): Promise<import('./types').VayCuoiItem> {
+      return request('/api/vay-cuoi', { method: 'POST', body: JSON.stringify(data) });
+    },
+    async update(id: string, data: Partial<import('./types').VayCuoiItem>): Promise<import('./types').VayCuoiItem> {
+      return request('/api/vay-cuoi/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify(data) });
+    },
+  },
+
+  // =========================================================
   // QUẢN LÝ NGHIỆP VỤ LIÊN KẾT
   // =========================================================
 
