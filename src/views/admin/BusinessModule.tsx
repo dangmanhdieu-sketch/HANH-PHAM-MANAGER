@@ -1167,7 +1167,16 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 </section>
               </div>
             ) : module === 'THU_CHI' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <section className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4">
+                  <label className="block text-sm font-bold text-stone-900 mb-2">CHI NHÁNH THU / CHI *</label>
+                  <select required={!editing} value={String(formData.ChiNhanh || '')} onChange={e => setFormData(prev => ({...prev, ChiNhanh: e.target.value}))} className="w-full rounded-lg border-2 border-stone-400 bg-white p-3 text-base">
+                    <option value="">-- BẮT BUỘC CHỌN CHI NHÁNH --</option>
+                    <option value="HP_DONG_XOAI">HP Đồng Xoài</option>
+                    <option value="HP_BINH_LONG">HP Bình Long</option>
+                  </select>
+                </section>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="block text-xs font-semibold mb-1">Ngày {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
                   <input type="date" value={String(formData.Ngay ?? '')} readOnly className="w-full border rounded-lg px-3 py-2 text-sm bg-stone-50" /></div>
                 <div><label className="block text-xs font-semibold mb-1">Nhân viên {cashflowType === 'THU' ? 'thu' : 'chi'}</label>
@@ -1197,6 +1206,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 </div>
                 <div className="sm:col-span-2"><label className="block text-xs font-semibold mb-1">Ghi chú</label>
                   <textarea value={String(formData.GhiChu ?? '')} onChange={e=>setFormData({...formData,GhiChu:e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" rows={3} /></div>
+              </div>
               </div>
             ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
