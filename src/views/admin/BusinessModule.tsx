@@ -739,62 +739,55 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         </div>
       </div>
 
-      {module === 'THU_CHI' && <section className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <button type="button" onClick={() => setCashflowSection('CONTRACT')} className={`rounded-2xl border p-4 text-left transition ${cashflowSection === 'CONTRACT' ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-stone-200 bg-white hover:bg-emerald-50'}`}>
-            <div className="font-bold text-emerald-800">1. THU TIỀN HỢP ĐỒNG CƯỚI</div>
-            <p className="mt-1 text-xs text-stone-600">Thu cọc và các đợt thanh toán; chọn mã hợp đồng để liên kết doanh thu.</p>
-            {!isEmployee && <div className="mt-2 text-lg font-bold text-emerald-700">Đã duyệt: +{totalContractRevenue.toLocaleString('vi-VN')} đ</div>}
-          </button>
-          <button type="button" onClick={() => setCashflowSection('INTERNAL')} className={`rounded-2xl border p-4 text-left transition ${cashflowSection === 'INTERNAL' ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-100' : 'border-stone-200 bg-white hover:bg-amber-50'}`}>
-            <div className="font-bold text-amber-800">2. THU CHI NỘI BỘ</div>
-            <p className="mt-1 text-xs text-stone-600">Các khoản thu/chi phát sinh của nhân viên và Sale; phiếu gửi Admin duyệt.</p>
-            {!isEmployee && <div className="mt-2 text-sm font-bold text-amber-800">Thu nội bộ: +{totalInternalIncome.toLocaleString('vi-VN')} đ · Chi: -{totalChi.toLocaleString('vi-VN')} đ</div>}
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setCashflowSection('ALL')} className={`rounded-lg px-3 py-2 text-xs font-bold ${cashflowSection === 'ALL' ? 'bg-stone-900 text-white' : 'border bg-white text-stone-700'}`}>Tất cả phiếu</button>
-          <button type="button" onClick={() => { setCashflowSection('CONTRACT'); openCreate('THU'); }} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white">+ Thu cọc / thanh toán cưới</button>
-          <button type="button" onClick={() => { setCashflowSection('INTERNAL'); openCreate('THU'); }} className="rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-emerald-800">+ Thu nội bộ</button>
-          <button type="button" onClick={() => { setCashflowSection('INTERNAL'); openCreate('CHI'); }} className="rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white">+ Chi nội bộ</button>
-        </div>
-        {!isEmployee && <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl border bg-emerald-50 p-3"><div className="text-xs font-bold text-emerald-800">DOANH THU HỢP ĐỒNG ĐÃ DUYỆT</div><div className="mt-1 font-bold text-emerald-700">+{totalContractRevenue.toLocaleString('vi-VN')} đ</div></div>
-          <div className="rounded-xl border bg-amber-50 p-3"><div className="text-xs font-bold text-amber-800">THU NỘI BỘ ĐÃ DUYỆT</div><div className="mt-1 font-bold text-amber-700">+{totalInternalIncome.toLocaleString('vi-VN')} đ</div></div>
-          <div className="rounded-xl border bg-rose-50 p-3"><div className="text-xs font-bold text-rose-800">CHI ĐÃ DUYỆT</div><div className="mt-1 font-bold text-rose-700">-{totalChi.toLocaleString('vi-VN')} đ</div></div>
-        </div>}
-      </section>}
-      {module === 'THU_CHI' && !isEmployee && (
-        <section className="bg-white rounded-2xl border border-[#E7DFD5] p-4 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <label className="flex-1 text-xs font-semibold text-stone-600">
-              Lọc nhân viên
-              <select value={cashflowStaffFilter} onChange={(e) => setCashflowStaffFilter(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900">
-                <option value="ALL">Tất cả nhân viên</option>
-                {staffList.map((staff) => <option key={staff.NhanVienID} value={staff.NhanVienID}>{staff.HoTen} ({staff.NhanVienID})</option>)}
-              </select>
-            </label>
-            <label className="flex-1 text-xs font-semibold text-stone-600">
-              Chọn tháng
-              <input type="month" value={cashflowMonthFilter} onChange={(e) => setCashflowMonthFilter(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900" />
-            </label>
-            <div className="flex items-end">
-              <button type="button" onClick={() => { setCashflowStaffFilter('ALL'); const now = new Date(); setCashflowMonthFilter(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`); }} className="rounded-lg border border-stone-200 px-3 py-2.5 text-xs font-semibold text-stone-600 hover:bg-stone-50">Đặt lại</button>
-            </div>
-          </div>
-          {(() => {
-            const thu = filteredRecords.filter((r) => String(r.DuLieu?.Loai || '').toUpperCase() === 'THU').reduce((sum, r) => sum + Math.max(0, Number(r.DuLieu?.SoTien || 0)), 0);
-            const chi = filteredRecords.filter((r) => String(r.DuLieu?.Loai || '').toUpperCase() === 'CHI').reduce((sum, r) => sum + Math.max(0, Number(r.DuLieu?.SoTien || 0)), 0);
-            const approved = filteredRecords.filter((r) => ['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(r.DuLieu?.TrangThaiDuyet || '')));
-            const approvedThu = approved.filter((r) => String(r.DuLieu?.Loai || '').toUpperCase() === 'THU').reduce((sum, r) => sum + Math.max(0, Number(r.DuLieu?.SoTien || 0)), 0);
-            const approvedChi = approved.filter((r) => String(r.DuLieu?.Loai || '').toUpperCase() === 'CHI').reduce((sum, r) => sum + Math.max(0, Number(r.DuLieu?.SoTien || 0)), 0);
-            return <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-              <div className="rounded-xl bg-emerald-50 p-3"><div className="text-[11px] font-bold text-emerald-800">TỔNG THU</div><div className="mt-1 font-bold text-emerald-700">{thu.toLocaleString('vi-VN')} đ</div></div>
-              <div className="rounded-xl bg-rose-50 p-3"><div className="text-[11px] font-bold text-rose-800">TỔNG CHI</div><div className="mt-1 font-bold text-rose-700">{chi.toLocaleString('vi-VN')} đ</div></div>
-              <div className="rounded-xl border border-emerald-100 p-3"><div className="text-[11px] font-bold text-stone-600">THU ĐÃ DUYỆT</div><div className="mt-1 font-bold text-stone-800">{approvedThu.toLocaleString('vi-VN')} đ</div></div>
-              <div className="rounded-xl border border-rose-100 p-3"><div className="text-[11px] font-bold text-stone-600">CHI ĐÃ DUYỆT</div><div className="mt-1 font-bold text-stone-800">{approvedChi.toLocaleString('vi-VN')} đ</div></div>
+      {module === 'THU_CHI' && (
+        <section className="space-y-4">
+          {!isEmployee && (() => {
+            const approved = filteredRecords.filter(r => ['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(r.DuLieu?.TrangThaiDuyet || '')));
+            const pending = filteredRecords.filter(r => !['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(r.DuLieu?.TrangThaiDuyet || '')));
+            const sum = (rows: QuanLyRecord[], type: string) => rows.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === type).reduce((n,r)=>n+Math.max(0,Number(r.DuLieu?.SoTien||0)),0);
+            const thu = sum(approved,'THU'), chi = sum(approved,'CHI');
+            return <div className="rounded-2xl border border-[#E7DFD5] bg-white p-4 sm:p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-500">Tổng quan tài chính</p><h2 className="mt-1 text-lg font-bold text-stone-900">Thu chi đã được duyệt</h2></div>
+                <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">{cashflowMonthFilter || 'Tất cả thời gian'}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4"><p className="text-xs font-semibold text-emerald-800">TỔNG THU ĐÃ DUYỆT</p><p className="mt-2 text-xl font-bold text-emerald-700">+{thu.toLocaleString('vi-VN')} đ</p></div>
+                <div className="rounded-xl bg-rose-50 border border-rose-100 p-4"><p className="text-xs font-semibold text-rose-800">TỔNG CHI ĐÃ DUYỆT</p><p className="mt-2 text-xl font-bold text-rose-700">-{chi.toLocaleString('vi-VN')} đ</p></div>
+                <div className="rounded-xl bg-stone-50 border border-stone-200 p-4"><p className="text-xs font-semibold text-stone-600">CHÊNH LỆCH THU – CHI</p><p className={`mt-2 text-xl font-bold ${thu-chi>=0?'text-stone-900':'text-rose-700'}`}>{(thu-chi).toLocaleString('vi-VN')} đ</p></div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-stone-600">
+                <span className="rounded-full bg-amber-50 px-3 py-1.5 font-semibold text-amber-800">{pending.length} phiếu chờ duyệt</span>
+                <span className="rounded-full bg-emerald-50 px-3 py-1.5 font-semibold text-emerald-800">{approved.length} phiếu đã duyệt</span>
+              </div>
             </div>;
           })()}
+          <div className="rounded-2xl border border-[#E7DFD5] bg-white p-3 sm:p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div><h2 className="font-bold text-stone-900">Phân loại phiếu</h2><p className="mt-1 text-xs text-stone-500">Chọn nhóm để xem đúng khoản thu hoặc chi.</p></div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => {setCashflowSection('ALL');setCashflowType('THU');}} className={`rounded-lg px-3 py-2 text-xs font-bold ${cashflowSection==='ALL'?'bg-stone-900 text-white':'border border-stone-200 text-stone-600'}`}>Tất cả</button>
+                <button type="button" onClick={() => {setCashflowSection('CONTRACT');setCashflowType('THU');}} className={`rounded-lg px-3 py-2 text-xs font-bold ${cashflowSection==='CONTRACT'?'bg-emerald-700 text-white':'border border-stone-200 text-stone-600'}`}>Thu hợp đồng</button>
+                <button type="button" onClick={() => {setCashflowSection('INTERNAL');setCashflowType('CHI');}} className={`rounded-lg px-3 py-2 text-xs font-bold ${cashflowSection==='INTERNAL'?'bg-amber-600 text-white':'border border-stone-200 text-stone-600'}`}>Thu chi nội bộ</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button type="button" onClick={() => {setCashflowSection('CONTRACT');openCreate('THU');}} className="flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800"><Plus className="h-4 w-4"/> Lập phiếu thu hợp đồng</button>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => {setCashflowSection('INTERNAL');openCreate('THU');}} className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs font-bold text-emerald-800"><Plus className="h-4 w-4"/> Thu nội bộ</button>
+                <button type="button" onClick={() => {setCashflowSection('INTERNAL');openCreate('CHI');}} className="flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-xs font-bold text-rose-800"><Plus className="h-4 w-4"/> Chi nội bộ</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+      {module === 'THU_CHI' && !isEmployee && (
+        <section className="rounded-2xl border border-[#E7DFD5] bg-white p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2"><div><h3 className="text-sm font-bold text-stone-900">Bộ lọc dữ liệu</h3><p className="text-xs text-stone-500 mt-1">Lọc theo tháng và nhân viên lập phiếu.</p></div><button type="button" onClick={() => {setCashflowStaffFilter('ALL');const now=new Date();setCashflowMonthFilter(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);setSearch('');}} className="rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-600">Đặt lại</button></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="text-xs font-semibold text-stone-600">Tháng<input type="month" value={cashflowMonthFilter} onChange={e=>setCashflowMonthFilter(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900"/></label>
+            <label className="text-xs font-semibold text-stone-600">Nhân viên<select value={cashflowStaffFilter} onChange={e=>setCashflowStaffFilter(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900"><option value="ALL">Tất cả nhân viên</option>{staffList.map(staff=><option key={staff.NhanVienID} value={staff.NhanVienID}>{staff.HoTen}</option>)}</select></label>
+          </div>
         </section>
       )}
       <div className="bg-white p-3 rounded-xl border border-[#E7DFD5] flex items-center gap-2">
