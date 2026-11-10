@@ -101,7 +101,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   // Form state
   const [formData, setFormData] = useState({
     NhanVienID: staffList[0]?.NhanVienID || 'NV002',
-    ChiNhanh: '',
+    ChiNhanh: 'HP_DONG_XOAI',
     Ngay: new Date().toISOString().split('T')[0],
     NoiDung: '',
     LoaiKhoan: 'Hoa Hồng' as LoaiKhoanThuNhap,
@@ -510,7 +510,6 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
               <section className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4">
                 <label className="block text-sm font-bold text-stone-900 mb-2">CHI NHÁNH GHI NHẬN HOA HỒNG *</label>
                 <select required value={formData.ChiNhanh} onChange={(e) => setFormData({ ...formData, ChiNhanh: e.target.value })} className="w-full px-3 py-3 text-base border-2 border-stone-400 rounded-lg bg-white">
-                  <option value="">-- BẮT BUỘC CHỌN CHI NHÁNH --</option>
                   <option value="HP_DONG_XOAI">HP Đồng Xoài</option>
                   <option value="HP_BINH_LONG">HP Bình Long</option>
                 </select>
