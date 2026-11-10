@@ -97,6 +97,8 @@ export interface Luong {
 
 export interface HoaHong {
   HoaHongID: string;
+  /** Branch for new entries; legacy records intentionally remain unset. */
+  ChiNhanh?: 'HP_DONG_XOAI' | 'HP_BINH_LONG';
   NhanVienID: string;
   HoTen: string;
   Ngay: string; // YYYY-MM-DD
