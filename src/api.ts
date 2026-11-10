@@ -580,6 +580,10 @@ export const api = {
       );
     },
 
+    async update(id: string, data: { NhanVienID: string; Ngay: string; NoiDung: string; LoaiKhoan?: string; DoanhThu?: number; TyLeHoaHong?: number; SoTienHoaHong?: number; GhiChu?: string }): Promise<{ message: string; hoahong: HoaHong }> {
+      return request(`/api/hoahong/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(data) });
+    },
+
     async approve(
       id: string,
       dongY: boolean
