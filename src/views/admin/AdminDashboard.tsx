@@ -1,22 +1,7 @@
-import React, { useState } from 'react';
-import { formatMoney, formatNumber } from '../../utils/format';
-import {
-  Users,
-  Clock,
-  DollarSign,
-  CheckCircle,
-  AlertCircle,
-  ExternalLink,
-  Play,
-  Sparkles,
-  MapPin,
-  Calendar,
-  Eye,
-} from 'lucide-react';
+import React from 'react';
+import { Users, Clock, Wallet, CheckCircle2, CalendarDays, ArrowUpRight, Banknote, ClipboardCheck } from 'lucide-react';
 import type { ChamCong, Luong, NhanVien, ThongKeKPI } from '../../types';
-import { ConfirmationModal } from '../../components/ConfirmationModal';
-import { BusinessStats } from './BusinessStats';
-import { ContractsRevenueAnalytics } from './ContractsRevenueAnalytics';
+import { formatNumber } from '../../utils/format';
 
 interface AdminDashboardProps {
   kpis: ThongKeKPI[];
@@ -33,6 +18,8 @@ interface AdminDashboardProps {
   onNavigateToTab: (tab: string) => void;
 }
 
+const money = (value: number) => `${formatNumber(Number(value) || 0)} đ`;
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   kpis,
   todayAttendance,
@@ -41,284 +28,108 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   approvedCommissionTotal,
   pendingPayrollTotal,
   staffList,
-  automationStatus,
   onGeneratePayroll,
-  onApprovePayroll,
-  onTriggerAutomation,
   onNavigateToTab,
 }) => {
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
-
-  // Extract KPI values
   const getKpiVal = (id: string, def = 0) => {
     const item = kpis.find((k) => k.KPI_ID === id);
-    return item ? item.GiaTri : def;
+    return item ? Number(item.GiaTri) : def;
   };
 
-  const tongNhanVien = getKpiVal('NV', 0);
-  const chamCongHomNay = getKpiVal('CC', 0);
-  const luongChoDuyet = Number(getKpiVal('CD', 0));
-  const daThanhToan = Number(getKpiVal('TT', 0));
+  const totalStaff = getKpiVal('NV', staffList.length) || staffList.length;
+  const presentCount = todayAttendance.filter((item) => item.TrangThai === 'Có mặt').length;
+  const lateCount = todayAttendance.filter((item) => item.TrangThai === 'Đi trễ').length;
+  const checkedCount = todayAttendance.length;
+  const pendingCount = pendingPayroll.length;
+  const paidCount = paidPayroll.length;
+  const today = new Date();
+  const dateLabel = today.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  const cards = [
+    { label: 'Tổng nhân viên', value: formatNumber(totalStaff), note: 'Nhân sự đang quản lý', icon: Users, action: 'nhanvien' },
+    { label: 'Chấm công hôm nay', value: `${formatNumber(checkedCount)} / ${formatNumber(totalStaff)}`, note: `${presentCount} có mặt · ${lateCount} đi trễ`, icon: Clock, action: 'chamcong' },
+    { label: 'Lương chờ duyệt', value: formatNumber(pendingCount), note: money(pendingPayrollTotal), icon: ClipboardCheck, action: 'luong' },
+    { label: 'Đã thanh toán', value: formatNumber(paidCount), note: 'Phiếu lương đã thanh toán', icon: CheckCircle2, action: 'luong' },
+  ];
 
   return (
-    <div className="space-y-8 animate-fade-in pb-12">
-      {/* Top Welcome & Actions Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-[#E7DFD5] shadow-sm">
+    <div className="space-y-5 animate-fade-in pb-8">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold font-bridal text-stone-900">
-            Tổng quan
-          </h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a88752]">HẠNH PHẠM LUXURY BRIDAL</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">Tổng quan</h1>
+          <p className="mt-1 text-sm text-stone-500 capitalize">{dateLabel}</p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onGeneratePayroll}
-            className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-[#f3dfa2] rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm transition border border-[#c5a059]/40"
-          >
-            <Calendar className="w-4 h-4 text-[#c5a059]" />
-            <span>TẠO BẢNG LƯƠNG THÁNG</span>
-          </button>
-        </div>
-      </div>
-
-      {/* BÁO CÁO TÀI CHÍNH - ƯU TIÊN HIỂN THỊ ĐẦU TRANG */}
-      <ContractsRevenueAnalytics />
-
-      {/* THỐNG KÊ VẬN HÀNH: NHÂN SỰ, CÔNG VIỆC, HỢP ĐỒNG */}
-      <BusinessStats staffList={staffList} approvedCommissionTotal={approvedCommissionTotal} pendingPayrollTotal={pendingPayrollTotal} />
-
-      {/* SECTION 1: CHẤM CÔNG HÔM NAY (Realtime Attendance Feed) */}
-      <div className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E7DFD5] bg-[#FAF8F5]">
-          <h2 className="text-base font-bold font-bridal text-stone-900 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-[#bf954f]" />
-            Chấm công hôm nay
-          </h2>
-          <button
-            onClick={() => onNavigateToTab('chamcong')}
-            className="text-xs text-[#a97d3e] hover:underline flex items-center gap-1 font-semibold"
-          >
-            <span>Xem lịch sử</span>
-            <ExternalLink className="w-3 h-3" />
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#FAF8F5] text-stone-500 uppercase tracking-wider border-b border-[#E7DFD5]">
-              <tr>
-                <th className="px-5 py-3 font-semibold">Nhân viên</th>
-                <th className="px-5 py-3 font-semibold">Ảnh Check-in</th>
-                <th className="px-5 py-3 font-semibold">Giờ Check-in</th>
-                <th className="px-5 py-3 font-semibold">Giờ Check-out</th>
-                <th className="px-5 py-3 font-semibold">Số Giờ Làm</th>
-                <th className="px-5 py-3 font-semibold">Vị trí GPS</th>
-                <th className="px-5 py-3 font-semibold">Trạng Thái</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E7DFD5]">
-              {todayAttendance.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-5 py-8 text-center text-stone-400">
-                    Chưa có nhân viên nào chấm công hôm nay.
-                  </td>
-                </tr>
-              ) : (
-                todayAttendance.map((cc) => (
-                  <tr key={cc.ChamCongID} className="hover:bg-[#FAF8F5] transition">
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-stone-200 overflow-hidden border border-[#c5a059]/40 flex-shrink-0">
-                          {cc.AnhCheckIn ? (
-                            <img src={cc.AnhCheckIn} alt={cc.HoTen} className="w-full h-full object-cover" />
-                          ) : (
-                            <Users className="w-4 h-4 m-2 text-stone-500" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-bold text-stone-900">{cc.HoTen}</p>
-                          <p className="text-[10px] text-stone-400">{cc.NhanVienID}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {cc.AnhCheckIn ? (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPhoto(cc.AnhCheckIn || null)}
-                          className="relative group w-9 h-9 rounded-lg overflow-hidden border border-stone-200 shadow-sm"
-                          title="Bấm để xem ảnh phóng to"
-                        >
-                          <img src={cc.AnhCheckIn} alt="Selfie" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                            <Eye className="w-3.5 h-3.5 text-white" />
-                          </div>
-                        </button>
-                      ) : (
-                        <span className="text-stone-300 italic">Chưa có</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 font-mono text-stone-800 font-semibold">
-                      {cc.CheckIn || '--:--:--'}
-                    </td>
-                    <td className="px-5 py-3.5 font-mono text-stone-800">
-                      {cc.CheckOut || '--:--:--'}
-                    </td>
-                    <td className="px-5 py-3.5 font-mono font-bold text-stone-900">
-                      {cc.SoGioLam ? `${cc.SoGioLam}h` : '--'}
-                    </td>
-                    <td className="px-5 py-3.5 max-w-[200px]">
-                      {cc.GPSCheckIn ? (
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                            cc.GPSCheckIn.split('(')[0].trim()
-                          )}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[11px] text-stone-600 hover:text-[#a97d3e] flex items-center gap-1 truncate"
-                          title={cc.GPSCheckIn}
-                        >
-                          <MapPin className="w-3 h-3 text-[#bf954f] flex-shrink-0" />
-                          <span className="truncate">{cc.GPSCheckIn}</span>
-                        </a>
-                      ) : (
-                        <span className="text-stone-300">--</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          cc.TrangThai === 'Có mặt'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : cc.TrangThai === 'Đi trễ'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-stone-100 text-stone-700'
-                        }`}
-                      >
-                        {cc.TrangThai}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* SECTION 2: LƯƠNG CHỜ DUYỆT */}
-      <div className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E7DFD5] bg-[#FAF8F5]">
-          <h2 className="text-base font-bold font-bridal text-stone-900 flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-amber-600" />
-            Lương chờ duyệt ({pendingPayroll.length})
-          </h2>
-          <button
-            onClick={() => onNavigateToTab('luong')}
-            className="text-xs text-[#a97d3e] hover:underline flex items-center gap-1 font-semibold"
-          >
-            <span>Xem bảng lương</span>
-            <ExternalLink className="w-3 h-3" />
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#FAF8F5] text-stone-500 uppercase tracking-wider border-b border-[#E7DFD5]">
-              <tr>
-                <th className="px-5 py-3 font-semibold">Nhân viên</th>
-                <th className="px-5 py-3 font-semibold">Tháng</th>
-                <th className="px-5 py-3 font-semibold">Lương Cơ Bản</th>
-                <th className="px-5 py-3 font-semibold">Phụ Cấp</th>
-                <th className="px-5 py-3 font-semibold">Thưởng</th>
-                <th className="px-5 py-3 font-semibold">Hoa Hồng</th>
-                <th className="px-5 py-3 font-semibold">Phạt/Tạm Ứng</th>
-                <th className="px-5 py-3 font-semibold">Thực Lãnh</th>
-                <th className="px-5 py-3 font-semibold text-right">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E7DFD5]">
-              {pendingPayroll.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-5 py-8 text-center text-stone-400">
-                    Không có phiếu lương nào đang chờ duyệt.
-                  </td>
-                </tr>
-              ) : (
-                pendingPayroll.map((l) => (
-                  <tr key={l.LuongID} className="hover:bg-[#FAF8F5] transition">
-                    <td className="px-5 py-3.5">
-                      <p className="font-bold text-stone-900">{l.HoTen}</p>
-                      <p className="text-[10px] text-stone-400">{l.NhanVienID}</p>
-                    </td>
-                    <td className="px-5 py-3.5 font-semibold text-stone-700">{l.Thang}</td>
-                    <td className="px-5 py-3.5 font-mono">
-                      {formatNumber(l.LuongCoBan)} đ
-                    </td>
-                    <td className="px-5 py-3.5 font-mono text-emerald-600">
-                      +{formatNumber(l.PhuCap)} đ
-                    </td>
-                    <td className="px-5 py-3.5 font-mono text-emerald-600">
-                      +{formatNumber(l.Thuong)} đ
-                    </td>
-                    <td className="px-5 py-3.5 font-mono text-[#a97d3e] font-semibold">
-                      +{formatNumber(l.HoaHong)} đ
-                    </td>
-                    <td className="px-5 py-3.5 font-mono text-rose-600">
-                      -{(l.Phat + formatNumber(l.TamUng))} đ
-                    </td>
-                    <td className="px-5 py-3.5 font-mono font-bold text-stone-900 text-sm">
-                      {formatNumber(l.ThucLanh)} đ
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => setApprovingId(l.LuongID)}
-                        className="px-3.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-[#dfc79f] rounded-lg font-bold text-[11px] uppercase tracking-wider transition border border-[#c5a059]/50 shadow-sm"
-                      >
-                        DUYỆT LƯƠNG
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal: View Full Selfie Photo */}
-      {selectedPhoto && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"
-          onClick={() => setSelectedPhoto(null)}
+        <button
+          type="button"
+          onClick={onGeneratePayroll}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-semibold text-[#f3dfa2] shadow-sm transition hover:bg-stone-800"
         >
-          <div className="relative max-w-md w-full bg-white rounded-2xl overflow-hidden shadow-2xl p-2 border border-[#c5a059]">
-            <img src={selectedPhoto} alt="Attendance Selfie" className="w-full h-auto rounded-xl object-cover" />
-            <p className="text-center text-xs text-stone-500 mt-2 font-mono">
-              Ảnh khuôn mặt ghi nhận khi chấm công
-            </p>
-          </div>
-        </div>
-      )}
+          <CalendarDays className="h-4 w-4" />
+          Tạo bảng lương tháng
+        </button>
+      </header>
 
-      {/* Confirmation Modal for Approving Salary */}
-      <ConfirmationModal
-        isOpen={Boolean(approvingId)}
-        onClose={() => setApprovingId(null)}
-        onConfirm={() => {
-          if (approvingId) {
-            onApprovePayroll(approvingId);
-            setApprovingId(null);
-          }
-        }}
-        title="XÁC NHẬN DUYỆT LƯƠNG"
-        message="Bạn có chắc chắn muốn duyệt khoản lương này? Sau khi duyệt, khoản lương sẽ chuyển sang trạng thái Đã duyệt và sẵn sàng để thanh toán."
-        confirmText="DUYỆT LƯƠNG"
-        type="info"
-      />
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-stone-800">Chỉ số vận hành</h2>
+          <span className="text-xs text-stone-400">Cập nhật theo dữ liệu hiện có</span>
+        </div>
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          {cards.map(({ label, value, note, icon: Icon, action }) => (
+            <button
+              type="button"
+              key={label}
+              onClick={() => onNavigateToTab(action)}
+              className="group min-w-0 rounded-2xl border border-[#e9e1d5] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#c5a059] hover:shadow-md"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-stone-500">{label}</span>
+                <span className="rounded-xl bg-[#f8f4ed] p-2 text-[#a88752]"><Icon className="h-4 w-4" /></span>
+              </div>
+              <div className="mt-3 truncate text-2xl font-bold tracking-tight text-stone-900">{value}</div>
+              <div className="mt-1 min-h-5 truncate text-xs text-stone-500">{note}</div>
+              <div className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-[#a88752]">Xem chi tiết <ArrowUpRight className="h-3 w-3" /></div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-[#e9e1d5] bg-white p-4 sm:p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="rounded-xl bg-[#f8f4ed] p-2 text-[#a88752]"><Banknote className="h-4 w-4" /></span>
+            <h2 className="text-sm font-bold text-stone-800">Tổng hợp thu nhập</h2>
+          </div>
+          <div className="mt-4">
+            <p className="text-xs text-stone-500">Hoa hồng đã duyệt</p>
+            <p className="mt-1 text-xl font-bold text-stone-900">{money(approvedCommissionTotal)}</p>
+          </div>
+          <button type="button" onClick={() => onNavigateToTab('luong')} className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#a88752] hover:underline">
+            Xem lương & thu nhập <ArrowUpRight className="h-3 w-3" />
+          </button>
+        </div>
+
+        <div className="rounded-2xl border border-[#e9e1d5] bg-white p-4 sm:p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="rounded-xl bg-[#f8f4ed] p-2 text-[#a88752]"><Clock className="h-4 w-4" /></span>
+            <h2 className="text-sm font-bold text-stone-800">Tình hình chấm công hôm nay</h2>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div><p className="text-xs text-stone-500">Đã chấm công</p><p className="mt-1 text-xl font-bold text-stone-900">{checkedCount}</p></div>
+            <div><p className="text-xs text-stone-500">Có mặt</p><p className="mt-1 text-xl font-bold text-emerald-700">{presentCount}</p></div>
+            <div><p className="text-xs text-stone-500">Đi trễ</p><p className="mt-1 text-xl font-bold text-amber-700">{lateCount}</p></div>
+          </div>
+          <button type="button" onClick={() => onNavigateToTab('chamcong')} className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#a88752] hover:underline">
+            Xem chấm công <ArrowUpRight className="h-3 w-3" />
+          </button>
+        </div>
+      </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#f8f5ef] px-4 py-3 text-xs text-stone-600">
+        <span>Trang tổng quan chỉ giữ các số liệu tổng hợp; chi tiết nằm trong từng phân hệ.</span>
+        <button type="button" onClick={() => onNavigateToTab('thongke')} className="font-semibold text-[#9b7744] hover:underline">Mở thống kê chi tiết</button>
+      </div>
     </div>
   );
 };
