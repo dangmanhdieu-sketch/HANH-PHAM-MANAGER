@@ -197,3 +197,34 @@ export interface AuthResponse {
   user: Omit<NhanVien, 'MatKhau'>;
   token: string;
 }
+
+
+export type InventoryCategory = 'Váy cưới' | 'Vest' | 'Áo dài' | 'Phụ kiện';
+export type InventoryStatus = 'Có sẵn' | 'Đang đặt' | 'Đang thuê' | 'Đang giặt' | 'Đang sửa' | 'Hư hỏng' | 'Thanh lý';
+
+export interface InventoryItem {
+  id: string;
+  qrCode: string;
+  name: string;
+  category: InventoryCategory;
+  size: string;
+  color: string;
+  collection: string;
+  rentalPrice: number;
+  salePrice: number;
+  status: InventoryStatus;
+  imageUrl: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
+export interface InventoryEvent {
+  id: string;
+  itemId: string;
+  action: 'Nhập kho' | 'Đặt thuê' | 'Xuất thuê' | 'Trả kho' | 'Giặt' | 'Sửa chữa' | 'Kiểm kê' | 'Cập nhật';
+  note: string;
+  performedBy: string;
+  createdAt: string;
+}
