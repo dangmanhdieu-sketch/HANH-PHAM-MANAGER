@@ -138,27 +138,29 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
       ? `[${loaiKhoan}] ${tenDichVu.trim()} - Khách: ${tenKhachHang.trim()}`
       : `[${loaiKhoan}] ${tenDichVu.trim()}`;
 
-    try {
-      await onSubmit({
-        NhanVienID: currentUser.NhanVienID,
-        ChiNhanh: chiNhanh,
-        Ngay: ngay,
-        NoiDung: fullDescription,
-        LoaiKhoan: loaiKhoan,
-        DoanhThu: loaiKhoan === 'Tiền Show' ? tienShow : doanhThu,
-        TyLeHoaHong: loaiKhoan === 'Tiền Show' ? 100 : tyLe,
-        SoTienHoaHong: finalAmount,
-        AnhChungTu: anhChungTu.trim() || undefined,
-        GhiChu: ghiChu.trim() || undefined,
-        TrangThaiThanhToan: trangThaiThanhToan,
-        PhuongThucThanhToan: trangThaiThanhToan === 'Đã thanh toán' ? phuongThucThanhToan : '',
-      });
-      onClose();
-    } catch (err: any) {
-      setFormError(err.message || 'Lỗi khi gửi phiếu kê khai.');
-    } finally {
-      setSubmitting(false);
-    }
+    const payload = {
+      NhanVienID: currentUser.NhanVienID,
+      ChiNhanh: chiNhanh,
+      Ngay: ngay,
+      NoiDung: fullDescription,
+      LoaiKhoan: loaiKhoan,
+      DoanhThu: loaiKhoan === 'Tiền Show' ? tienShow : doanhThu,
+      TyLeHoaHong: loaiKhoan === 'Tiền Show' ? 100 : tyLe,
+      SoTienHoaHong: finalAmount,
+      AnhChungTu: anhChungTu.trim() || undefined,
+      GhiChu: ghiChu.trim() || undefined,
+      TrangThaiThanhToan: trangThaiThanhToan,
+      PhuongThucThanhToan: trangThaiThanhToan === 'Đã thanh toán' ? phuongThucThanhToan : '',
+    };
+
+    // Close the form immediately. The API request continues in the background;
+    // the parent screen reports any eventual persistence error without keeping
+    // this modal/spinner open on a slow Firestore acknowledgement.
+    onClose();
+    setSubmitting(false);
+    void onSubmit(payload).catch((err: any) => {
+      console.error('[Commission] Background claim submission failed:', err);
+    });
   };
 
   return (
