@@ -31,9 +31,11 @@ export const MyCommissions: React.FC<MyCommissionsProps> = ({
   const [filterType, setFilterType] = useState<'ALL' | 'Tiền Show' | 'Hoa Hồng'>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [newClaims, setNewClaims] = useState<HoaHong[]>([]);
+  const visibleCommissionList = [...newClaims, ...commissionList];
 
   // Filter list
-  const filteredList = commissionList.filter((c) => {
+  const filteredList = visibleCommissionList.filter((c) => {
     const matchType =
       filterType === 'ALL' ||
       (filterType === 'Tiền Show' && (c.LoaiKhoan === 'Tiền Show' || c.NoiDung.includes('Tiền Show'))) ||
@@ -43,22 +45,25 @@ export const MyCommissions: React.FC<MyCommissionsProps> = ({
     return matchType && matchStatus;
   });
 
-  const approvedTotal = commissionList
+  const approvedTotal = visibleCommissionList
     .filter((c) => c.TrangThai === 'Đã duyệt')
     .reduce((sum, c) => sum + c.SoTienHoaHong, 0);
 
-  const pendingTotal = commissionList
+  const pendingTotal = visibleCommissionList
     .filter((c) => c.TrangThai === 'Chờ duyệt')
     .reduce((sum, c) => sum + c.SoTienHoaHong, 0);
 
-  const showFeeTotal = commissionList
+  const showFeeTotal = visibleCommissionList
     .filter((c) => c.TrangThai === 'Đã duyệt' && (c.LoaiKhoan === 'Tiền Show' || c.NoiDung.includes('Tiền Show')))
     .reduce((sum, c) => sum + c.SoTienHoaHong, 0);
 
-  const handleSubmitClaim = async (data: any) => {
-    await api.commission.create(data);
-    alert('Đã gửi kê khai tiền show / hoa hồng thành công! Quản trị viên sẽ kiểm tra và phê duyệt.');
-    onRefresh();
+  const handleSubmitClaim = async (data: any): Promise<HoaHong> => {
+    const created = await api.commission.create(data);
+    // Update this screen locally. Avoid a full application refresh after every
+    // claim; that refresh was leaving the mobile UI spinning after the server
+    // had already persisted the commission record.
+    setNewClaims((prev) => [created, ...prev.filter((item) => item.HoaHongID !== created.HoaHongID)]);
+    return created;
   };
 
   return (
