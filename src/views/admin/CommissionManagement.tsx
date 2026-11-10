@@ -231,6 +231,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
             onClick={() => {
               setCustomShowTask(false);
               setFormData({
+                ChiNhanh: '',
                 NhanVienID: staffList[0]?.NhanVienID || 'NV002',
                 Ngay: new Date().toISOString().split('T')[0],
                 NoiDung: '',
