@@ -2,6 +2,8 @@ import React from 'react';
 import { Users, Clock, Wallet, CheckCircle2, CalendarDays, ArrowUpRight, Banknote, ClipboardCheck } from 'lucide-react';
 import type { ChamCong, Luong, NhanVien, ThongKeKPI } from '../../types';
 import { formatNumber } from '../../utils/format';
+import { BusinessStats } from './BusinessStats';
+import { ContractsRevenueAnalytics } from './ContractsRevenueAnalytics';
 
 interface AdminDashboardProps {
   kpis: ThongKeKPI[];
@@ -93,6 +95,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-sm font-bold text-stone-800">Doanh số & hợp đồng</h2>
+          <p className="mt-1 text-xs text-stone-500">Tổng hợp hợp đồng ký mới, doanh số, tiền đã thu và công nợ theo kỳ.</p>
+        </div>
+        <ContractsRevenueAnalytics />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-bold text-stone-800">Tổng hợp hoạt động kinh doanh</h2>
+        <BusinessStats staffList={staffList} approvedCommissionTotal={approvedCommissionTotal} pendingPayrollTotal={pendingPayrollTotal} />
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-3">
