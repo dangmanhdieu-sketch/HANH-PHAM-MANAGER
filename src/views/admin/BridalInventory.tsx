@@ -105,6 +105,34 @@ export const BridalInventory: React.FC = () => {
     care: items.filter(x => ['Đang giặt', 'Đang sửa', 'Hư hỏng'].includes(x.status)).length,
   }), [items]);
 
+
+  const uploadImage = async (file?: File) => {
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { setError('Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP.'); return; }
+    setSaving(true); setError('');
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Không đọc được tệp ảnh.'));
+        reader.readAsDataURL(file);
+      });
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = dataUrl;
+      });
+      const scale = Math.min(1, 1600 / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale);
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Không xử lý được ảnh.');
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const compressed = canvas.toDataURL('image/jpeg', 0.82);
+      const result = await api.inventory.uploadImage(compressed, file.name.replace(/\.[^.]+$/, '') + '.jpg');
+      setForm(prev => ({ ...prev, imageUrl: result.imageUrl }));
+    } catch (e: any) { setError(e?.message || 'Tải ảnh lên Google Drive thất bại.'); }
+    finally { setSaving(false); }
+  };
+
   const openCreate = () => { setEditing(null); setForm({ ...EMPTY_FORM }); setFormOpen(true); };
   const openEdit = (item: InventoryItem) => {
     setEditing(item);
@@ -194,7 +222,11 @@ export const BridalInventory: React.FC = () => {
           <label className="text-xs font-semibold text-stone-600">Bộ sưu tập<input value={form.collection || ''} onChange={e=>setForm({...form,collection:e.target.value})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
           <label className="text-xs font-semibold text-stone-600">Giá thuê<input type="number" min="0" value={form.rentalPrice || 0} onChange={e=>setForm({...form,rentalPrice:Number(e.target.value)})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
           <label className="text-xs font-semibold text-stone-600">Giá bán<input type="number" min="0" value={form.salePrice || 0} onChange={e=>setForm({...form,salePrice:Number(e.target.value)})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
-          <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Đường dẫn ảnh<input type="url" value={form.imageUrl || ''} onChange={e=>setForm({...form,imageUrl:e.target.value})} placeholder="https://..." className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
+          <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Ảnh sản phẩm — tải thẳng lên Google Drive
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>void uploadImage(e.target.files?.[0])} className="mt-1 w-full rounded-lg border p-3 text-sm"/>
+            <span className="mt-1 block text-[11px] font-normal text-stone-400">Ảnh tự nén còn tối đa 1600px, lưu trong Drive chung. Tối đa 8 MB sau nén.</span>
+            {form.imageUrl && <img src={form.imageUrl} alt="Ảnh xem trước" className="mt-2 h-36 rounded-xl object-contain bg-stone-50"/>}
+          </label>
           <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Ghi chú<textarea value={form.notes || ''} onChange={e=>setForm({...form,notes:e.target.value})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
         </div>
         {editing && <label className="block text-xs font-semibold text-stone-600">Tình trạng<select value={form.status} onChange={e=>setForm({...form,status:e.target.value as InventoryStatus})} className="mt-1 w-full rounded-lg border p-3 text-sm">{STATUSES.map(x=><option key={x}>{x}</option>)}</select></label>}
