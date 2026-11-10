@@ -33,9 +33,13 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   staffList,
   onRefresh,
 }) => {
-  const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
+  const [selectedStaffId, setSelectedStaffId] = useState<string>(staffList[0]?.NhanVienID || '');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
+  const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [showPendingQueue, setShowPendingQueue] = useState(false);
+  const [editingCommission, setEditingCommission] = useState<HoaHong | null>(null);
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [modalOpen, setModalOpen] = useState(false);
   const [customShowTask, setCustomShowTask] = useState(false);
@@ -126,16 +130,18 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   );
 
   const filteredList = currentCommissionList.filter((hh) => {
-    const matchStaff = selectedStaffId === 'ALL' || hh.NhanVienID === selectedStaffId;
+    const matchStaff = showPendingQueue || hh.NhanVienID === selectedStaffId;
     const matchBranch = selectedBranch === 'ALL' || hh.ChiNhanh === selectedBranch;
-    const matchStatus = selectedStatus === 'ALL' || hh.TrangThai === selectedStatus;
+    const matchStatus = showPendingQueue ? hh.TrangThai === 'Chờ duyệt' : (selectedStatus === 'ALL' || hh.TrangThai === selectedStatus);
+    const matchMonth = (hh.Ngay || '').startsWith(selectedMonth);
+    const matchDate = showPendingQueue || !selectedDate || hh.Ngay === selectedDate;
     const isShow = hh.LoaiKhoan === 'Tiền Show' || hh.NoiDung.includes('Tiền Show');
     const matchType =
       selectedType === 'ALL' ||
       (selectedType === 'Tiền Show' && isShow) ||
       (selectedType === 'Hoa Hồng' && !isShow);
 
-    return matchStaff && matchBranch && matchStatus && matchType;
+    return matchStaff && matchBranch && matchStatus && matchType && matchMonth && matchDate;
   });
 
   // Calculate metrics
@@ -163,14 +169,20 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
 
     try {
       if (!['HP_DONG_XOAI', 'HP_BINH_LONG'].includes(formData.ChiNhanh)) throw new Error('Vui lòng chọn chi nhánh.');
-      await api.commission.create({
-        ...formData,
-        SoTienHoaHong: computedAmount,
-      });
+      if (editingCommission) {
+        await api.commission.update(editingCommission.HoaHongID, {
+          NhanVienID: formData.NhanVienID, Ngay: formData.Ngay, NoiDung: formData.NoiDung,
+          LoaiKhoan: formData.LoaiKhoan, DoanhThu: formData.DoanhThu,
+          TyLeHoaHong: formData.TyLeHoaHong, SoTienHoaHong: computedAmount, GhiChu: formData.GhiChu,
+        });
+      } else {
+        await api.commission.create({ ...formData, SoTienHoaHong: computedAmount });
+      }
       setModalOpen(false);
+      setEditingCommission(null);
       onRefresh();
     } catch (err: any) {
-      setFormError(err.message || 'Lỗi khi tạo hoa hồng');
+      setFormError(err.message || (editingCommission ? 'Lỗi khi sửa hoa hồng' : 'Lỗi khi tạo hoa hồng'));
     } finally {
       setSaving(false);
     }
@@ -241,6 +253,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           <button
             type="button"
             onClick={() => {
+              setEditingCommission(null);
               setCustomShowTask(false);
               setFormData({
                 ChiNhanh: '',
@@ -285,7 +298,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => setSelectedStatus('Chờ duyệt')}
+            onClick={() => { setShowPendingQueue(true); setSelectedStatus('Chờ duyệt'); setSelectedStaffId(''); setSelectedDate(''); }}
             className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition shadow-sm whitespace-nowrap"
           >
             Xem phiếu chờ duyệt
@@ -330,7 +343,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
               onChange={(e) => setSelectedStaffId(e.target.value)}
               className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-1 focus:ring-[#bf954f] bg-white text-xs"
             >
-              <option value="ALL">Tất cả nhân viên</option>
+              <option value="">-- Chọn nhân viên --</option>
               {staffList.map((s) => (
                 <option key={s.NhanVienID} value={s.NhanVienID}>
                   {s.HoTen} ({s.NhanVienID})
@@ -365,6 +378,10 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
               <option value="Từ chối">Từ chối</option>
             </select>
           </div>
+        </div>
+          <div className="flex items-center gap-1.5"><span className="font-semibold text-stone-600">Tháng:</span><input type="month" value={selectedMonth} onChange={(e) => { setSelectedMonth(e.target.value); setShowPendingQueue(false); }} className="px-3 py-2 border border-stone-200 rounded-lg bg-white text-xs" /></div>
+          <div className="flex items-center gap-1.5"><span className="font-semibold text-stone-600">Ngày:</span><input type="date" value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setShowPendingQueue(false); }} className="px-3 py-2 border border-stone-200 rounded-lg bg-white text-xs" /></div>
+          {showPendingQueue && <button type="button" onClick={() => { setShowPendingQueue(false); setSelectedStaffId(staffList[0]?.NhanVienID || ''); setSelectedDate(new Date().toISOString().slice(0, 10)); setSelectedStatus('ALL'); }} className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white">Quay lại xem theo nhân viên</button>}
         </div>
       </div>
 
