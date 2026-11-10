@@ -93,8 +93,8 @@ export const BridalInventory: React.FC = () => {
     });
     return () => {
       stopped = true;
-      void scanner.stop().catch(() => {});
-      void scanner.clear().catch(() => {});
+      try { scanner.stop(); } catch {}
+      try { scanner.clear(); } catch {}
     };
   }, [scannerOpen]);
 
