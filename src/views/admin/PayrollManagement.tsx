@@ -407,9 +407,35 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
           <div className="rounded-xl bg-orange-50 p-3"><p className="text-[10px] text-orange-700 font-semibold">Tạm ứng chờ duyệt</p><p className="text-sm font-bold text-orange-900 mt-1">{formatMoney(pendingAdvanceTotal)}</p></div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div>
-            <h3 className="text-xs font-bold text-stone-700 mb-2">Hoa hồng / Tiền show ({monthCommissions.length})</h3>
-            <div className="overflow-x-auto border border-stone-100 rounded-xl"><table className="w-full text-xs"><thead className="bg-stone-50"><tr><th className="p-2 text-left">Ngày</th><th className="p-2 text-left">Nhân viên</th><th className="p-2 text-left">Nội dung</th><th className="p-2 text-right">Số tiền</th><th className="p-2">Trạng thái</th></tr></thead><tbody className="divide-y">{monthCommissions.map((item) => <tr key={item.HoaHongID}><td className="p-2 whitespace-nowrap">{item.Ngay}</td><td className="p-2 whitespace-nowrap">{item.HoTen}</td><td className="p-2 min-w-40">{item.NoiDung}</td><td className="p-2 text-right whitespace-nowrap">{formatMoney(item.SoTienHoaHong)}</td><td className="p-2 whitespace-nowrap">{item.TrangThai}</td></tr>)}{monthCommissions.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-stone-400">Chưa có giao dịch hoa hồng trong kỳ.</td></tr>}</tbody></table></div>
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-bold text-stone-700">Hoa hồng đã duyệt trong ngày ({selectedDayCommissions.length})</h3>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">{activeCommissionDate ? activeCommissionDate.split('-').reverse().join('/') : 'Chưa có dữ liệu'}</span>
+            </div>
+            <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="text-[11px] font-semibold text-stone-500">Chọn ngày xem lịch sử
+                <select value={activeCommissionDate} onChange={(e) => setCommissionHistoryDate(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-xs text-stone-800">
+                  {approvedCommissionDates.length === 0 && <option value="">Chưa có hoa hồng đã duyệt</option>}
+                  {approvedCommissionDates.map((date) => <option key={date} value={date}>{date.split('-').reverse().join('/')}</option>)}
+                </select>
+              </label>
+              <label className="text-[11px] font-semibold text-stone-500">Chọn nhân viên
+                <select value={commissionHistoryStaffId} onChange={(e) => setCommissionHistoryStaffId(e.target.value)} className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-xs text-stone-800">
+                  <option value="ALL">Tất cả nhân viên trong ngày</option>
+                  {staffList.map((staff) => <option key={staff.NhanVienID} value={staff.NhanVienID}>{staff.HoTen}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-stone-100">
+              <table className="w-full text-xs">
+                <thead className="bg-stone-50"><tr><th className="p-2 text-left">Nhân viên</th><th className="p-2 text-left">Nội dung</th><th className="p-2 text-right">Số tiền</th></tr></thead>
+                <tbody className="divide-y">
+                  {selectedDayCommissions.map((item) => <tr key={item.HoaHongID}><td className="whitespace-nowrap p-2 font-medium">{item.HoTen}</td><td className="min-w-40 p-2">{item.NoiDung}</td><td className="whitespace-nowrap p-2 text-right font-semibold text-emerald-700">{formatMoney(item.SoTienHoaHong)}</td></tr>)}
+                  {selectedDayCommissions.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-stone-400">Không có hoa hồng đã duyệt trong ngày / nhân viên đã chọn.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-[10px] text-stone-400">Mặc định hiển thị ngày mới nhất có hoa hồng đã duyệt. Các ngày cũ chỉ xuất hiện khi chọn ngày ở bộ lọc.</p>
           </div>
           <div>
             <h3 className="text-xs font-bold text-stone-700 mb-2">Tạm ứng ({monthAdvances.length})</h3>
