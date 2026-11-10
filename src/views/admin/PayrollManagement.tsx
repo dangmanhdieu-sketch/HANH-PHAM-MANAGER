@@ -297,9 +297,9 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     Number(editForm.TamUng);
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
+    <div className="mx-auto w-full max-w-7xl space-y-4 overflow-x-hidden pb-8 animate-fade-in sm:space-y-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-[#E7DFD5] shadow-sm">
+      <div className="flex flex-col gap-3 rounded-2xl border border-[#E7DFD5] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
           <h1 className="text-xl font-bold font-bridal text-stone-900 flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-[#bf954f]" />
@@ -307,7 +307,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
           </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <a
             href={api.system.getExportUrl('luong')}
             download
@@ -343,7 +343,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white p-4 rounded-xl border border-[#E7DFD5] shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+      <div className="grid grid-cols-1 gap-3 rounded-2xl border border-[#E7DFD5] bg-white p-4 text-xs shadow-sm sm:grid-cols-3">
         <div>
           <label className="block text-stone-500 font-semibold mb-1">Tháng tính lương:</label>
           <select
@@ -394,7 +394,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
       </div>
 
       {/* Monthly employee income & advance ledger */}
-      <section className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-4 sm:p-5 space-y-4">
+      <details className="group rounded-2xl border border-[#E7DFD5] bg-white p-4 shadow-sm sm:p-5"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold text-stone-800"><span className="flex items-center gap-2"><FileText className="h-4 w-4 text-[#bf954f]" /> Đối chiếu hoa hồng & tạm ứng</span><span className="text-xs font-medium text-[#a97d3e] group-open:hidden">Mở chi tiết</span><span className="hidden text-xs font-medium text-[#a97d3e] group-open:inline">Thu gọn</span></summary><div className="mt-4 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-bold text-stone-900 flex items-center gap-2"><FileText className="w-4 h-4 text-[#bf954f]" /> Sổ theo dõi hoa hồng & tạm ứng</h2>
@@ -448,10 +448,10 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
           </div>
         </div>
         <p className="text-[10px] text-stone-500">Chỉ khoản đã duyệt được tính vào tổng đối chiếu. Khi xuất PDF, trình duyệt mở hộp thoại in — chọn “Lưu dưới dạng PDF”.</p>
-      </section>
+      </div></details>
 
       {/* Formula Reminder Box */}
-      <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E7DFD5] text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <details className="rounded-xl border border-[#E7DFD5] bg-[#FAF8F5] px-4 py-3 text-xs"><summary className="cursor-pointer font-semibold text-stone-700">Xem công thức tính lương</summary><div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-[#bf954f]" />
           <span className="font-semibold text-stone-800">Công thức chuẩn:</span>
@@ -462,10 +462,10 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
         <span className="text-[11px] text-stone-500 italic">
           * Hoa hồng được tự động cộng dồn từ các hợp đồng đã duyệt trong tháng
         </span>
-      </div>
+      </div></details>
 
       {/* Payroll Table */}
-      <div className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm overflow-hidden">
+      <section className="overflow-hidden rounded-2xl border border-[#E7DFD5] bg-white shadow-sm"><div className="flex items-center justify-between border-b border-[#E7DFD5] px-4 py-3"><div><h2 className="font-bold text-stone-900">Danh sách bảng lương</h2><p className="mt-0.5 text-[11px] text-stone-500">{filteredList.length} phiếu lương trong kỳ đã chọn</p></div><span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">{filteredList.length} phiếu</span></div><div className="hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-[#FAF8F5] text-stone-500 uppercase tracking-wider border-b border-[#E7DFD5]">
@@ -620,6 +620,13 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
           </table>
         </div>
       </div>
+      <div className="divide-y divide-stone-100 md:hidden">
+        {filteredList.length === 0 ? <div className="p-6 text-center text-sm text-stone-400">Không tìm thấy bảng lương nào trong kỳ này.</div> : filteredList.map((l) => <article key={l.LuongID} className="space-y-3 p-4">
+          <div className="flex items-start justify-between gap-3"><div><p className="font-bold text-stone-900">{l.HoTen}</p><p className="mt-0.5 text-[11px] text-stone-500">{l.NhanVienID} · {l.Thang} · {l.SoNgayCong} công</p></div><span className={"shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold " + (l.TrangThai === "Chờ duyệt" ? "bg-amber-50 text-amber-700" : l.TrangThai === "Đã duyệt" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700")}>{l.TrangThai}</span></div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl bg-stone-50 p-3 text-xs"><div><span className="text-stone-500">Lương cơ bản</span><p className="mt-0.5 font-semibold">{formatMoney(l.LuongCoBan)}</p></div><div><span className="text-stone-500">Hoa hồng</span><p className="mt-0.5 font-semibold text-[#a97d3e]">{formatMoney(l.HoaHong)}</p></div><div><span className="text-stone-500">Phụ cấp + thưởng</span><p className="mt-0.5 font-semibold text-emerald-700">{formatMoney(l.PhuCap + l.Thuong)}</p></div><div><span className="text-stone-500">Phạt + tạm ứng</span><p className="mt-0.5 font-semibold text-rose-600">{formatMoney(l.Phat + l.TamUng)}</p></div></div>
+          <div className="flex items-center justify-between gap-2"><div><p className="text-[10px] font-semibold uppercase text-stone-500">Thực lãnh</p><p className="text-lg font-bold text-stone-900">{formatMoney(l.ThucLanh)}</p></div><div className="flex flex-wrap justify-end gap-1.5"><button type="button" onClick={() => setPreviewPayslip(l)} className="rounded-lg border border-stone-200 p-2 text-stone-600" title="Xem phiếu lương"><FileText className="h-4 w-4"/></button>{l.TrangThai === "Chờ duyệt" && <><button type="button" onClick={() => openEditModal(l)} className="rounded-lg border border-stone-200 p-2 text-stone-600" title="Chỉnh sửa"><Edit2 className="h-4 w-4"/></button><button type="button" onClick={() => setApprovingLuong(l)} className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-bold text-white">Duyệt</button></>}{l.TrangThai === "Đã duyệt" && <button type="button" onClick={() => setPayingLuong(l)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Đã thanh toán</button>}{l.TrangThai !== "Đã thanh toán" && l.TrangThai !== "Chờ duyệt" && <button type="button" onClick={() => openEditModal(l)} className="rounded-lg border border-stone-200 p-2 text-stone-600"><Edit2 className="h-4 w-4"/></button>}<button type="button" onClick={() => void handleDeleteLuong(l)} disabled={l.TrangThai !== "Chờ duyệt"} className="rounded-lg border border-rose-100 p-2 text-rose-600 disabled:opacity-30" title="Xóa phiếu"><Trash2 className="h-4 w-4"/></button></div></div>
+        </article>)}
+      </div></section>
 
       {/* Modal: Edit Luong details */}
       {editingLuong && (
@@ -1000,11 +1007,11 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
       />
       {/* GỘP HOA HỒNG & SHOW VÀO CÙNG TAB LƯƠNG */}
       {initialFilterStatus === 'ALL' && (
-        <CommissionManagement
+        <details className="group rounded-2xl border border-[#E7DFD5] bg-white p-3 shadow-sm sm:p-4"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-1 py-2 font-semibold text-stone-800"><span className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-[#bf954f]"/> Quản lý hoa hồng & tiền show</span><span className="text-xs font-medium text-[#a97d3e] group-open:hidden">Mở quản lý</span><span className="hidden text-xs font-medium text-[#a97d3e] group-open:inline">Thu gọn</span></summary><div className="mt-4"><CommissionManagement
           commissionList={commissionList}
           staffList={staffList}
           onRefresh={onRefresh}
-        />
+        /></div></details>
       )}
     </div>
   );
