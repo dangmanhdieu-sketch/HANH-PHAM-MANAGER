@@ -118,6 +118,31 @@ export interface HoaHong {
   PhuongThucThanhToan?: 'Chuyển khoản' | 'Tiền mặt' | '';
 }
 
+export type LoaiSanPhamKho = 'Váy cưới' | 'Vest' | 'Áo dài' | 'Phụ kiện';
+export type TrangThaiSanPhamKho = 'Có sẵn' | 'Đã đặt' | 'Đang thuê' | 'Đang giặt' | 'Đang sửa' | 'Hư hỏng' | 'Thanh lý';
+
+export interface VayCuoiItem {
+  VayCuoiID: string;
+  MaQR: string;
+  TenSanPham: string;
+  LoaiSanPham: LoaiSanPhamKho;
+  BoSuuTap?: string;
+  Size?: string;
+  MauSac?: string;
+  GiaNhap?: number;
+  GiaThue?: number;
+  GiaBan?: number;
+  AnhUrl?: string;
+  TrangThai: TrangThaiSanPhamKho;
+  ViTri?: string;
+  TinhTrang?: string;
+  GhiChu?: string;
+  TaoLuc: string;
+  CapNhatLuc: string;
+  TaoBoi: string;
+  CapNhatBoi: string;
+}
+
 export type QuanLyModule = 'CONG_VIEC' | 'HOP_DONG' | 'THU_CHI' | 'NGHI_PHEP';
 
 export interface QuanLyRecord {
