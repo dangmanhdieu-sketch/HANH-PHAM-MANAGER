@@ -422,15 +422,13 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
         </span>
       </div></details>
 
-      {/* GỘP HOA HỒNG & SHOW VÀO CÙNG TAB LƯƠNG */}
+      {/* Quản lý hoa hồng đặt ngay trên danh sách bảng lương */}
       {initialFilterStatus === 'ALL' && (
-        <details className="group rounded-2xl border border-[#E7DFD5] bg-white p-3 shadow-sm sm:p-4"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-1 py-2 font-semibold text-stone-800"><span className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-[#bf954f]"/> Quản lý hoa hồng & tiền show</span><span className="text-xs font-medium text-[#a97d3e] group-open:hidden">Mở quản lý</span><span className="hidden text-xs font-medium text-[#a97d3e] group-open:inline">Thu gọn</span></summary><div className="mt-4"><CommissionManagement
-          commissionList={commissionList}
-          staffList={staffList}
-          onRefresh={onRefresh}
-        /></div></details>
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 px-1"><DollarSign className="h-4 w-4 text-[#bf954f]" /><h2 className="font-bold text-stone-900">Quản lý hoa hồng & tiền show</h2></div>
+          <CommissionManagement commissionList={commissionList} staffList={staffList} onRefresh={onRefresh} />
+        </section>
       )}
-
 
       {/* Payroll Table */}
       <section className="overflow-hidden rounded-2xl border border-[#E7DFD5] bg-white shadow-sm"><div className="flex items-center justify-between border-b border-[#E7DFD5] px-4 py-3"><div><h2 className="font-bold text-stone-900">Danh sách bảng lương</h2><p className="mt-0.5 text-[11px] text-stone-500">{filteredList.length} phiếu lương trong kỳ đã chọn</p></div><span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">{filteredList.length} phiếu</span></div><div className="hidden md:block">
