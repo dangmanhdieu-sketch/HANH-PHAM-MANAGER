@@ -32,6 +32,7 @@ export const MyCommissions: React.FC<MyCommissionsProps> = ({
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [newClaims, setNewClaims] = useState<HoaHong[]>([]);
+  const [submitNotice, setSubmitNotice] = useState<string | null>(null);
   const visibleCommissionList = [...newClaims, ...commissionList];
 
   // Filter list
@@ -58,12 +59,26 @@ export const MyCommissions: React.FC<MyCommissionsProps> = ({
     .reduce((sum, c) => sum + c.SoTienHoaHong, 0);
 
   const handleSubmitClaim = async (data: any): Promise<HoaHong> => {
-    const created = await api.commission.create(data);
-    // Update this screen locally. Avoid a full application refresh after every
-    // claim; that refresh was leaving the mobile UI spinning after the server
-    // had already persisted the commission record.
-    setNewClaims((prev) => [created, ...prev.filter((item) => item.HoaHongID !== created.HoaHongID)]);
-    return created;
+    // Optimistic row: acknowledge the employee's tap immediately while the
+    // server finishes its Firestore durability check in the background.
+    const localId = `LOCAL-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const optimistic: HoaHong = {
+      ...data,
+      HoaHongID: localId,
+      HoTen: currentUser.HoTen,
+      TrangThai: 'Chờ duyệt',
+    };
+    setSubmitNotice('Đã nhận kê khai. Hệ thống đang đồng bộ dữ liệu lên máy chủ.');
+    setNewClaims((prev) => [optimistic, ...prev]);
+
+    void api.commission.create(data).then((created) => {
+      setNewClaims((prev) => prev.map((item) => item.HoaHongID === localId ? created : item));
+      setSubmitNotice('Kê khai đã được máy chủ xác nhận lưu thành công.');
+    }).catch((error: any) => {
+      setNewClaims((prev) => prev.filter((item) => item.HoaHongID !== localId));
+      setSubmitNotice(error?.message || 'Chưa xác nhận được việc lưu kê khai. Vui lòng kiểm tra danh sách trước khi gửi lại để tránh trùng.');
+    });
+    return optimistic;
   };
 
   return (
@@ -86,6 +101,13 @@ export const MyCommissions: React.FC<MyCommissionsProps> = ({
           <span>KÊ KHAI MỚI</span>
         </button>
       </div>
+
+      {submitNotice && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
+          {submitNotice}
+          <button type="button" onClick={() => setSubmitNotice(null)} className="ml-3 font-bold underline">Đóng</button>
+        </div>
+      )}
 
       {/* KPI mini */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
