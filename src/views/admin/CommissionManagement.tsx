@@ -43,6 +43,9 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const [approveConfirmHH, setApproveConfirmHH] = useState<{ hh: HoaHong; dongY: boolean } | null>(null);
   const [approvingHH, setApprovingHH] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
+  // Reflect a completed server-side review locally; avoid a full app-wide reload
+  // (which can freeze the mobile screen when the commission ledger is large).
+  const [reviewedStatuses, setReviewedStatuses] = useState<Record<string, string>>({});
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -118,7 +121,11 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
 
   // Filtered list
-  const filteredList = commissionList.filter((hh) => {
+  const currentCommissionList = commissionList.map((hh) =>
+    reviewedStatuses[hh.HoaHongID] ? { ...hh, TrangThai: reviewedStatuses[hh.HoaHongID] } : hh
+  );
+
+  const filteredList = currentCommissionList.filter((hh) => {
     const matchStaff = selectedStaffId === 'ALL' || hh.NhanVienID === selectedStaffId;
     const matchBranch = selectedBranch === 'ALL' || hh.ChiNhanh === selectedBranch;
     const matchStatus = selectedStatus === 'ALL' || hh.TrangThai === selectedStatus;
@@ -136,7 +143,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
     .filter((hh) => hh.TrangThai === 'Đã duyệt')
     .reduce((sum, hh) => sum + hh.SoTienHoaHong, 0);
 
-  const pendingList = commissionList.filter((hh) => hh.TrangThai === 'Chờ duyệt');
+  const pendingList = currentCommissionList.filter((hh) => hh.TrangThai === 'Chờ duyệt');
   const totalPendingMoney = pendingList.reduce((sum, hh) => sum + hh.SoTienHoaHong, 0);
 
   // Computed amount for form preview
@@ -183,8 +190,13 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
         approveConfirmHH.dongY
       );
       console.info('[Commission] Approval API completed:', result?.message || 'OK');
+      // The server has already saved the decision and synchronized payroll.
+      // Update this ledger immediately instead of reloading every app module.
+      const reviewedId = approveConfirmHH.hh.HoaHongID;
+      const nextStatus = approveConfirmHH.dongY ? 'Đã duyệt' : 'Từ chối';
+      setReviewedStatuses((prev) => ({ ...prev, [reviewedId]: nextStatus }));
       setApproveConfirmHH(null);
-      onRefresh();
+      setApproveError(null);
     } catch (err: any) {
       const message = err?.message || 'Không thể kết nối máy chủ để duyệt hoa hồng.';
       console.error('[Commission] Approval failed:', err);
