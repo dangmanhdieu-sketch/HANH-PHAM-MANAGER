@@ -55,17 +55,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   ];
 
   return (
-    <div className="space-y-5 animate-fade-in pb-8">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="mx-auto w-full max-w-7xl space-y-4 overflow-x-hidden px-0 pb-6 animate-fade-in sm:space-y-5">
+      <header className="flex flex-col gap-3 rounded-2xl border border-[#e9e1d5] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a88752]">HẠNH PHẠM LUXURY BRIDAL</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">Tổng quan</h1>
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">Tổng quan</h1>
           <p className="mt-1 text-sm text-stone-500 capitalize">{dateLabel}</p>
         </div>
         <button
           type="button"
           onClick={onGeneratePayroll}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-semibold text-[#f3dfa2] shadow-sm transition hover:bg-stone-800"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-semibold text-[#f3dfa2] shadow-sm transition hover:bg-stone-800 sm:w-auto"
         >
           <CalendarDays className="h-4 w-4" />
           Tạo bảng lương tháng
@@ -77,21 +77,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <h2 className="text-sm font-bold text-stone-800">Chỉ số vận hành</h2>
           <span className="text-xs text-stone-400">Cập nhật theo dữ liệu hiện có</span>
         </div>
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
           {cards.map(({ label, value, note, icon: Icon, action }) => (
             <button
               type="button"
               key={label}
               onClick={() => onNavigateToTab(action)}
-              className="group min-w-0 rounded-2xl border border-[#e9e1d5] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#c5a059] hover:shadow-md"
+              className="group min-w-0 rounded-2xl border border-[#e9e1d5] bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#c5a059] hover:shadow-md sm:p-4"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-stone-500">{label}</span>
+                <span className="min-w-0 text-[11px] font-semibold leading-snug text-stone-500 sm:text-xs">{label}</span>
                 <span className="rounded-xl bg-[#f8f4ed] p-2 text-[#a88752]"><Icon className="h-4 w-4" /></span>
               </div>
-              <div className="mt-3 truncate text-2xl font-bold tracking-tight text-stone-900">{value}</div>
-              <div className="mt-1 min-h-5 truncate text-xs text-stone-500">{note}</div>
-              <div className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-[#a88752]">Xem chi tiết <ArrowUpRight className="h-3 w-3" /></div>
+              <div className="mt-2 break-words text-xl font-bold tracking-tight text-stone-900 sm:mt-3 sm:text-2xl">{value}</div>
+              <div className="mt-1 min-h-8 text-[10px] leading-snug text-stone-500 sm:min-h-5 sm:text-xs">{note}</div>
+              <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-[#a88752] sm:mt-3 sm:text-[11px]">Xem chi tiết <ArrowUpRight className="h-3 w-3" /></div>
             </button>
           ))}
         </div>
@@ -110,15 +110,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <BusinessStats staffList={staffList} approvedCommissionTotal={approvedCommissionTotal} pendingPayrollTotal={pendingPayrollTotal} />
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-[#e9e1d5] bg-white p-4 sm:p-5 shadow-sm">
+      <section className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-2">
+        <div className="min-w-0 rounded-2xl border border-[#e9e1d5] bg-white p-3 shadow-sm sm:p-5">
           <div className="flex items-center gap-2">
             <span className="rounded-xl bg-[#f8f4ed] p-2 text-[#a88752]"><Banknote className="h-4 w-4" /></span>
             <h2 className="text-sm font-bold text-stone-800">Tổng hợp thu nhập</h2>
           </div>
           <div className="mt-4">
             <p className="text-xs text-stone-500">Hoa hồng đã duyệt</p>
-            <p className="mt-1 text-xl font-bold text-stone-900">{money(approvedCommissionTotal)}</p>
+            <p className="mt-1 break-words text-base font-bold leading-tight text-stone-900 sm:text-xl">{money(approvedCommissionTotal)}</p>
           </div>
           <button type="button" onClick={() => onNavigateToTab('luong')} className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#a88752] hover:underline">
             Xem lương & thu nhập <ArrowUpRight className="h-3 w-3" />
@@ -130,10 +130,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span className="rounded-xl bg-[#f8f4ed] p-2 text-[#a88752]"><Clock className="h-4 w-4" /></span>
             <h2 className="text-sm font-bold text-stone-800">Tình hình chấm công hôm nay</h2>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <div><p className="text-xs text-stone-500">Đã chấm công</p><p className="mt-1 text-xl font-bold text-stone-900">{checkedCount}</p></div>
-            <div><p className="text-xs text-stone-500">Có mặt</p><p className="mt-1 text-xl font-bold text-emerald-700">{presentCount}</p></div>
-            <div><p className="text-xs text-stone-500">Đi trễ</p><p className="mt-1 text-xl font-bold text-amber-700">{lateCount}</p></div>
+          <div className="mt-3 grid grid-cols-3 gap-1.5 sm:mt-4 sm:gap-2">
+            <div><p className="text-xs text-stone-500">Đã chấm công</p><p className="mt-1 text-lg font-bold text-stone-900 sm:text-xl">{checkedCount}</p></div>
+            <div><p className="text-xs text-stone-500">Có mặt</p><p className="mt-1 text-lg font-bold text-emerald-700 sm:text-xl">{presentCount}</p></div>
+            <div><p className="text-xs text-stone-500">Đi trễ</p><p className="mt-1 text-lg font-bold text-amber-700 sm:text-xl">{lateCount}</p></div>
           </div>
           <button type="button" onClick={() => onNavigateToTab('chamcong')} className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#a88752] hover:underline">
             Xem chấm công <ArrowUpRight className="h-3 w-3" />
