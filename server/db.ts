@@ -2349,7 +2349,7 @@ class DatabaseService {
 
   public updateHoaHong(
     hoaHongId: string,
-    data: { NhanVienID: string; Ngay: string; NoiDung: string; LoaiKhoan?: 'Tiền Show' | 'Hoa Hồng'; DoanhThu?: number; TyLeHoaHong?: number; SoTienHoaHong?: number; GhiChu?: string },
+    data: { NhanVienID: string; Ngay: string; NoiDung: string; ChiNhanh?: 'HP_DONG_XOAI' | 'HP_BINH_LONG'; LoaiKhoan?: 'Tiền Show' | 'Hoa Hồng'; DoanhThu?: number; TyLeHoaHong?: number; SoTienHoaHong?: number; GhiChu?: string },
     adminUser: { HoTen: string; Email: string }
   ): HoaHong {
     const hh = this.db.HOAHONG.find((item) => item.HoaHongID === hoaHongId);
@@ -2368,7 +2368,7 @@ class DatabaseService {
       : (tyLe > 0 ? Math.round(doanhThu * tyLe / 100) : Math.max(0, Number(data.SoTienHoaHong) || 0));
     Object.assign(hh, {
       NhanVienID: staff.NhanVienID, HoTen: staff.HoTen, Ngay: data.Ngay,
-      NoiDung: data.NoiDung.trim(), LoaiKhoan: loai, DoanhThu: doanhThu,
+      ...(data.ChiNhanh ? { ChiNhanh: data.ChiNhanh } : {}), NoiDung: data.NoiDung.trim(), LoaiKhoan: loai, DoanhThu: doanhThu,
       TyLeHoaHong: tyLe, SoTienHoaHong: amount, GhiChu: data.GhiChu || '',
     });
     this.hoaHongDirtyIds.add(hh.HoaHongID);
