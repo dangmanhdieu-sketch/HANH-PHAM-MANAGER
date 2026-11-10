@@ -620,6 +620,10 @@ export const api = {
   // QUẢN LÝ KHO QR
   // =========================================================
   inventory: {
+    async uploadImage(dataUrl: string, fileName: string): Promise<{ fileId: string; imageUrl: string; webViewLink: string }> {
+      return request('/api/inventory/upload-image', { method: 'POST', body: JSON.stringify({ dataUrl, fileName }) });
+    },
+
     async list(params?: { limit?: number; cursor?: string; category?: string; status?: string; q?: string }): Promise<{ items: InventoryItem[]; nextCursor: string | null }> {
       const query = new URLSearchParams();
       if (params?.limit) query.set('limit', String(params.limit));
