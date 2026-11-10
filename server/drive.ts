@@ -55,7 +55,7 @@ export async function uploadInventoryImage(dataUrl: string, fileName: string) {
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
     body,
   });
-  const file = await response.json() as { id?: string; error?: { message?: string } };
+  const file = await response.json() as { id?: string; webViewLink?: string; error?: { message?: string } };
   if (!response.ok || !file.id) throw new Error(file.error?.message || 'Tải ảnh lên Google Drive thất bại.');
   const permission = await fetch('https://www.googleapis.com/drive/v3/files/' + file.id + '/permissions', {
     method: 'POST',
