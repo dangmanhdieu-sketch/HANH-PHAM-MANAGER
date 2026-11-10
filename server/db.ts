@@ -697,22 +697,12 @@ class DatabaseService {
             SYSTEM_CONFIG: loaded.SYSTEM_CONFIG || DEFAULT_CONFIG,
             THEME: loaded.THEME,
           };
+          // Activate the record-level commission ledger only after its one-time
+          // migration has been fully verified. The original HOAHONG table is
+          // deliberately retained as a rollback copy and is never deleted here.
+          await this.initializeHoaHongRecordStorage(rootRef);
           const migrated = this.applyMigrations();
           this.refreshKPIs();
-          // Firestore is authoritative in production. Do not synchronously
-          // stringify/write the entire local database cache (including the
-          // large commission ledger) before the API becomes ready.
-          // Keep startup focused on loading the existing authoritative table
-          // documents. Never scan/migrate the entire hoaHongRecords collection
-          // while the API readiness gate is closed: that collection can be very
-          // large and would make every Render cold start wait for a full scan.
-          // The legacy HOAHONG table remains authoritative until a separately
-          // scheduled, verified migration can run without blocking app startup.
-          this.hoaHongRecordStorageEnabled = false;
-          this.hoaHongPersistedSnapshots.clear();
-          this.hoaHongDirtyIds.clear();
-          this.hoaHongDeletedIds.clear();
-          console.warn('[Firebase] HOAHONG record-store scan deferred; startup uses existing Firestore table snapshot.');
           this.captureFirestoreSnapshots();
 
           // Upgrade any legacy table document that is already too large for
@@ -793,29 +783,57 @@ class DatabaseService {
     const markerSnap = await markerRef.get();
     const recordsRef = rootRef.collection('hoaHongRecords');
 
+    const snapshot = await recordsRef.get();
+    const docs = snapshot.docs;
+    const ids = new Set<string>();
+    const records: HoaHong[] = [];
+    for (const doc of docs) {
+      const record = restoreFirestoreValue(doc.data()?.record) as HoaHong | undefined;
+      const id = String(record?.HoaHongID || '').trim();
+      if (!id || id !== doc.id || ids.has(id)) {
+        throw new Error(`[Firebase] Invalid/duplicate HOAHONG record in Firestore document ${doc.id}. Refusing unsafe migration/load.`);
+      }
+      ids.add(id);
+      records.push(record);
+    }
+
     if (markerSnap.exists && markerSnap.data()?.version === 1) {
-      const snapshot = await recordsRef.get();
-      const records = snapshot.docs.map((doc) => restoreFirestoreValue(doc.data().record));
       const expectedCount = Number(markerSnap.data()?.recordCount);
       if (!Number.isInteger(expectedCount) || expectedCount < 0 || records.length !== expectedCount) {
         throw new Error(`[Firebase] HOAHONG record count mismatch: marker=${expectedCount}, records=${records.length}. Refusing unsafe startup.`);
       }
-      this.db.HOAHONG = records as HoaHong[];
+      this.db.HOAHONG = records;
       this.hoaHongRecordStorageEnabled = true;
       this.captureHoaHongRecordSnapshots();
-      console.log('[Firebase] HOAHONG record storage loaded:', records.length);
+      console.log('[Firebase] HOAHONG record storage loaded and verified:', records.length);
       return;
     }
 
-    const legacyRecords = this.db.HOAHONG || [];
+    // No published marker means the legacy table remains authoritative. Refuse
+    // to overwrite/delete orphaned documents from an interrupted/unknown run.
+    const legacyRecords = Array.isArray(this.db.HOAHONG) ? this.db.HOAHONG : [];
+    const legacyById = new Map<string, HoaHong>();
+    for (const record of legacyRecords) {
+      const id = String(record?.HoaHongID || '').trim();
+      if (!id || legacyById.has(id)) {
+        throw new Error('[Firebase] Legacy HOAHONG contains a missing or duplicate HoaHongID. Migration stopped without changing the legacy table.');
+      }
+      legacyById.set(id, record);
+    }
+    for (const id of ids) {
+      if (!legacyById.has(id)) {
+        throw new Error(`[Firebase] Found orphan HOAHONG record ${id} without a migration marker. No records were deleted; manual reconciliation is required.`);
+      }
+    }
+
     const batchSize = 350;
-    for (let offset = 0; offset < legacyRecords.length; offset += batchSize) {
-      const slice = legacyRecords.slice(offset, offset + batchSize);
+    const source = Array.from(legacyById.entries());
+    for (let offset = 0; offset < source.length; offset += batchSize) {
+      const slice = source.slice(offset, offset + batchSize);
       await this.firestore!.runTransaction(async (transaction) => {
         await this.assertFirestoreWriterLease(transaction);
-        for (const record of slice) {
-          if (!record.HoaHongID) throw new Error('[Firebase] HOAHONG record without HoaHongID; migration stopped.');
-          transaction.set(recordsRef.doc(String(record.HoaHongID)), {
+        for (const [id, record] of slice) {
+          transaction.set(recordsRef.doc(id), {
             record: sanitizeFirestoreValue(record),
             updatedAt: new Date().toISOString(),
           }, { merge: false });
@@ -823,23 +841,33 @@ class DatabaseService {
       });
     }
 
-    // Verify the migrated collection before publishing its authoritative marker.
+    // Verify the exact ID set and record payloads before publishing the marker.
     const verify = await recordsRef.get();
-    if (verify.size !== legacyRecords.length) {
-      throw new Error(`[Firebase] HOAHONG migration verification failed: expected ${legacyRecords.length}, got ${verify.size}.`);
+    if (verify.size !== legacyById.size) {
+      throw new Error(`[Firebase] HOAHONG migration verification failed: expected ${legacyById.size}, got ${verify.size}. Legacy table remains authoritative.`);
     }
+    for (const doc of verify.docs) {
+      const expected = legacyById.get(doc.id);
+      const actual = restoreFirestoreValue(doc.data()?.record);
+      if (!expected || JSON.stringify(actual) !== JSON.stringify(expected)) {
+        throw new Error(`[Firebase] HOAHONG migration content verification failed for ${doc.id}. Legacy table remains authoritative.`);
+      }
+    }
+
     await this.firestore!.runTransaction(async (transaction) => {
       await this.assertFirestoreWriterLease(transaction);
       transaction.set(markerRef, {
         version: 1,
-        recordCount: legacyRecords.length,
+        recordCount: legacyById.size,
         migratedAt: new Date().toISOString(),
         legacyTableRetained: true,
+        verification: 'exact-id-and-payload-match',
       }, { merge: false });
     });
+    this.db.HOAHONG = legacyRecords;
     this.hoaHongRecordStorageEnabled = true;
     this.captureHoaHongRecordSnapshots();
-    console.log('[Firebase] HOAHONG record migration verified:', legacyRecords.length);
+    console.log('[Firebase] HOAHONG record migration fully verified:', legacyById.size);
   }
 
   private captureHoaHongRecordSnapshots(): void {
@@ -890,6 +918,18 @@ class DatabaseService {
       if (item.record) this.hoaHongPersistedSnapshots.set(item.id, JSON.stringify(item.record));
       else this.hoaHongPersistedSnapshots.delete(item.id);
     }
+    // Keep the migration marker's count current so the next server startup can
+    // validate the live collection after creates/deletes, not just initial size.
+    const markerRef = rootRef.collection('meta').doc('HOAHONG_RECORDS');
+    await this.firestore.runTransaction(async (transaction) => {
+      await this.assertFirestoreWriterLease(transaction);
+      transaction.set(markerRef, {
+        version: 1,
+        recordCount: this.db.HOAHONG.length,
+        countUpdatedAt: new Date().toISOString(),
+        legacyTableRetained: true,
+      }, { merge: true });
+    });
     this.hoaHongDirtyIds.clear();
     this.hoaHongDeletedIds.clear();
     console.log('[Firebase] HOAHONG record changes committed:', writes.length);
