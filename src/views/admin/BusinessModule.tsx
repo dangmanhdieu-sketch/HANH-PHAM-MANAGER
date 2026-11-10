@@ -129,6 +129,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const [loading, setLoading] = useState(true);
   const [cashflowType, setCashflowType] = useState<'THU' | 'CHI'>('THU');
   const [cashflowSection, setCashflowSection] = useState<'ALL' | 'CONTRACT' | 'INTERNAL'>('ALL');
+  const [cashflowCreateMenu, setCashflowCreateMenu] = useState<'THU' | 'CHI' | null>(null);
   const [cashflowStaffFilter, setCashflowStaffFilter] = useState('ALL');
   const [cashflowMonthFilter, setCashflowMonthFilter] = useState(() => {
     const now = new Date();
@@ -727,39 +728,53 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               <Plus className="w-4 h-4" /> THÊM {config.title.toUpperCase()}
             </button>
           ) : (
-            <div className="flex gap-2">
-              <button type="button" onClick={() => openCreate('THU')} className="px-4 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2">
-                <Plus className="w-4 h-4" /> PHIẾU THU
-              </button>
-              <button type="button" onClick={() => openCreate('CHI')} className="px-4 py-2.5 bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-2">
-                <Plus className="w-4 h-4" /> PHIẾU CHI
-              </button>
+            <div className="flex flex-wrap gap-2">
+              <div className="relative">
+                <button type="button" onClick={() => setCashflowCreateMenu(cashflowCreateMenu === 'THU' ? null : 'THU')} className="px-4 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> PHIẾU THU
+                </button>
+                {cashflowCreateMenu === 'THU' && <div className="absolute right-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-xl">
+                  <button type="button" onClick={() => {setCashflowSection('INTERNAL');setCashflowCreateMenu(null);openCreate('THU');}} className="block w-full px-4 py-3 text-left text-xs font-semibold text-stone-700 hover:bg-emerald-50">Thu nội bộ</button>
+                  <button type="button" onClick={() => {setCashflowSection('CONTRACT');setCashflowCreateMenu(null);openCreate('THU');}} className="block w-full border-t border-stone-100 px-4 py-3 text-left text-xs font-semibold text-stone-700 hover:bg-emerald-50">Thu hợp đồng</button>
+                </div>}
+              </div>
+              <div className="relative">
+                <button type="button" onClick={() => setCashflowCreateMenu(cashflowCreateMenu === 'CHI' ? null : 'CHI')} className="px-4 py-2.5 bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> PHIẾU CHI
+                </button>
+                {cashflowCreateMenu === 'CHI' && <div className="absolute right-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-xl">
+                  <button type="button" onClick={() => {setCashflowSection('INTERNAL');setCashflowCreateMenu(null);openCreate('CHI');}} className="block w-full px-4 py-3 text-left text-xs font-semibold text-stone-700 hover:bg-rose-50">Chi nội bộ</button>
+                  <button type="button" onClick={() => {setCashflowSection('CONTRACT');setCashflowCreateMenu(null);openCreate('CHI');}} className="block w-full border-t border-stone-100 px-4 py-3 text-left text-xs font-semibold text-stone-700 hover:bg-rose-50">Chi hợp đồng</button>
+                </div>}
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {module === 'THU_CHI' && (
-        <section className="space-y-4">
-          <div className="rounded-2xl border border-[#E7DFD5] bg-white p-3 sm:p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div><h2 className="font-bold text-stone-900">Phân loại phiếu</h2><p className="mt-1 text-xs text-stone-500">Chọn nhóm để xem đúng khoản thu hoặc chi.</p></div>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => {setCashflowSection('ALL');setCashflowType('THU');}} className={`rounded-lg px-3 py-2 text-xs font-bold ${cashflowSection==='ALL'?'bg-stone-900 text-white':'border border-stone-200 text-stone-600'}`}>Tất cả</button>
-                <button type="button" onClick={() => {setCashflowSection('CONTRACT');setCashflowType('THU');}} className={`rounded-lg px-3 py-2 text-xs font-bold ${cashflowSection==='CONTRACT'?'bg-emerald-700 text-white':'border border-stone-200 text-stone-600'}`}>Thu hợp đồng</button>
-                <button type="button" onClick={() => {setCashflowSection('INTERNAL');setCashflowType('CHI');}} className={`rounded-lg px-3 py-2 text-xs font-bold ${cashflowSection==='INTERNAL'?'bg-amber-600 text-white':'border border-stone-200 text-stone-600'}`}>Thu chi nội bộ</button>
-              </div>
+      {module === 'THU_CHI' && !isEmployee && (() => {
+        const approved = filteredRecords.filter(r => ['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(r.DuLieu?.TrangThaiDuyet || '')));
+        const pending = filteredRecords.filter(r => !['Đã duyệt', 'Đã thanh toán và duyệt'].includes(String(r.DuLieu?.TrangThaiDuyet || '')));
+        const sum = (rows: QuanLyRecord[], type: string) => rows.filter(r => String(r.DuLieu?.Loai || '').toUpperCase() === type).reduce((n,r)=>n+Math.max(0,Number(r.DuLieu?.SoTien||0)),0);
+        const thu = sum(approved,'THU'), chi = sum(approved,'CHI');
+        return <section className="space-y-4">
+          <div className="rounded-2xl border border-[#E7DFD5] bg-white p-4 sm:p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-500">Tổng quan tài chính</p><h2 className="mt-1 text-lg font-bold text-stone-900">Thu chi đã được duyệt</h2></div>
+              <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">{cashflowMonthFilter || 'Tất cả thời gian'}</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button type="button" onClick={() => {setCashflowSection('CONTRACT');openCreate('THU');}} className="flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800"><Plus className="h-4 w-4"/> Lập phiếu thu hợp đồng</button>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => {setCashflowSection('INTERNAL');openCreate('THU');}} className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs font-bold text-emerald-800"><Plus className="h-4 w-4"/> Thu nội bộ</button>
-                <button type="button" onClick={() => {setCashflowSection('INTERNAL');openCreate('CHI');}} className="flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-xs font-bold text-rose-800"><Plus className="h-4 w-4"/> Chi nội bộ</button>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4"><p className="text-xs font-semibold text-emerald-800">TỔNG THU ĐÃ DUYỆT</p><p className="mt-2 text-xl font-bold text-emerald-700">+{thu.toLocaleString('vi-VN')} đ</p></div>
+              <div className="rounded-xl bg-rose-50 border border-rose-100 p-4"><p className="text-xs font-semibold text-rose-800">TỔNG CHI ĐÃ DUYỆT</p><p className="mt-2 text-xl font-bold text-rose-700">-{chi.toLocaleString('vi-VN')} đ</p></div>
+              <div className="rounded-xl bg-stone-50 border border-stone-200 p-4"><p className="text-xs font-semibold text-stone-600">CHÊNH LỆCH THU – CHI</p><p className={`mt-2 text-xl font-bold ${thu-chi>=0?'text-stone-900':'text-rose-700'}`}>{(thu-chi).toLocaleString('vi-VN')} đ</p></div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-stone-600">
+              <span className="rounded-full bg-amber-50 px-3 py-1.5 font-semibold text-amber-800">{pending.length} phiếu chờ duyệt</span>
+              <span className="rounded-full bg-emerald-50 px-3 py-1.5 font-semibold text-emerald-800">{approved.length} phiếu đã duyệt</span>
             </div>
           </div>
-        </section>
-      )}
+        </section>;
+      })()}
       {module === 'THU_CHI' && !isEmployee && (
         <section className="rounded-2xl border border-[#E7DFD5] bg-white p-4 space-y-3">
           <div className="flex items-center justify-between gap-2"><div><h3 className="text-sm font-bold text-stone-900">Bộ lọc dữ liệu</h3><p className="text-xs text-stone-500 mt-1">Lọc theo tháng và nhân viên lập phiếu.</p></div><button type="button" onClick={() => {setCashflowStaffFilter('ALL');const now=new Date();setCashflowMonthFilter(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);setSearch('');}} className="rounded-lg border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-600">Đặt lại</button></div>
