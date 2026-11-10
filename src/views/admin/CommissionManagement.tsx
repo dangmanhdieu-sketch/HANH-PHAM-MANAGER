@@ -194,19 +194,19 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
     setReviewNotice('Đã ghi nhận thao tác. Đang đồng bộ quyết định và cập nhật bảng lương...');
 
     void api.commission.approve(reviewedId, action.dongY).then((result) => {
+      const confirmedStatus = result?.hoahong?.TrangThai || nextStatus;
+      setReviewedStatuses((prev) => ({ ...prev, [reviewedId]: confirmedStatus }));
       console.info('[Commission] Background approval API completed:', result?.message || 'OK');
       setReviewNotice('Máy chủ đã xác nhận lưu quyết định duyệt hoa hồng.');
     }).catch((err: any) => {
-      console.error('[Commission] Background approval failed:', err);
-      setReviewedStatuses((prev) => {
-        const next = { ...prev };
-        if (previousStatus) next[reviewedId] = previousStatus;
-        else delete next[reviewedId];
-        return next;
-      });
+      console.error('[Commission] Background approval could not be confirmed:', err);
+      // Do not restore this item to the pending queue automatically. The server
+      // may have applied the decision even if the response/persistence check
+      // timed out. Re-showing it invites duplicate taps and duplicate payroll
+      // work. Backend duyetHoaHong is idempotent for an already-reviewed item.
       setReviewNotice(err?.message
-        ? `Chưa xác nhận được quyết định từ máy chủ: ${err.message}. Vui lòng kiểm tra trạng thái trước khi thao tác lại.`
-        : 'Chưa xác nhận được quyết định từ máy chủ. Vui lòng kiểm tra trạng thái trước khi thao tác lại.');
+        ? `Đã ghi nhận thao tác trên giao diện nhưng máy chủ chưa xác nhận: ${err.message}. Phiếu được giữ khỏi hàng chờ để tránh duyệt lặp; hãy kiểm tra dữ liệu trước khi thao tác lại.`
+        : 'Máy chủ chưa xác nhận phản hồi. Phiếu được giữ khỏi hàng chờ để tránh duyệt lặp; hãy kiểm tra dữ liệu trước khi thao tác lại.');
     });
   };
 
