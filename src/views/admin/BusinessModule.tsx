@@ -142,74 +142,15 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const loadRecords = async () => {
     try {
       setLoading(true);
-      let data = await api.quanLy.getAll(module);
-      // Migration an toàn: hợp đồng cũ đang chờ duyệt được chuyển sang đã xác nhận.
-      // Chỉ cập nhật trạng thái hợp đồng; không thay đổi phiếu thu hay trạng thái thu/chi.
-      if (module === 'HOP_DONG' && !isEmployee) {
-        const pendingContracts = data.filter((record) =>
-          ['Chờ admin duyệt', 'Chờ Admin duyệt'].includes(String(record.DuLieu?.TrangThai || '').trim())
-        );
-        for (const record of pendingContracts) {
-          await api.quanLy.update(record.QuanLyID, { TrangThai: 'Đã xác nhận' });
-        }
-        if (pendingContracts.length > 0) {
-          data = await api.quanLy.getAll(module);
-        }
-      }
+      const data = await api.quanLy.getAll(module);
+      // Hiển thị dữ liệu hợp đồng ngay sau khi tải xong.
+      // Không chạy cập nhật trạng thái hoặc tạo phiếu thu hàng loạt trong luồng tải màn hình.
       setRecords(data);
       if (module === 'HOP_DONG') {
-        let receipts = await api.quanLy.getAll('THU_CHI');
-        // Đồng bộ tiền cọc cho hợp đồng cũ: chỉ tạo phiếu còn thiếu, không tạo trùng.
-        // Phiếu mới luôn chờ Admin duyệt; không tự duyệt hoặc tự cộng doanh thu.
-        if (!isEmployee) {
-          const receiptRows = receipts;
-          let createdCount = 0;
-          for (const contract of data) {
-            const details = contract.DuLieu || {};
-            const deposit = getContractDeposit(details);
-            if (deposit <= 0) continue;
-            const contractCode = String(details.MaHopDong || contract.QuanLyID || '');
-            const contractName = String(details.KhachHang || '');
-            const hasDepositReceipt = receiptRows.some((receipt) => {
-              const d = receipt.DuLieu || {};
-              if (String(d.Loai || '').toUpperCase() !== 'THU') return false;
-              const source = String(d.NguonTao || '');
-              const linkedId = String(d.HopDongQuanLyID || '');
-              const linkedCode = String(d.MaHopDong || d.HopDongID || '');
-              const description = String(d.NoiDungThu || d.DanhMuc || d.GhiChu || '').toLowerCase();
-              const linkedToContract = linkedId === String(contract.QuanLyID) || (!!contractCode && linkedCode === contractCode);
-              const clearlyDeposit = source === 'TIEN_COC_HOP_DONG' || (description.includes('cọc') && linkedToContract);
-              return linkedToContract && clearlyDeposit;
-            });
-            if (hasDepositReceipt) continue;
-            await api.quanLy.create('THU_CHI', {
-              Ngay: String(details.NgayTao || getTodayLocal()).slice(0, 10),
-              Loai: 'THU',
-              DanhMuc: `Thu tiền cọc · ${contractCode} · ${contractName}`,
-              NoiDungThu: `Thu tiền cọc hợp đồng ${contractCode} - ${contractName}`,
-              SoTien: deposit,
-              HopDongID: contractCode,
-              MaHopDong: contractCode,
-              TenHopDong: contractName,
-              DoiTuong: contractName,
-              NhanVienID: String(details.NhanVienID || ''),
-              NhanVien: String(details.NhanVien || details.NguoiTao || ''),
-              NguoiTao: String(details.NguoiTao || details.NhanVien || 'Đồng bộ hợp đồng cũ'),
-              NguoiTaoID: String(details.NguoiTaoID || details.NhanVienID || ''),
-              PhuongThucThanhToan: String(details.PhuongThucThanhToan || 'Tiền mặt'),
-              TrangThaiDuyet: 'Chờ Admin duyệt',
-              GhiChu: `Phiếu thu cọc được đồng bộ từ hợp đồng cũ ${contractCode} - ${contractName}`,
-              NguonTao: 'TIEN_COC_HOP_DONG',
-              HopDongQuanLyID: contract.QuanLyID,
-            });
-            createdCount += 1;
-          }
-          if (createdCount > 0) {
-            receipts = await api.quanLy.getAll('THU_CHI');
-            console.info(`Đã đồng bộ ${createdCount} phiếu thu cọc từ hợp đồng cũ.`);
-          }
-        }
-        setReceiptRecords(receipts);
+        // Phiếu thu chỉ tải nền để không chặn danh sách và thao tác tạo hợp đồng.
+        void api.quanLy.getAll('THU_CHI')
+          .then(setReceiptRecords)
+          .catch((error) => console.error('Không tải được phiếu thu liên quan hợp đồng:', error));
       }
       if (module === 'THU_CHI') {
         const contracts = await api.quanLy.getAll('HOP_DONG');
