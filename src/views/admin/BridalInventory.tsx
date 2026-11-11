@@ -38,7 +38,10 @@ export const BridalInventory: React.FC = () => {
   const [tryOnFiles, setTryOnFiles] = useState<File[]>([]);
   const [tryOnContracts, setTryOnContracts] = useState<import('../../types').QuanLyRecord[]>([]);
   const [tryOnContractId, setTryOnContractId] = useState('');
+  const [tryOnContractSearch, setTryOnContractSearch] = useState('');
   const [tryOnManualNames, setTryOnManualNames] = useState(false);
+  const [tryOnPickupBride, setTryOnPickupBride] = useState(false);
+  const [tryOnPickupGroom, setTryOnPickupGroom] = useState(false);
   const [tryOnBride, setTryOnBride] = useState('');
   const [tryOnGroom, setTryOnGroom] = useState('');
   const [tryOnBrideDate, setTryOnBrideDate] = useState('');
@@ -162,7 +165,10 @@ export const BridalInventory: React.FC = () => {
   const uploadTryOnPhotos = async () => {
     const linkedContract = tryOnContracts.find(record => record.QuanLyID === tryOnContractId);
     if (!tryOnManualNames && !linkedContract) { setError('Vui lòng chọn hợp đồng hoặc chọn nhập tên ngoài hợp đồng.'); return; }
-    if (!tryOnBride.trim() && !tryOnGroom.trim() && !tryOnCustomer.trim()) { setError('Vui lòng nhập tên cô dâu hoặc chú rể.'); return; }
+    if (tryOnManualNames && !tryOnCustomer.trim()) { setError('Vui lòng nhập tên khách ngoài hợp đồng.'); return; }
+    if (!tryOnManualNames && !linkedContract) { setError('Vui lòng chọn hợp đồng hoặc chọn Khác.'); return; }
+    if (!tryOnPickupBride && !tryOnPickupGroom) { setError('Vui lòng chọn Nhà gái hoặc Nhà trai để nhập ngày lấy váy.'); return; }
+    if ((tryOnPickupBride && !tryOnBrideDate) || (tryOnPickupGroom && !tryOnGroomDate)) { setError('Vui lòng nhập ngày lấy váy cho bên đã chọn.'); return; }
     if (!tryOnFiles.length) { setError('Vui lòng chọn ít nhất một ảnh váy khách đã chọn.'); return; }
     setTryOnSaving(true); setError('');
     try {
@@ -175,21 +181,23 @@ export const BridalInventory: React.FC = () => {
         const canvas=document.createElement('canvas'); canvas.width=Math.round(image.width*scale); canvas.height=Math.round(image.height*scale);
         const ctx=canvas.getContext('2d'); if(!ctx) throw new Error('Không xử lý được ảnh.');
         ctx.drawImage(image,0,0,canvas.width,canvas.height);
-        const safeName=tryOnCustomer.trim().replace(/[^a-zA-Z0-9_-]/g,'_');
+        const safeName=(tryOnCustomer.trim() || linkedContract?.DuLieu?.MaHopDong || 'Khach-thu-vay').replace(/[^a-zA-Z0-9_-]/g,'_');
         const uploaded = await api.inventory.uploadImage(canvas.toDataURL('image/jpeg',0.82), safeName+'_'+Date.now()+'.jpg','tryOn');
         uploadedPhotos.push({ fileName: file.name, imageUrl: uploaded.imageUrl, fileId: uploaded.fileId });
       }
-      const customerName = [tryOnBride.trim() && 'Cô dâu: '+tryOnBride.trim(), tryOnGroom.trim() && 'Chú rể: '+tryOnGroom.trim()].filter(Boolean).join(' - ') || tryOnCustomer.trim();
+      const customerName = tryOnManualNames ? tryOnCustomer.trim() : String(linkedContract?.DuLieu?.KhachHang || '');
       await api.quanLy.create('THU_VAY', {
         HopDongQuanLyID: linkedContract?.QuanLyID || '',
         MaHopDong: linkedContract?.DuLieu?.MaHopDong || '',
         TenHopDong: linkedContract?.DuLieu?.KhachHang || '',
         NhapNgoaiHopDong: tryOnManualNames,
-        TenCoDau: tryOnBride.trim(),
-        TenChuRe: tryOnGroom.trim(),
+        TenCoDau: tryOnManualNames ? tryOnCustomer.trim() : '',
+        TenChuRe: '',
         KhachHang: customerName,
-        NgayLayVayNhaGai: tryOnBrideDate,
-        NgayLayVayNhaTrai: tryOnGroomDate,
+        LayVayNhaGai: tryOnPickupBride,
+        LayVayNhaTrai: tryOnPickupGroom,
+        NgayLayVayNhaGai: tryOnPickupBride ? tryOnBrideDate : '',
+        NgayLayVayNhaTrai: tryOnPickupGroom ? tryOnGroomDate : '',
         AnhVay: uploadedPhotos,
         SoLuongAnh: uploadedPhotos.length,
         TaoLuc: new Date().toISOString(),
@@ -314,19 +322,21 @@ export const BridalInventory: React.FC = () => {
 
       {tryOnOpen && <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-3"><div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl">
         <div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-[#A97D3E]">HẠNH PHẠM LUXURY BRIDAL</p><h2 className="text-xl font-bold">Thử & Chọn váy</h2></div><button onClick={()=>setTryOnOpen(false)}><X/></button></div>
-        <label className="block text-sm font-semibold">Liên kết hợp đồng<select value={tryOnManualNames ? '__manual__' : tryOnContractId} onChange={e=>{const value=e.target.value;setTryOnManualNames(value==='__manual__');setTryOnContractId(value==='__manual__'?'':value);const record=tryOnContracts.find(x=>x.QuanLyID===value);if(record){setTryOnBride(String(record.DuLieu?.TenCoDau||''));setTryOnGroom(String(record.DuLieu?.TenChuRe||''));setTryOnCustomer(String(record.DuLieu?.KhachHang||''));}}} className="mt-1 w-full rounded-xl border p-3">
-          <option value="">-- Chọn hợp đồng --</option>{tryOnContracts.map(record=><option key={record.QuanLyID} value={record.QuanLyID}>{record.DuLieu?.MaHopDong || record.QuanLyID} · {record.DuLieu?.KhachHang || 'Chưa có tên khách'}</option>)}<option value="__manual__">Khách ngoài hợp đồng – nhập tên riêng</option>
+        <label className="block text-sm font-semibold">Tìm hợp đồng<input value={tryOnContractSearch} onChange={e=>setTryOnContractSearch(e.target.value)} placeholder="Nhập mã hợp đồng hoặc tên khách để lọc..." className="mt-1 w-full rounded-xl border p-3"/></label>
+        <label className="mt-2 block text-sm font-semibold">Chọn hợp đồng<select value={tryOnManualNames ? '__manual__' : tryOnContractId} onChange={e=>{const value=e.target.value;setTryOnManualNames(value==='__manual__');setTryOnContractId(value==='__manual__'?'':value);setTryOnCustomer('');}} className="mt-1 w-full rounded-xl border p-3">
+          <option value="">-- Chọn hợp đồng --</option>{tryOnContracts.filter(record=>{const term=tryOnContractSearch.trim().toLocaleLowerCase('vi');const hay=[record.DuLieu?.MaHopDong,record.DuLieu?.KhachHang,record.DuLieu?.SDT].join(' ').toLocaleLowerCase('vi');return !term||hay.includes(term);}).map(record=><option key={record.QuanLyID} value={record.QuanLyID}>{record.DuLieu?.MaHopDong || record.QuanLyID} · {record.DuLieu?.KhachHang || 'Chưa có tên khách'}</option>)}
         </select></label>
-        {tryOnManualNames && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">Hồ sơ này không gắn với hợp đồng có sẵn.</p>}
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="text-sm font-semibold">Tên cô dâu<input value={tryOnBride} onChange={e=>setTryOnBride(e.target.value)} placeholder="Nhập tên cô dâu" className="mt-1 w-full rounded-xl border p-3"/></label>
-          <label className="text-sm font-semibold">Tên chú rể<input value={tryOnGroom} onChange={e=>setTryOnGroom(e.target.value)} placeholder="Nhập tên chú rể" className="mt-1 w-full rounded-xl border p-3"/></label>
+        <button type="button" onClick={()=>{setTryOnManualNames(true);setTryOnContractId('');setTryOnCustomer('');}} className="mt-2 text-sm font-bold text-[#A97D3E] underline">Khác – khách không có hợp đồng</button>
+        {tryOnManualNames && <label className="mt-3 block text-sm font-semibold">Tên khách hàng<input value={tryOnCustomer} onChange={e=>setTryOnCustomer(e.target.value)} placeholder="Nhập tên cô dâu/chú rể hoặc tên khách" className="mt-1 w-full rounded-xl border p-3"/></label>}
+        <div className="mt-4">
+          <p className="text-sm font-semibold">Bên lấy váy</p>
+          <div className="mt-2 flex gap-2">
+            <button type="button" onClick={()=>setTryOnPickupBride(v=>!v)} className={`flex-1 rounded-xl border p-3 text-sm font-semibold ${tryOnPickupBride?'border-[#A97D3E] bg-amber-50 text-[#805B2B]':'border-stone-200'}`}>{tryOnPickupBride?'✓ ':''}Nhà gái</button>
+            <button type="button" onClick={()=>setTryOnPickupGroom(v=>!v)} className={`flex-1 rounded-xl border p-3 text-sm font-semibold ${tryOnPickupGroom?'border-[#A97D3E] bg-amber-50 text-[#805B2B]':'border-stone-200'}`}>{tryOnPickupGroom?'✓ ':''}Nhà trai</button>
+          </div>
+          {tryOnPickupBride && <label className="mt-3 block text-sm font-semibold">Ngày lấy váy nhà gái<input type="date" value={tryOnBrideDate} onChange={e=>setTryOnBrideDate(e.target.value)} className="mt-1 w-full rounded-xl border p-3"/></label>}
+          {tryOnPickupGroom && <label className="mt-3 block text-sm font-semibold">Ngày lấy váy nhà trai<input type="date" value={tryOnGroomDate} onChange={e=>setTryOnGroomDate(e.target.value)} className="mt-1 w-full rounded-xl border p-3"/></label>}
         </div>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="text-sm font-semibold">Ngày lấy váy – Nhà gái<input type="date" value={tryOnBrideDate} onChange={e=>setTryOnBrideDate(e.target.value)} className="mt-1 w-full rounded-xl border p-3"/></label>
-          <label className="text-sm font-semibold">Ngày lấy váy – Nhà trai<input type="date" value={tryOnGroomDate} onChange={e=>setTryOnGroomDate(e.target.value)} className="mt-1 w-full rounded-xl border p-3"/></label>
-        </div>
-        <label className="mt-3 block text-sm font-semibold">Tên ghi chú / mã lịch thử (không bắt buộc)<input value={tryOnCustomer} onChange={e=>setTryOnCustomer(e.target.value)} placeholder="Thông tin bổ sung" className="mt-1 w-full rounded-xl border p-3"/></label>
         <label className="mt-3 block text-sm font-semibold">Chụp hoặc chọn ảnh váy khách đã chọn<input type="file" multiple capture="environment" accept="image/jpeg,image/png,image/webp" onChange={e=>setTryOnFiles(Array.from(e.target.files||[]))} className="mt-1 w-full rounded-xl border p-3 text-sm"/></label>
         <p className="mt-2 text-xs text-stone-500">Ảnh được lưu vào thư mục “05 - HINH KHACH THU VA CHON VAY” trên Drive. Có thể chụp nhiều ảnh trong một hồ sơ.</p>
         {tryOnFiles.length>0 && <p className="mt-2 text-sm text-stone-600">Đã chọn {tryOnFiles.length} ảnh.</p>}
