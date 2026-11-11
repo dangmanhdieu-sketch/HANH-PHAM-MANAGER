@@ -2,13 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
 import { Html5Qrcode } from 'html5-qrcode';
 import { api } from '../../api';
-import type { InventoryCategory, InventoryEvent, InventoryItem, InventoryStatus } from '../../types';
+import type { InventoryCategory, InventoryEvent, InventoryItem, InventoryStatus, QuanLyRecord } from '../../types';
 import { Camera, ChevronLeft, ChevronRight, Clock3, Package, QrCode, Search, Shirt, X, Images, UserRound, Sparkles, Trash2, Download } from 'lucide-react';
 
 const CATEGORIES: InventoryCategory[] = ['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'];
 const STATUSES: InventoryStatus[] = ['Có sẵn', 'Đang đặt', 'Đang thuê', 'Đang giặt', 'Đang sửa', 'Hư hỏng', 'Thanh lý'];
 const EMPTY_FORM: Partial<InventoryItem> = {
-  name: '', category: 'Váy cưới', size: '', color: '', collection: '',
+  name: '', category: 'Váy cưới', size: '', color: '', collection: '', location: 'Kho chính', locationNote: '',
   rentalPrice: 0, salePrice: 0, imageUrl: '', description: '', notes: '',
 };
 const money = (value: number) => Number(value || 0).toLocaleString('vi-VN') + ' đ';
@@ -42,6 +42,9 @@ export const BridalInventory: React.FC = () => {
   const [selected, setSelected] = useState<InventoryItem | null>(null);
   const [qrImage, setQrImage] = useState('');
   const [history, setHistory] = useState<InventoryEvent[]>([]);
+  const [tryOnHistory, setTryOnHistory] = useState<QuanLyRecord[]>([]);
+  const [allTryOnHistory, setAllTryOnHistory] = useState<QuanLyRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanInput, setScanInput] = useState('');
   const [tryOnOpen, setTryOnOpen] = useState(false);
@@ -120,16 +123,19 @@ export const BridalInventory: React.FC = () => {
   }, [category, status, query]);
 
   useEffect(() => { void load(null); setCursorStack([]); }, [load]);
+  useEffect(() => { api.quanLy.getAll('THU_VAY').then(setAllTryOnHistory).catch(() => setAllTryOnHistory([])); }, []);
 
   useEffect(() => {
     let active = true;
-    if (!selected) { setQrImage(''); setHistory([]); return; }
+    if (!selected) { setQrImage(''); setHistory([]); setTryOnHistory([]); return; }
     QRCode.toDataURL(selected.qrCode, { width: 320, margin: 2, errorCorrectionLevel: 'M' })
       .then(url => { if (active) setQrImage(url); })
       .catch(() => { if (active) setQrImage(''); });
-    api.inventory.history(selected.qrCode)
-      .then(rows => { if (active) setHistory(rows); })
-      .catch(() => { if (active) setHistory([]); });
+    setHistoryLoading(true);
+    Promise.all([api.inventory.history(selected.qrCode), api.quanLy.getAll('THU_VAY')])
+      .then(([rows, records]) => { if (!active) return; setHistory(rows); setTryOnHistory(records.filter(record => (Array.isArray(record.DuLieu?.SanPhamVay) ? record.DuLieu.SanPhamVay : []).some((product: any) => String(product.MaQR || product.qrCode || '').toUpperCase() === selected.qrCode.toUpperCase()))); })
+      .catch(() => { if (active) { setHistory([]); setTryOnHistory([]); } })
+      .finally(() => { if (active) setHistoryLoading(false); });
     return () => { active = false; };
   }, [selected]);
 
@@ -253,12 +259,13 @@ export const BridalInventory: React.FC = () => {
     try {
       const item = await api.inventory.get(code);
       if (!['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'].includes(item.category)) { setTryOnConflict('Mã QR không thuộc danh mục sản phẩm được quản lý.'); return; }
+      if (['Đang thuê', 'Đang giặt', 'Đang sửa', 'Hư hỏng', 'Thanh lý'].includes(item.status)) { setTryOnConflict(`Sản phẩm hiện ở trạng thái ${item.status}${item.location ? ' · Vị trí: ' + item.location : ''}. Không thể đưa vào hồ sơ chọn đồ.`); return; }
       const chosenDates = [tryOnPickupBride ? tryOnBrideDate : '', tryOnPickupGroom ? tryOnGroomDate : ''].filter(Boolean);
       const historyRecords = await api.quanLy.getAll('THU_VAY');
-      const savedMatch = historyRecords.find(record => record.QuanLyID !== tryOnRecordId && (record.DuLieu?.SanPhamVay || []).some((saved: any) => String(saved.MaQR || '').toUpperCase() === code));
-      const conflictDates = savedMatch ? [savedMatch.DuLieu?.NgayLayVayNhaGai, savedMatch.DuLieu?.NgayLayVayNhaTrai].filter(Boolean).map((v: string) => String(v).slice(0,10)) : [];
-      const exactDate = conflictDates.some((date: string) => chosenDates.includes(date));
-      if (exactDate) { setTryOnConflict('Mã này đã được chọn đúng ngày lấy váy. Không thể chọn trùng lịch.'); return; }
+      const productBookings = historyRecords.filter(record => record.QuanLyID !== tryOnRecordId && (Array.isArray(record.DuLieu?.SanPhamVay) ? record.DuLieu.SanPhamVay : []).some((saved: any) => String(saved.MaQR || saved.qrCode || '').toUpperCase() === code));
+      const conflictDates = productBookings.flatMap(record => [record.DuLieu?.NgayLayVayNhaGai, record.DuLieu?.NgayLayVayNhaTrai].filter(Boolean).map((v: string) => String(v).slice(0,10)));
+      const exactBooking = productBookings.find(record => [record.DuLieu?.NgayLayVayNhaGai, record.DuLieu?.NgayLayVayNhaTrai].filter(Boolean).map((v: string) => String(v).slice(0,10)).some((date: string) => chosenDates.includes(date)));
+      if (exactBooking) { setTryOnConflict('Mã này đã có lịch chọn trùng ngày trong hợp đồng ' + (exactBooking.DuLieu?.MaHopDong || exactBooking.DuLieu?.TenHopDong || 'khác') + '. Không thể chọn trùng lịch.'); return; }
       const nearDate = conflictDates.some((date: string) => chosenDates.some(chosen => Math.abs(new Date(date+'T00:00:00').getTime()-new Date(chosen+'T00:00:00').getTime()) <= 86400000));
       setTryOnNearWarning(nearDate ? 'Lưu ý: Váy này có lịch khách khác sát ngày (trước hoặc sau 1 ngày). Vẫn có thể chọn nếu đã xác nhận với quản lý.' : '');
       setTryOnProducts(current => [...current, item]); setTryOnDetailProduct(item); setTryOnDetailOpen(true); setTryOnConflict(''); setTryOnQrInput('');
@@ -440,7 +447,7 @@ export const BridalInventory: React.FC = () => {
               {loading ? <tr><td colSpan={5} className="p-8 text-center text-stone-400">Đang tải kho...</td></tr> :
                 items.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-stone-400">Chưa có sản phẩm. Hãy thêm sản phẩm đầu tiên.</td></tr> :
                 items.map(item => <tr key={item.id} onClick={() => setSelected(item)} className="cursor-pointer hover:bg-[#FAF8F5]">
-                  <td className="p-3"><div className="flex items-center gap-3">{item.imageUrl ? <img src={getDisplayImageUrl(item.imageUrl)} className="h-12 w-10 rounded-lg object-cover" alt={item.name}/> : <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-stone-100"><Shirt size={18} className="text-stone-400"/></div>}<div><p className="font-semibold text-stone-900">{item.name}</p><p className="text-xs text-stone-400">{item.description || item.collection || item.category}</p></div></div></td>
+                  <td className="p-3"><div className="flex items-center gap-3">{item.imageUrl ? <img src={getDisplayImageUrl(item.imageUrl)} className="h-12 w-10 rounded-lg object-cover" alt={item.name}/> : <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-stone-100"><Shirt size={18} className="text-stone-400"/></div>}<div><p className="font-semibold text-stone-900">{item.name}</p><p className="text-xs text-stone-400">{item.description || item.collection || item.category}</p><p className="mt-1 text-[11px] font-semibold text-[#9A7138]">Khách đã chọn: {allTryOnHistory.reduce((total, record) => total + ((Array.isArray(record.DuLieu?.SanPhamVay) ? record.DuLieu.SanPhamVay : []).some((p: any) => String(p.MaQR || p.qrCode || '').toUpperCase() === item.qrCode.toUpperCase()) ? 1 : 0), 0)} lượt</p></div></div></td>
                   <td className="p-3 font-mono text-xs text-[#a97d3e]">{item.qrCode}</td><td className="p-3">{item.category}</td><td className="p-3">{item.description || '—'}</td>
                   <td className="p-3"><div className="flex items-center justify-between gap-2"><span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold">{item.status}</span><button type="button" disabled={deletingQr===item.qrCode} onClick={(event)=>{event.stopPropagation();void deleteItem(item);}} title="Xóa sản phẩm" aria-label={`Xóa ${item.name}`} className="rounded-lg border border-rose-200 p-2 text-rose-600 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/></button></div></td>
                 </tr>)}
@@ -470,6 +477,8 @@ export const BridalInventory: React.FC = () => {
           </div>
           <div className="w-full max-w-3xl text-center">
             <h2 className="text-2xl font-extrabold text-stone-900">{tryOnDetailProduct.name || 'Váy cưới'}</h2>
+            <p className="mt-1 text-sm text-stone-600">Trạng thái kho: <b>{tryOnDetailProduct.status}</b> · Vị trí: <b>{tryOnDetailProduct.location || 'Kho chính'}</b></p>
+            {tryOnDetailProduct.locationNote && <p className="mt-1 text-xs text-stone-500">{tryOnDetailProduct.locationNote}</p>}
             {(() => {
               const availability = tryOnProductStatuses[tryOnDetailProduct.qrCode] || { label: 'Đang kiểm tra lịch...', tone: 'orange' as const };
               const toneClass = availability.tone === 'green' ? 'bg-lime-300 text-lime-950' : availability.tone === 'red' ? 'bg-red-600 text-white' : 'bg-orange-400 text-white';
@@ -524,6 +533,8 @@ export const BridalInventory: React.FC = () => {
             <span className="mt-1 block text-[11px] font-normal text-stone-400">Ảnh tự nén còn tối đa 1600px, lưu trong Drive chung. Tối đa 8 MB sau nén.</span>
             {form.imageUrl && <img src={form.imageUrl} alt="Ảnh xem trước" className="mt-2 h-36 rounded-xl object-contain bg-stone-50"/>}
           </label>
+          <label className="text-xs font-semibold text-stone-600">Vị trí hiện tại<input value={form.location || 'Kho chính'} onChange={e=>setForm({...form,location:e.target.value})} placeholder="Ví dụ: Kho A - Kệ 2" className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
+          <label className="text-xs font-semibold text-stone-600">Ghi chú vị trí<input value={form.locationNote || ''} onChange={e=>setForm({...form,locationNote:e.target.value})} placeholder="Ví dụ: Khu váy ren, tầng 1" className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
           <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Mô tả sản phẩm<textarea value={form.description || ''} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Mô tả kiểu dáng, chất liệu, chi tiết thiết kế..." className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
         </div>
         {editing && <label className="block text-xs font-semibold text-stone-600">Tình trạng<select value={form.status} onChange={e=>setForm({...form,status:e.target.value as InventoryStatus})} className="mt-1 w-full rounded-lg border p-3 text-sm">{STATUSES.map(x=><option key={x}>{x}</option>)}</select></label>}
@@ -533,7 +544,7 @@ export const BridalInventory: React.FC = () => {
       {selected && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-3" onClick={()=>setSelected(null)}><div onClick={e=>e.stopPropagation()} className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-[#a97d3e]">Hồ sơ sản phẩm</p><h2 className="text-xl font-bold">{selected.name}</h2></div><button onClick={()=>setSelected(null)}><X/></button></div>
         <div className="mt-4 grid gap-5 md:grid-cols-[1fr_220px]">
-          <div className="space-y-3">{selected.imageUrl && <img src={getDisplayImageUrl(selected.imageUrl)} alt={selected.name} className="max-h-72 w-full rounded-xl object-contain bg-stone-50"/>}<div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-stone-400">Danh mục</p><b>{selected.category}</b></div><div><p className="text-xs text-stone-400">Tình trạng</p><b>{selected.status}</b></div><div className="col-span-2"><p className="text-xs text-stone-400">Mô tả</p><b>{selected.description || '—'}</b></div></div></div>
+          <div className="space-y-3"><div className="grid grid-cols-2 gap-3 rounded-xl border border-stone-200 p-3 text-sm"><div><p className="text-xs text-stone-400">Vị trí hiện tại</p><b>{selected.location || 'Kho chính'}</b></div><div><p className="text-xs text-stone-400">Ghi chú vị trí</p><b>{selected.locationNote || '—'}</b></div><div><p className="text-xs text-stone-400">Số hồ sơ khách đã chọn</p><b>{tryOnHistory.length}</b></div><div><p className="text-xs text-stone-400">Trạng thái hiện tại</p><b>{selected.status}</b></div></div>{selected.imageUrl && <img src={getDisplayImageUrl(selected.imageUrl)} alt={selected.name} className="max-h-72 w-full rounded-xl object-contain bg-stone-50"/>}<div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-stone-400">Danh mục</p><b>{selected.category}</b></div><div><p className="text-xs text-stone-400">Tình trạng</p><b>{selected.status}</b></div><div className="col-span-2"><p className="text-xs text-stone-400">Mô tả</p><b>{selected.description || '—'}</b></div></div></div>
           <div id="qr-print-area">
             <div className="qr-print-brand">HẠNH PHẠM LUXURY BRIDAL</div>
             <div className="qr-print-name">{selected.name}</div>
@@ -543,7 +554,7 @@ export const BridalInventory: React.FC = () => {
           </div>
           <div className="space-y-3 text-center"><div className="rounded-xl border p-3"><p className="font-mono text-xs font-bold">{selected.qrCode}</p>{qrImage && <img src={qrImage} alt="QR sản phẩm" className="mx-auto mt-2 w-44"/>}<button type="button" onClick={()=>void downloadQrLabel()} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-stone-900 px-3 py-3 text-sm font-bold text-white"><Download size={16}/> Tải mã QR (PNG)</button><p className="mt-2 text-left text-xs text-stone-500">Không cần chọn khổ giấy. iPhone sẽ mở ảnh ở tab mới; nhấn giữ ảnh để lưu hoặc chia sẻ.</p></div><button onClick={()=>openEdit(selected)} className="w-full rounded-lg bg-stone-900 px-4 py-3 text-sm font-bold text-white">Chỉnh sửa sản phẩm</button><button disabled={deletingQr===selected.qrCode} onClick={()=>void deleteItem(selected)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-rose-200 px-4 py-3 text-sm font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/>{deletingQr===selected.qrCode?'Đang xóa...':'Xóa sản phẩm'}</button></div>
         </div>
-        <div className="mt-5 border-t pt-4"><h3 className="mb-2 flex items-center gap-2 font-bold"><Clock3 size={16}/> Lịch sử thao tác</h3>{history.length===0?<p className="text-sm text-stone-400">Chưa có lịch sử khác.</p>:history.map(row=><div key={row.id} className="flex justify-between gap-3 border-b py-2 text-xs"><div><b>{row.action}</b><p className="text-stone-500">{row.note} · {row.performedBy}</p></div><time className="shrink-0 text-stone-400">{new Date(row.createdAt).toLocaleString('vi-VN')}</time></div>)}</div>
+        <div className="mt-5 border-t pt-4"><h3 className="mb-2 flex items-center gap-2 font-bold"><UserRound size={16}/> Lịch sử khách thử & chọn sản phẩm</h3>{historyLoading?<p className="text-sm text-stone-400">Đang tải lịch sử...</p>:tryOnHistory.length===0?<p className="text-sm text-stone-400">Chưa có khách nào được ghi nhận chọn sản phẩm này.</p>:tryOnHistory.map(record=>{const d=record.DuLieu||{};const p=(Array.isArray(d.SanPhamVay)?d.SanPhamVay:[]).find((x:any)=>String(x.MaQR||x.qrCode||'').toUpperCase()===selected.qrCode.toUpperCase());return <div key={record.QuanLyID} className="mb-3 rounded-xl border p-3 text-xs"><div className="flex flex-wrap justify-between gap-2"><b>{d.TenHopDong||d.KhachHang||d.TenCoDau||'Khách lẻ'} · {d.MaHopDong||'Không có mã HĐ'}</b><span className="text-stone-500">{d.NhanVienThu||'Chưa ghi nhân viên'}</span></div><p className="mt-1 text-stone-600">Nhà gái: {d.NgayLayVayNhaGai||'—'} · Nhà trai: {d.NgayLayVayNhaTrai||'—'}</p><p className="mt-1 text-stone-600">Sản phẩm: {p?.TenSanPham||selected.name} · {p?.DanhMuc||selected.category}</p><p className="mt-1 text-stone-500">Ngày ghi nhận: {d.TaoLuc?new Date(d.TaoLuc).toLocaleString('vi-VN'):'—'}</p></div>})}</div><div className="mt-5 border-t pt-4"><h3 className="mb-2 flex items-center gap-2 font-bold"><Clock3 size={16}/> Nhật ký kho & thay đổi</h3>{history.length===0?<p className="text-sm text-stone-400">Chưa có lịch sử thao tác.</p>:history.map(row=><div key={row.id} className="flex justify-between gap-3 border-b py-2 text-xs"><div><b>{row.action}</b><p className="text-stone-500">{row.note} · {row.performedBy}</p></div><time className="shrink-0 text-stone-400">{new Date(row.createdAt).toLocaleString('vi-VN')}</time></div>)}</div>
       </div></div>}
 
       {scannerOpen && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-3"><div className="w-full max-w-md rounded-2xl bg-white p-4"><div className="mb-3 flex items-center justify-between"><b>Quét mã QR sản phẩm</b><button onClick={()=>setScannerOpen(false)}><X/></button></div><div id="bridal-inventory-qr-reader" className="overflow-hidden rounded-xl"/><p className="mt-3 text-xs text-stone-500">Đưa mã QR vào khung hình. Nếu camera không hoạt động, bạn có thể nhập mã định danh ở ô tra cứu.</p></div></div>}

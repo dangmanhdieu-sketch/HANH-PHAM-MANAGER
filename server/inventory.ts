@@ -107,6 +107,8 @@ class InventoryService {
       rentalPrice: 0,
       salePrice: 0,
       status: 'Có sẵn',
+      location: String(input.location || 'Kho chính').trim(),
+      locationNote: String(input.locationNote || '').trim(),
       imageUrl: String(input.imageUrl || '').trim(),
       notes: '',
       description: String(input.description || '').trim(),
@@ -151,6 +153,8 @@ class InventoryService {
       rentalPrice: 0,
       salePrice: 0,
       status: input.status === undefined ? current.status : input.status as InventoryStatus,
+      location: input.location === undefined ? (current.location || 'Kho chính') : String(input.location || '').trim(),
+      locationNote: input.locationNote === undefined ? (current.locationNote || '') : String(input.locationNote || '').trim(),
       imageUrl: input.imageUrl === undefined ? current.imageUrl : String(input.imageUrl).trim(),
       notes: '',
       description: input.description === undefined ? current.description : String(input.description).trim(),
@@ -162,6 +166,10 @@ class InventoryService {
       await this.firestore.runTransaction(async transaction => {
         await this.assertActiveWriter(transaction);
         transaction.set(this.items().doc(qrCode), { ...next, nameSearch: next.name.toLocaleLowerCase('vi') }, { merge: false });
+        if (next.location !== (current.location || 'Kho chính') || next.locationNote !== (current.locationNote || '')) {
+          const event: InventoryEvent = { id: randomUUID(), itemId: current.id, action: 'Kiểm kê', note: `Cập nhật vị trí: ${current.location || 'Kho chính'} → ${next.location || 'Kho chính'}${next.locationNote ? ' · ' + next.locationNote : ''}`, performedBy: actor, createdAt: next.updatedAt };
+          transaction.create(this.events().doc(event.id), event);
+        }
         if (next.status !== current.status) {
           const event: InventoryEvent = { id: randomUUID(), itemId: current.id, action: next.status === 'Đang thuê' ? 'Xuất thuê' : next.status === 'Có sẵn' ? 'Trả kho' : 'Cập nhật', note: `Đổi tình trạng: ${current.status} → ${next.status}`, performedBy: actor, createdAt: next.updatedAt };
           transaction.create(this.events().doc(event.id), event);
