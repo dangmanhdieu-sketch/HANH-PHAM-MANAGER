@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { Html5Qrcode } from 'html5-qrcode';
 import { api } from '../../api';
 import type { InventoryCategory, InventoryEvent, InventoryItem, InventoryStatus } from '../../types';
-import { Archive, Camera, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Package, Plus, QrCode, Search, Shirt, X, Images, UserRound, Sparkles } from 'lucide-react';
+import { Archive, Camera, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Package, Plus, QrCode, Search, Shirt, X, Images, UserRound, Sparkles, Trash2 } from 'lucide-react';
 
 const CATEGORIES: InventoryCategory[] = ['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'];
 const STATUSES: InventoryStatus[] = ['Có sẵn', 'Đang đặt', 'Đang thuê', 'Đang giặt', 'Đang sửa', 'Hư hỏng', 'Thanh lý'];
@@ -26,6 +26,7 @@ export const BridalInventory: React.FC = () => {
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [form, setForm] = useState<Partial<InventoryItem>>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [deletingQr, setDeletingQr] = useState<string | null>(null);
   const [selected, setSelected] = useState<InventoryItem | null>(null);
   const [qrImage, setQrImage] = useState('');
   const [history, setHistory] = useState<InventoryEvent[]>([]);
@@ -131,7 +132,8 @@ export const BridalInventory: React.FC = () => {
       if (!context) throw new Error('Không xử lý được ảnh.');
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
       const compressed = canvas.toDataURL('image/jpeg', 0.82);
-      const result = await api.inventory.uploadImage(compressed, file.name.replace(/\.[^.]+$/, '') + '.jpg');
+      const folderKey = form.category === 'Vest' ? 'suits' : form.category === 'Áo dài' ? 'aoDai' : form.category === 'Phụ kiện' ? 'accessories' : 'dresses';
+      const result = await api.inventory.uploadImage(compressed, file.name.replace(/\.[^.]+$/, '') + '.jpg', folderKey);
       setForm(prev => ({ ...prev, imageUrl: result.imageUrl }));
     } catch (e: any) { setError(e?.message || 'Tải ảnh lên Google Drive thất bại.'); }
     finally { setSaving(false); }
@@ -180,6 +182,23 @@ export const BridalInventory: React.FC = () => {
     } catch (e: any) {
       setError(e?.message || 'Không lưu được sản phẩm.');
     } finally { setSaving(false); }
+  };
+
+  const deleteItem = async (item: InventoryItem) => {
+    const confirmed = window.confirm(`Bạn có chắc muốn xóa sản phẩm "${item.name}" (${item.qrCode}) khỏi kho? Thao tác này không thể hoàn tác.`);
+    if (!confirmed) return;
+    setDeletingQr(item.qrCode);
+    setError('');
+    try {
+      await api.inventory.delete(item.qrCode);
+      if (selected?.qrCode === item.qrCode) setSelected(null);
+      await load(null);
+      setCursorStack([]);
+    } catch (e: any) {
+      setError(e?.message || 'Không xóa được sản phẩm.');
+    } finally {
+      setDeletingQr(null);
+    }
   };
 
   const openScannedCode = async () => {
@@ -242,7 +261,7 @@ export const BridalInventory: React.FC = () => {
                 items.map(item => <tr key={item.id} onClick={() => setSelected(item)} className="cursor-pointer hover:bg-[#FAF8F5]">
                   <td className="p-3"><div className="flex items-center gap-3">{item.imageUrl ? <img src={item.imageUrl} className="h-12 w-10 rounded-lg object-cover" alt={item.name}/> : <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-stone-100"><Shirt size={18} className="text-stone-400"/></div>}<div><p className="font-semibold text-stone-900">{item.name}</p><p className="text-xs text-stone-400">{item.collection || 'Chưa phân bộ sưu tập'}</p></div></div></td>
                   <td className="p-3 font-mono text-xs text-[#a97d3e]">{item.qrCode}</td><td className="p-3">{item.category}</td><td className="p-3">{[item.size,item.color].filter(Boolean).join(' · ') || '—'}</td><td className="p-3">{money(item.rentalPrice)}</td>
-                  <td className="p-3"><span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold">{item.status}</span></td>
+                  <td className="p-3"><div className="flex items-center justify-between gap-2"><span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold">{item.status}</span><button type="button" disabled={deletingQr===item.qrCode} onClick={(event)=>{event.stopPropagation();void deleteItem(item);}} title="Xóa sản phẩm" aria-label={`Xóa ${item.name}`} className="rounded-lg border border-rose-200 p-2 text-rose-600 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/></button></div></td>
                 </tr>)}
             </tbody>
           </table>
@@ -290,7 +309,7 @@ export const BridalInventory: React.FC = () => {
         <div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-[#a97d3e]">Hồ sơ sản phẩm</p><h2 className="text-xl font-bold">{selected.name}</h2></div><button onClick={()=>setSelected(null)}><X/></button></div>
         <div className="mt-4 grid gap-5 md:grid-cols-[1fr_220px]">
           <div className="space-y-3">{selected.imageUrl && <img src={selected.imageUrl} alt={selected.name} className="max-h-72 w-full rounded-xl object-contain bg-stone-50"/>}<div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-stone-400">Danh mục</p><b>{selected.category}</b></div><div><p className="text-xs text-stone-400">Tình trạng</p><b>{selected.status}</b></div><div><p className="text-xs text-stone-400">Size / màu</p><b>{selected.size || '—'} / {selected.color || '—'}</b></div><div><p className="text-xs text-stone-400">Giá thuê</p><b>{money(selected.rentalPrice)}</b></div><div><p className="text-xs text-stone-400">Giá bán</p><b>{money(selected.salePrice)}</b></div><div><p className="text-xs text-stone-400">Bộ sưu tập</p><b>{selected.collection || '—'}</b></div></div><p className="rounded-xl bg-stone-50 p-3 text-sm text-stone-600">{selected.notes || 'Không có ghi chú.'}</p></div>
-          <div className="space-y-3 text-center"><div className="rounded-xl border p-3"><p className="font-mono text-xs font-bold">{selected.qrCode}</p>{qrImage && <img src={qrImage} alt="QR sản phẩm" className="mx-auto mt-2 w-44"/>}<button onClick={()=>window.print()} className="mt-2 w-full rounded-lg border px-3 py-2 text-sm">In tem QR</button></div><button onClick={()=>openEdit(selected)} className="w-full rounded-lg bg-stone-900 px-4 py-3 text-sm font-bold text-white">Chỉnh sửa sản phẩm</button></div>
+          <div className="space-y-3 text-center"><div className="rounded-xl border p-3"><p className="font-mono text-xs font-bold">{selected.qrCode}</p>{qrImage && <img src={qrImage} alt="QR sản phẩm" className="mx-auto mt-2 w-44"/>}<button onClick={()=>window.print()} className="mt-2 w-full rounded-lg border px-3 py-2 text-sm">In tem QR</button></div><button onClick={()=>openEdit(selected)} className="w-full rounded-lg bg-stone-900 px-4 py-3 text-sm font-bold text-white">Chỉnh sửa sản phẩm</button><button disabled={deletingQr===selected.qrCode} onClick={()=>void deleteItem(selected)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-rose-200 px-4 py-3 text-sm font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/>{deletingQr===selected.qrCode?'Đang xóa...':'Xóa sản phẩm'}</button></div>
         </div>
         <div className="mt-5 border-t pt-4"><h3 className="mb-2 flex items-center gap-2 font-bold"><Clock3 size={16}/> Lịch sử thao tác</h3>{history.length===0?<p className="text-sm text-stone-400">Chưa có lịch sử khác.</p>:history.map(row=><div key={row.id} className="flex justify-between gap-3 border-b py-2 text-xs"><div><b>{row.action}</b><p className="text-stone-500">{row.note} · {row.performedBy}</p></div><time className="shrink-0 text-stone-400">{new Date(row.createdAt).toLocaleString('vi-VN')}</time></div>)}</div>
       </div></div>}

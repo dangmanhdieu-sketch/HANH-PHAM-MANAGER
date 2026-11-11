@@ -645,6 +645,9 @@ export const api = {
     async history(qrCode: string): Promise<InventoryEvent[]> {
       return request(`/api/inventory/items/${encodeURIComponent(qrCode)}/history`);
     },
+    async delete(qrCode: string): Promise<{ success: boolean }> {
+      return request(`/api/inventory/items/${encodeURIComponent(qrCode)}`, { method: 'DELETE' });
+    },
   },
 
   // =========================================================

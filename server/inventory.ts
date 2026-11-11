@@ -160,6 +160,28 @@ class InventoryService {
     return next;
   }
 
+  async delete(qrCode: string, actor: string) {
+    const current = await this.get(qrCode);
+    if (!current) throw new Error('Không tìm thấy sản phẩm.');
+    if (this.firestore) {
+      const itemRef = this.items().doc(qrCode);
+      const eventQuery = this.events().where('itemId', '==', current.id);
+      await this.firestore.runTransaction(async transaction => {
+        await this.assertActiveWriter(transaction);
+        const snapshot = await transaction.get(itemRef);
+        if (!snapshot.exists) throw new Error('Sản phẩm đã được xóa hoặc không còn tồn tại.');
+        const events = await transaction.get(eventQuery);
+        transaction.delete(itemRef);
+        events.docs.forEach(doc => transaction.delete(doc.ref));
+      });
+    } else {
+      this.localItems.delete(qrCode);
+      this.localEvents.delete(current.id);
+    }
+    console.log('[INVENTORY] Product deleted:', { qrCode, actor });
+    return { success: true };
+  }
+
   async history(id: string) {
     if (!this.firestore) return this.localEvents.get(id) || [];
     const snapshot = await this.events().where('itemId', '==', id).orderBy('createdAt', 'desc').limit(100).get();
