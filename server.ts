@@ -819,7 +819,7 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
   try {
     const { module, data } = req.body || {};
 
-    if (!['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
+    if (!['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'THU_VAY'].includes(module)) {
       return res.status(400).json({ error: 'Loại dữ liệu không hợp lệ.' });
     }
     if (module === 'THU_VAY' && req.user!.Quyen !== 'Admin') return res.status(403).json({ error: 'Chỉ Admin được tạo hồ sơ thử và chọn váy.' });
