@@ -620,8 +620,8 @@ export const api = {
   // QUẢN LÝ KHO QR
   // =========================================================
   inventory: {
-    async uploadImage(dataUrl: string, fileName: string): Promise<{ fileId: string; imageUrl: string; webViewLink: string }> {
-      return request('/api/inventory/upload-image', { method: 'POST', body: JSON.stringify({ dataUrl, fileName }) });
+    async uploadImage(dataUrl: string, fileName: string, folderKey = 'dresses'): Promise<{ fileId: string; imageUrl: string; webViewLink: string; folderName: string }> {
+      return request('/api/inventory/upload-image', { method: 'POST', body: JSON.stringify({ dataUrl, fileName, folderKey }) });
     },
 
     async list(params?: { limit?: number; cursor?: string; category?: string; status?: string; q?: string }): Promise<{ items: InventoryItem[]; nextCursor: string | null }> {
