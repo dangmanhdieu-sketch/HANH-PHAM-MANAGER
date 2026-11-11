@@ -30,7 +30,11 @@ export const BridalInventory: React.FC = () => {
   const [qrImage, setQrImage] = useState('');
   const [history, setHistory] = useState<InventoryEvent[]>([]);
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [scanInput, setScanInput] = useState('');\n  const [tryOnOpen, setTryOnOpen] = useState(false);\n  const [tryOnCustomer, setTryOnCustomer] = useState('');\n  const [tryOnFiles, setTryOnFiles] = useState<File[]>([]);\n  const [tryOnSaving, setTryOnSaving] = useState(false);
+  const [scanInput, setScanInput] = useState('');
+  const [tryOnOpen, setTryOnOpen] = useState(false);
+  const [tryOnCustomer, setTryOnCustomer] = useState('');
+  const [tryOnFiles, setTryOnFiles] = useState<File[]>([]);
+  const [tryOnSaving, setTryOnSaving] = useState(false);
 
   const load = useCallback(async (cursor?: string | null) => {
     setLoading(true);
@@ -211,7 +215,8 @@ export const BridalInventory: React.FC = () => {
           {key:'Phụ kiện',title:'Kho phụ kiện',desc:'Voan, giày, trang sức',icon:Images},
         ].map(card=>{const Icon=card.icon;return <button key={card.key} onClick={()=>{setCategory(card.key);setStatus('');setQuery('');}} className={`rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 ${category===card.key?'border-[#C5A059] bg-[#FBF6EC]':'border-[#E7DFD5] bg-white'}`}><Icon className="mb-3 text-[#A97D3E]" size={25}/><p className="font-bold text-stone-900">{card.title}</p><p className="mt-1 text-xs text-stone-500">{card.desc}</p></button>})}
       </div>
-\n      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
+
+      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border border-[#E7DFD5] bg-white p-4"><p className="text-xs text-stone-500">Sản phẩm trang này</p><p className="mt-1 text-2xl font-bold">{summary.total}</p></div>
@@ -259,7 +264,8 @@ export const BridalInventory: React.FC = () => {
         {tryOnFiles.length>0 && <p className="mt-2 text-sm text-stone-600">Đã chọn {tryOnFiles.length} ảnh.</p>}
         <div className="mt-5 flex justify-end gap-2"><button onClick={()=>setTryOnOpen(false)} className="rounded-xl border px-4 py-2">Hủy</button><button disabled={tryOnSaving} onClick={()=>void uploadTryOnPhotos()} className="rounded-xl bg-stone-900 px-5 py-2 font-bold text-white disabled:opacity-50">{tryOnSaving?'Đang tải ảnh...':'Lưu ảnh lên Drive'}</button></div>
       </div></div>}
-\n      {formOpen && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-3"><form onSubmit={save} className="max-h-[92vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
+
+      {formOpen && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-3"><form onSubmit={save} className="max-h-[92vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex items-center justify-between"><h2 className="text-lg font-bold">{editing ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm vào kho'}</h2><button type="button" onClick={()=>setFormOpen(false)}><X/></button></div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Tên sản phẩm *<input required value={form.name || ''} onChange={e=>setForm({...form,name:e.target.value})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
