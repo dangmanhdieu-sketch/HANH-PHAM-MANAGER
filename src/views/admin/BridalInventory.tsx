@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { Html5Qrcode } from 'html5-qrcode';
 import { api } from '../../api';
 import type { InventoryCategory, InventoryEvent, InventoryItem, InventoryStatus } from '../../types';
-import { Archive, Camera, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Package, Plus, QrCode, Search, Shirt, X } from 'lucide-react';
+import { Archive, Camera, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Package, Plus, QrCode, Search, Shirt, X, Images, UserRound, Sparkles } from 'lucide-react';
 
 const CATEGORIES: InventoryCategory[] = ['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'];
 const STATUSES: InventoryStatus[] = ['Có sẵn', 'Đang đặt', 'Đang thuê', 'Đang giặt', 'Đang sửa', 'Hư hỏng', 'Thanh lý'];
@@ -30,7 +30,7 @@ export const BridalInventory: React.FC = () => {
   const [qrImage, setQrImage] = useState('');
   const [history, setHistory] = useState<InventoryEvent[]>([]);
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [scanInput, setScanInput] = useState('');
+  const [scanInput, setScanInput] = useState('');\n  const [tryOnOpen, setTryOnOpen] = useState(false);\n  const [tryOnCustomer, setTryOnCustomer] = useState('');\n  const [tryOnFiles, setTryOnFiles] = useState<File[]>([]);\n  const [tryOnSaving, setTryOnSaving] = useState(false);
 
   const load = useCallback(async (cursor?: string | null) => {
     setLoading(true);
@@ -133,6 +133,29 @@ export const BridalInventory: React.FC = () => {
     finally { setSaving(false); }
   };
 
+
+  const uploadTryOnPhotos = async () => {
+    if (!tryOnCustomer.trim()) { setError('Vui lòng nhập tên khách hàng hoặc mã lịch thử.'); return; }
+    if (!tryOnFiles.length) { setError('Vui lòng chọn ít nhất một ảnh.'); return; }
+    setTryOnSaving(true); setError('');
+    try {
+      for (const file of tryOnFiles) {
+        if (!['image/jpeg','image/png','image/webp'].includes(file.type)) throw new Error('Ảnh chỉ hỗ trợ JPG, PNG hoặc WebP.');
+        const raw = await new Promise<string>((resolve,reject)=>{ const reader=new FileReader(); reader.onload=()=>resolve(String(reader.result||'')); reader.onerror=()=>reject(new Error('Không đọc được ảnh.')); reader.readAsDataURL(file); });
+        const image = await new Promise<HTMLImageElement>((resolve,reject)=>{ const img=new Image(); img.onload=()=>resolve(img); img.onerror=reject; img.src=raw; });
+        const scale=Math.min(1,1600/Math.max(image.width,image.height));
+        const canvas=document.createElement('canvas'); canvas.width=Math.round(image.width*scale); canvas.height=Math.round(image.height*scale);
+        const ctx=canvas.getContext('2d'); if(!ctx) throw new Error('Không xử lý được ảnh.');
+        ctx.drawImage(image,0,0,canvas.width,canvas.height);
+        const safeName=tryOnCustomer.trim().replace(/[^a-zA-Z0-9_-]/g,'_');
+        await api.inventory.uploadImage(canvas.toDataURL('image/jpeg',0.82), safeName+'_'+Date.now()+'.jpg','tryOn');
+      }
+      setTryOnOpen(false); setTryOnCustomer(''); setTryOnFiles([]);
+      alert('Đã lưu ảnh khách thử và chọn váy vào Google Drive.');
+    } catch(e:any) { setError(e?.message || 'Không lưu được ảnh thử váy.'); }
+    finally { setTryOnSaving(false); }
+  };
+
   const openCreate = () => { setEditing(null); setForm({ ...EMPTY_FORM }); setFormOpen(true); };
   const openEdit = (item: InventoryItem) => {
     setEditing(item);
@@ -173,7 +196,22 @@ export const BridalInventory: React.FC = () => {
         <button onClick={openCreate} className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-bold text-white shadow-sm"><Plus size={17}/> Thêm sản phẩm</button>
       </div>
 
-      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
+
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+        <button onClick={openCreate} className="group rounded-2xl border border-[#D8C39B] bg-gradient-to-br from-[#28231D] to-[#665238] p-4 text-left text-white shadow-sm transition hover:-translate-y-0.5">
+          <QrCode className="mb-3 text-[#E6C98F]" size={25}/><p className="font-bold">Tạo định danh SP</p><p className="mt-1 text-xs text-white/70">Tạo hồ sơ và mã QR</p>
+        </button>
+        <button onClick={()=>setTryOnOpen(true)} className="rounded-2xl border border-[#E7DFD5] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5">
+          <UserRound className="mb-3 text-[#A97D3E]" size={25}/><p className="font-bold text-stone-900">Thử & Chọn váy</p><p className="mt-1 text-xs text-stone-500">Lưu ảnh khách thử váy</p>
+        </button>
+        {[
+          {key:'Váy cưới',title:'Kho váy cưới',desc:'Ảnh và mã QR váy',icon:Shirt},
+          {key:'Vest',title:'Kho vest',desc:'Vest chú rể',icon:Package},
+          {key:'Áo dài',title:'Kho áo dài',desc:'Áo dài cưới',icon:Sparkles},
+          {key:'Phụ kiện',title:'Kho phụ kiện',desc:'Voan, giày, trang sức',icon:Images},
+        ].map(card=>{const Icon=card.icon;return <button key={card.key} onClick={()=>{setCategory(card.key);setStatus('');setQuery('');}} className={`rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 ${category===card.key?'border-[#C5A059] bg-[#FBF6EC]':'border-[#E7DFD5] bg-white'}`}><Icon className="mb-3 text-[#A97D3E]" size={25}/><p className="font-bold text-stone-900">{card.title}</p><p className="mt-1 text-xs text-stone-500">{card.desc}</p></button>})}
+      </div>
+\n      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border border-[#E7DFD5] bg-white p-4"><p className="text-xs text-stone-500">Sản phẩm trang này</p><p className="mt-1 text-2xl font-bold">{summary.total}</p></div>
@@ -212,7 +250,16 @@ export const BridalInventory: React.FC = () => {
 
       {scanInput !== null && <div className="rounded-2xl border border-[#E7DFD5] bg-white p-3"><form onSubmit={e=>{e.preventDefault();void openScannedCode();}} className="flex gap-2"><input value={scanInput} onChange={e=>setScanInput(e.target.value)} placeholder="Nhập hoặc dán mã QR, ví dụ HP-VAY-..." className="min-w-0 flex-1 rounded-lg border border-stone-200 px-3 py-2 text-sm"/><button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Tra cứu</button></form></div>}
 
-      {formOpen && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-3"><form onSubmit={save} className="max-h-[92vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
+
+      {tryOnOpen && <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-3"><div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-[#A97D3E]">HẠNH PHẠM LUXURY BRIDAL</p><h2 className="text-xl font-bold">Thử & Chọn váy</h2></div><button onClick={()=>setTryOnOpen(false)}><X/></button></div>
+        <label className="block text-sm font-semibold">Tên khách hàng / mã lịch thử<input value={tryOnCustomer} onChange={e=>setTryOnCustomer(e.target.value)} placeholder="Ví dụ: Nguyễn Thị A - 15/11" className="mt-1 w-full rounded-xl border p-3"/></label>
+        <label className="mt-3 block text-sm font-semibold">Ảnh khách thử và chọn váy<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>setTryOnFiles(Array.from(e.target.files||[]))} className="mt-1 w-full rounded-xl border p-3 text-sm"/></label>
+        <p className="mt-2 text-xs text-stone-500">Ảnh sẽ tự lưu trong thư mục riêng “05 - HINH KHACH THU VA CHON VAY” trên Drive chung. Chỉ tải ảnh khách đã đồng ý lưu.</p>
+        {tryOnFiles.length>0 && <p className="mt-2 text-sm text-stone-600">Đã chọn {tryOnFiles.length} ảnh.</p>}
+        <div className="mt-5 flex justify-end gap-2"><button onClick={()=>setTryOnOpen(false)} className="rounded-xl border px-4 py-2">Hủy</button><button disabled={tryOnSaving} onClick={()=>void uploadTryOnPhotos()} className="rounded-xl bg-stone-900 px-5 py-2 font-bold text-white disabled:opacity-50">{tryOnSaving?'Đang tải ảnh...':'Lưu ảnh lên Drive'}</button></div>
+      </div></div>}
+\n      {formOpen && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-3"><form onSubmit={save} className="max-h-[92vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex items-center justify-between"><h2 className="text-lg font-bold">{editing ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm vào kho'}</h2><button type="button" onClick={()=>setFormOpen(false)}><X/></button></div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Tên sản phẩm *<input required value={form.name || ''} onChange={e=>setForm({...form,name:e.target.value})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
