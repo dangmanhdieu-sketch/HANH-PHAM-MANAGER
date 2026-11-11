@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { Html5Qrcode } from 'html5-qrcode';
 import { api } from '../../api';
 import type { InventoryCategory, InventoryEvent, InventoryItem, InventoryStatus } from '../../types';
-import { Camera, ChevronLeft, ChevronRight, Clock3, Package, QrCode, Search, Shirt, X, Images, UserRound, Sparkles, Trash2 } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight, Clock3, Package, QrCode, Search, Shirt, X, Images, UserRound, Sparkles, Trash2, Download } from 'lucide-react';
 
 const CATEGORIES: InventoryCategory[] = ['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'];
 const STATUSES: InventoryStatus[] = ['Có sẵn', 'Đang đặt', 'Đang thuê', 'Đang giặt', 'Đang sửa', 'Hư hỏng', 'Thanh lý'];
@@ -49,6 +49,55 @@ export const BridalInventory: React.FC = () => {
   const [tryOnBrideDate, setTryOnBrideDate] = useState('');
   const [tryOnGroomDate, setTryOnGroomDate] = useState('');
   const [tryOnSaving, setTryOnSaving] = useState(false);
+
+  const downloadQrLabel = async () => {
+    if (!selected) return;
+    try {
+      const width = qrLabelWidth === '58mm' ? 464 : 640;
+      const height = qrLabelWidth === '58mm' ? 520 : 680;
+      const qrSize = qrLabelWidth === '58mm' ? 270 : 390;
+      const qrDataUrl = await QRCode.toDataURL(selected.qrCode, {
+        width: qrSize,
+        margin: 1,
+        errorCorrectionLevel: 'M',
+        color: { dark: '#000000', light: '#FFFFFF' },
+      });
+      const image = new Image();
+      image.src = qrDataUrl;
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('Không tạo được ảnh QR.'));
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Trình duyệt không hỗ trợ tạo ảnh.');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = '#111111';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 22px Arial';
+      ctx.fillText('HANH PHAM LUXURY BRIDAL', width / 2, 38);
+      ctx.font = 'bold 25px Arial';
+      const name = selected.name.length > 32 ? selected.name.slice(0, 29) + '...' : selected.name;
+      ctx.fillText(name, width / 2, 78);
+      ctx.font = '18px Arial';
+      ctx.fillText(selected.category + (selected.size ? ' · Size ' + selected.size : ''), width / 2, 110);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(image, (width - qrSize) / 2, 130, qrSize, qrSize);
+      ctx.font = 'bold 24px monospace';
+      ctx.fillText(selected.qrCode, width / 2, 130 + qrSize + 42);
+      const link = document.createElement('a');
+      link.download = `QR-${selected.qrCode}.png`;
+      link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error: any) {
+      setError(error?.message || 'Không tải được ảnh tem QR.');
+    }
+  };
 
   const load = useCallback(async (cursor?: string | null) => {
     setLoading(true);
@@ -421,7 +470,7 @@ export const BridalInventory: React.FC = () => {
                   <option value="58mm">Máy in nhiệt 58 mm</option>
                   <option value="80mm">Máy in nhiệt 80 mm</option>
                 </select>
-              </label><button onClick={()=>window.print()} className="mt-2 w-full rounded-lg border px-3 py-2 text-sm">In tem QR / Chọn máy in</button></div><button onClick={()=>openEdit(selected)} className="w-full rounded-lg bg-stone-900 px-4 py-3 text-sm font-bold text-white">Chỉnh sửa sản phẩm</button><button disabled={deletingQr===selected.qrCode} onClick={()=>void deleteItem(selected)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-rose-200 px-4 py-3 text-sm font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/>{deletingQr===selected.qrCode?'Đang xóa...':'Xóa sản phẩm'}</button></div>
+              </label><button type="button" onClick={()=>void downloadQrLabel()} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-stone-900 px-3 py-3 text-sm font-bold text-white"><Download size={16}/> Tải tem QR về máy (PNG)</button><button type="button" onClick={()=>window.print()} className="mt-2 w-full rounded-lg border px-3 py-2 text-sm">In tem QR / Chọn máy in</button></div><button onClick={()=>openEdit(selected)} className="w-full rounded-lg bg-stone-900 px-4 py-3 text-sm font-bold text-white">Chỉnh sửa sản phẩm</button><button disabled={deletingQr===selected.qrCode} onClick={()=>void deleteItem(selected)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-rose-200 px-4 py-3 text-sm font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/>{deletingQr===selected.qrCode?'Đang xóa...':'Xóa sản phẩm'}</button></div>
         </div>
         <div className="mt-5 border-t pt-4"><h3 className="mb-2 flex items-center gap-2 font-bold"><Clock3 size={16}/> Lịch sử thao tác</h3>{history.length===0?<p className="text-sm text-stone-400">Chưa có lịch sử khác.</p>:history.map(row=><div key={row.id} className="flex justify-between gap-3 border-b py-2 text-xs"><div><b>{row.action}</b><p className="text-stone-500">{row.note} · {row.performedBy}</p></div><time className="shrink-0 text-stone-400">{new Date(row.createdAt).toLocaleString('vi-VN')}</time></div>)}</div>
       </div></div>}
