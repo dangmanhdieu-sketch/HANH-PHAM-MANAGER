@@ -88,9 +88,9 @@ export async function uploadInventoryImage(dataUrl: string, fileName: string, fo
   const metadata = { name: fileName.replace(/[^\w.-]/g, '_'), mimeType, parents: [folderId] };
   const boundary = 'hp_drive_' + Date.now();
   const body = Buffer.concat([
-    Buffer.from('--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n' + JSON.stringify(metadata) + '\r\n--' + boundary + '\\r\\nContent-Type: ' + mimeType + '\r\n\r\n'),
+    Buffer.from('--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) + '\r\n--' + boundary + '\r\nContent-Type: ' + mimeType + '\r\n\r\n'),
     bytes,
-    Buffer.from('\\r\\n--' + boundary + '--'),
+    Buffer.from('\r\n--' + boundary + '--'),
   ]);
   const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,webViewLink', {
     method: 'POST',
