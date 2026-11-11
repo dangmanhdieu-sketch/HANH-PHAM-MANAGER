@@ -257,6 +257,7 @@ export const BridalInventory: React.FC = () => {
     try {
       const item = await api.inventory.get(code);
       if (!['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'].includes(item.category)) { setTryOnConflict('Mã QR không thuộc danh mục sản phẩm được quản lý.'); return; }
+      if (['Đang thuê', 'Đang giặt', 'Đang sửa', 'Hư hỏng', 'Thanh lý'].includes(item.status)) { setTryOnConflict(`Sản phẩm hiện ở trạng thái ${item.status}${item.location ? ' · Vị trí: ' + item.location : ''}. Không thể đưa vào hồ sơ chọn đồ.`); return; }
       const chosenDates = [tryOnPickupBride ? tryOnBrideDate : '', tryOnPickupGroom ? tryOnGroomDate : ''].filter(Boolean);
       const historyRecords = await api.quanLy.getAll('THU_VAY');
       const productBookings = historyRecords.filter(record => record.QuanLyID !== tryOnRecordId && (Array.isArray(record.DuLieu?.SanPhamVay) ? record.DuLieu.SanPhamVay : []).some((saved: any) => String(saved.MaQR || saved.qrCode || '').toUpperCase() === code));
