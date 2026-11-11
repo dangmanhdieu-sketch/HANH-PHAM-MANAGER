@@ -90,8 +90,7 @@ class InventoryService {
   }
 
   async create(input: Partial<InventoryItem>, actor: string) {
-    const name = String(input.name || '').trim();
-    if (!name) throw new Error('Vui lòng nhập tên sản phẩm.');
+    const name = '';
     const category = String(input.category || '') as InventoryCategory;
     if (!['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'].includes(category)) throw new Error('Danh mục sản phẩm không hợp lệ.');
     const id = randomUUID();
