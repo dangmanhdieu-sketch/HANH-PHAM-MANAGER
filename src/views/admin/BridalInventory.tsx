@@ -3,13 +3,13 @@ import QRCode from 'qrcode';
 import { Html5Qrcode } from 'html5-qrcode';
 import { api } from '../../api';
 import type { InventoryCategory, InventoryEvent, InventoryItem, InventoryStatus } from '../../types';
-import { Archive, Camera, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Package, Plus, QrCode, Search, Shirt, X, Images, UserRound, Sparkles, Trash2 } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight, Clock3, Package, QrCode, Search, Shirt, X, Images, UserRound, Sparkles, Trash2 } from 'lucide-react';
 
 const CATEGORIES: InventoryCategory[] = ['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'];
 const STATUSES: InventoryStatus[] = ['Có sẵn', 'Đang đặt', 'Đang thuê', 'Đang giặt', 'Đang sửa', 'Hư hỏng', 'Thanh lý'];
 const EMPTY_FORM: Partial<InventoryItem> = {
   name: '', category: 'Váy cưới', size: '', color: '', collection: '',
-  rentalPrice: 0, salePrice: 0, imageUrl: '', notes: '',
+  rentalPrice: 0, salePrice: 0, imageUrl: '', description: '', notes: '',
 };
 const money = (value: number) => Number(value || 0).toLocaleString('vi-VN') + ' đ';
 
@@ -216,7 +216,6 @@ export const BridalInventory: React.FC = () => {
           <h1 className="mt-1 text-2xl font-bold text-stone-900">Quản lý váy & phụ kiện</h1>
           <p className="mt-1 text-sm text-stone-500">Quản lý riêng váy cưới, vest, áo dài và phụ kiện bằng mã QR định danh.</p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-bold text-white shadow-sm"><Plus size={17}/> Thêm sản phẩm</button>
       </div>
 
 
@@ -254,13 +253,13 @@ export const BridalInventory: React.FC = () => {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="bg-[#FAF8F5] text-xs uppercase text-stone-500"><tr><th className="p-3">Sản phẩm</th><th className="p-3">Mã định danh QR</th><th className="p-3">Danh mục</th><th className="p-3">Size / Màu</th><th className="p-3">Giá thuê</th><th className="p-3">Tình trạng</th></tr></thead>
+            <thead className="bg-[#FAF8F5] text-xs uppercase text-stone-500"><tr><th className="p-3">Sản phẩm</th><th className="p-3">Mã định danh QR</th><th className="p-3">Danh mục</th><th className="p-3">Mô tả</th><th className="p-3">Tình trạng</th></tr></thead>
             <tbody className="divide-y divide-stone-100">
-              {loading ? <tr><td colSpan={6} className="p-8 text-center text-stone-400">Đang tải kho...</td></tr> :
+              {loading ? <tr><td colSpan={5} className="p-8 text-center text-stone-400">Đang tải kho...</td></tr> :
                 items.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-stone-400">Chưa có sản phẩm. Hãy thêm sản phẩm đầu tiên.</td></tr> :
                 items.map(item => <tr key={item.id} onClick={() => setSelected(item)} className="cursor-pointer hover:bg-[#FAF8F5]">
-                  <td className="p-3"><div className="flex items-center gap-3">{item.imageUrl ? <img src={item.imageUrl} className="h-12 w-10 rounded-lg object-cover" alt={item.name}/> : <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-stone-100"><Shirt size={18} className="text-stone-400"/></div>}<div><p className="font-semibold text-stone-900">{item.name}</p><p className="text-xs text-stone-400">{item.collection || 'Chưa phân bộ sưu tập'}</p></div></div></td>
-                  <td className="p-3 font-mono text-xs text-[#a97d3e]">{item.qrCode}</td><td className="p-3">{item.category}</td><td className="p-3">{[item.size,item.color].filter(Boolean).join(' · ') || '—'}</td><td className="p-3">{money(item.rentalPrice)}</td>
+                  <td className="p-3"><div className="flex items-center gap-3">{item.imageUrl ? <img src={item.imageUrl} className="h-12 w-10 rounded-lg object-cover" alt={item.name}/> : <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-stone-100"><Shirt size={18} className="text-stone-400"/></div>}<div><p className="font-semibold text-stone-900">{item.name}</p><p className="text-xs text-stone-400">{item.description || item.collection || item.category}</p></div></div></td>
+                  <td className="p-3 font-mono text-xs text-[#a97d3e]">{item.qrCode}</td><td className="p-3">{item.category}</td><td className="p-3">{item.description || '—'}</td>
                   <td className="p-3"><div className="flex items-center justify-between gap-2"><span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold">{item.status}</span><button type="button" disabled={deletingQr===item.qrCode} onClick={(event)=>{event.stopPropagation();void deleteItem(item);}} title="Xóa sản phẩm" aria-label={`Xóa ${item.name}`} className="rounded-lg border border-rose-200 p-2 text-rose-600 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/></button></div></td>
                 </tr>)}
             </tbody>
@@ -287,19 +286,19 @@ export const BridalInventory: React.FC = () => {
       {formOpen && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-3"><form onSubmit={save} className="max-h-[92vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex items-center justify-between"><h2 className="text-lg font-bold">{editing ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm vào kho'}</h2><button type="button" onClick={()=>setFormOpen(false)}><X/></button></div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Tên sản phẩm *<input required value={form.name || ''} onChange={e=>setForm({...form,name:e.target.value})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
           <label className="text-xs font-semibold text-stone-600">Danh mục<select value={form.category} onChange={e=>setForm({...form,category:e.target.value as InventoryCategory})} className="mt-1 w-full rounded-lg border p-3 text-sm">{CATEGORIES.map(x=><option key={x}>{x}</option>)}</select></label>
-          <label className="text-xs font-semibold text-stone-600">Size<input value={form.size || ''} onChange={e=>setForm({...form,size:e.target.value})} placeholder="S, M, L, 38..." className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
+          <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Tên / định danh sản phẩm<input readOnly value={form.name || (form.category==='Váy cưới'?'VAY-xxxx':form.category==='Vest'?'VEST-xxxx':form.category==='Áo dài'?'AODAI-xxxx':'PK-xxxx')} className="mt-1 w-full rounded-lg border bg-stone-50 p-3 text-sm font-semibold"/></label>
+          {form.category !== 'Váy cưới' && <>          <label className="text-xs font-semibold text-stone-600">Size<input value={form.size || ''} onChange={e=>setForm({...form,size:e.target.value})} placeholder="S, M, L, 38..." className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
           <label className="text-xs font-semibold text-stone-600">Màu sắc<input value={form.color || ''} onChange={e=>setForm({...form,color:e.target.value})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
           <label className="text-xs font-semibold text-stone-600">Bộ sưu tập<input value={form.collection || ''} onChange={e=>setForm({...form,collection:e.target.value})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
           <label className="text-xs font-semibold text-stone-600">Giá thuê<input type="number" min="0" value={form.rentalPrice || 0} onChange={e=>setForm({...form,rentalPrice:Number(e.target.value)})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
-          <label className="text-xs font-semibold text-stone-600">Giá bán<input type="number" min="0" value={form.salePrice || 0} onChange={e=>setForm({...form,salePrice:Number(e.target.value)})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
+          <label className="text-xs font-semibold text-stone-600">Giá bán<input type="number" min="0" value={form.salePrice || 0} onChange={e=>setForm({...form,salePrice:Number(e.target.value)})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label></>}
           <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Ảnh sản phẩm — tải thẳng lên Google Drive
             <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>void uploadImage(e.target.files?.[0])} className="mt-1 w-full rounded-lg border p-3 text-sm"/>
             <span className="mt-1 block text-[11px] font-normal text-stone-400">Ảnh tự nén còn tối đa 1600px, lưu trong Drive chung. Tối đa 8 MB sau nén.</span>
             {form.imageUrl && <img src={form.imageUrl} alt="Ảnh xem trước" className="mt-2 h-36 rounded-xl object-contain bg-stone-50"/>}
           </label>
-          <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Ghi chú<textarea value={form.notes || ''} onChange={e=>setForm({...form,notes:e.target.value})} className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
+          <label className="text-xs font-semibold text-stone-600 sm:col-span-2">Mô tả sản phẩm<textarea value={form.description || ''} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Mô tả kiểu dáng, chất liệu, chi tiết thiết kế..." className="mt-1 w-full rounded-lg border p-3 text-sm"/></label>
         </div>
         {editing && <label className="block text-xs font-semibold text-stone-600">Tình trạng<select value={form.status} onChange={e=>setForm({...form,status:e.target.value as InventoryStatus})} className="mt-1 w-full rounded-lg border p-3 text-sm">{STATUSES.map(x=><option key={x}>{x}</option>)}</select></label>}
         <div className="flex justify-end gap-2"><button type="button" onClick={()=>setFormOpen(false)} className="rounded-lg border px-4 py-2 text-sm">Hủy</button><button disabled={saving} className="rounded-lg bg-stone-900 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">{saving?'Đang lưu...':'Lưu sản phẩm'}</button></div>
@@ -308,7 +307,7 @@ export const BridalInventory: React.FC = () => {
       {selected && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-3" onClick={()=>setSelected(null)}><div onClick={e=>e.stopPropagation()} className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-[#a97d3e]">Hồ sơ sản phẩm</p><h2 className="text-xl font-bold">{selected.name}</h2></div><button onClick={()=>setSelected(null)}><X/></button></div>
         <div className="mt-4 grid gap-5 md:grid-cols-[1fr_220px]">
-          <div className="space-y-3">{selected.imageUrl && <img src={selected.imageUrl} alt={selected.name} className="max-h-72 w-full rounded-xl object-contain bg-stone-50"/>}<div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-stone-400">Danh mục</p><b>{selected.category}</b></div><div><p className="text-xs text-stone-400">Tình trạng</p><b>{selected.status}</b></div><div><p className="text-xs text-stone-400">Size / màu</p><b>{selected.size || '—'} / {selected.color || '—'}</b></div><div><p className="text-xs text-stone-400">Giá thuê</p><b>{money(selected.rentalPrice)}</b></div><div><p className="text-xs text-stone-400">Giá bán</p><b>{money(selected.salePrice)}</b></div><div><p className="text-xs text-stone-400">Bộ sưu tập</p><b>{selected.collection || '—'}</b></div></div><p className="rounded-xl bg-stone-50 p-3 text-sm text-stone-600">{selected.notes || 'Không có ghi chú.'}</p></div>
+          <div className="space-y-3">{selected.imageUrl && <img src={selected.imageUrl} alt={selected.name} className="max-h-72 w-full rounded-xl object-contain bg-stone-50"/>}<div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-stone-400">Danh mục</p><b>{selected.category}</b></div><div><p className="text-xs text-stone-400">Tình trạng</p><b>{selected.status}</b></div><div className="col-span-2"><p className="text-xs text-stone-400">Mô tả</p><b>{selected.description || '—'}</b></div></div></div>
           <div className="space-y-3 text-center"><div className="rounded-xl border p-3"><p className="font-mono text-xs font-bold">{selected.qrCode}</p>{qrImage && <img src={qrImage} alt="QR sản phẩm" className="mx-auto mt-2 w-44"/>}<button onClick={()=>window.print()} className="mt-2 w-full rounded-lg border px-3 py-2 text-sm">In tem QR</button></div><button onClick={()=>openEdit(selected)} className="w-full rounded-lg bg-stone-900 px-4 py-3 text-sm font-bold text-white">Chỉnh sửa sản phẩm</button><button disabled={deletingQr===selected.qrCode} onClick={()=>void deleteItem(selected)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-rose-200 px-4 py-3 text-sm font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/>{deletingQr===selected.qrCode?'Đang xóa...':'Xóa sản phẩm'}</button></div>
         </div>
         <div className="mt-5 border-t pt-4"><h3 className="mb-2 flex items-center gap-2 font-bold"><Clock3 size={16}/> Lịch sử thao tác</h3>{history.length===0?<p className="text-sm text-stone-400">Chưa có lịch sử khác.</p>:history.map(row=><div key={row.id} className="flex justify-between gap-3 border-b py-2 text-xs"><div><b>{row.action}</b><p className="text-stone-500">{row.note} · {row.performedBy}</p></div><time className="shrink-0 text-stone-400">{new Date(row.createdAt).toLocaleString('vi-VN')}</time></div>)}</div>

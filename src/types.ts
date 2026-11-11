@@ -240,6 +240,7 @@ export interface InventoryItem {
   status: InventoryStatus;
   imageUrl: string;
   notes: string;
+  description?: string;
   createdAt: string;
   updatedAt: string;
   createdBy: string;

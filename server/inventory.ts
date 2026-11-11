@@ -90,16 +90,16 @@ class InventoryService {
   }
 
   async create(input: Partial<InventoryItem>, actor: string) {
-    const name = String(input.name || '').trim();
-    if (!name) throw new Error('Vui lòng nhập tên sản phẩm.');
+    const name = '';
     const category = String(input.category || '') as InventoryCategory;
     if (!['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'].includes(category)) throw new Error('Danh mục sản phẩm không hợp lệ.');
     const id = randomUUID();
+    const prefix = category === 'Váy cưới' ? 'VAY' : category === 'Vest' ? 'VEST' : category === 'Áo dài' ? 'AODAI' : 'PK';
     const now = new Date().toISOString();
     const item: InventoryItem = {
       id,
-      qrCode: `HP-${category === 'Váy cưới' ? 'VAY' : category === 'Vest' ? 'VEST' : category === 'Áo dài' ? 'AODAI' : 'PK'}-${id.slice(0, 8).toUpperCase()}`,
-      name,
+      qrCode: '',
+      name: '',
       category,
       size: String(input.size || '').trim(),
       color: String(input.color || '').trim(),
@@ -108,19 +108,29 @@ class InventoryService {
       salePrice: Math.max(0, Number(input.salePrice) || 0),
       status: 'Có sẵn',
       imageUrl: String(input.imageUrl || '').trim(),
-      notes: String(input.notes || '').trim(),
+      notes: '',
+      description: String(input.description || '').trim(),
       createdAt: now,
       updatedAt: now,
       createdBy: actor,
     };
     if (this.firestore) {
+      const counterRef = this.firestore.collection(ROOT_COLLECTION).doc(ROOT_DOCUMENT).collection('_counters').doc('inventory_' + prefix);
       await this.firestore.runTransaction(async transaction => {
         await this.assertActiveWriter(transaction);
-        transaction.create(this.items().doc(item.qrCode), { ...item, nameSearch: name.toLocaleLowerCase('vi') });
+        const counterSnapshot = await transaction.get(counterRef);
+        const sequence = Number(counterSnapshot.data()?.value || 0) + 1;
+        item.name = prefix + '-' + String(sequence).padStart(4, '0');
+        item.qrCode = 'HP-' + item.name;
+        transaction.set(counterRef, { value: sequence, updatedAt: now }, { merge: true });
+        transaction.create(this.items().doc(item.qrCode), { ...item, nameSearch: item.name.toLocaleLowerCase('vi') });
         const event: InventoryEvent = { id: randomUUID(), itemId: item.id, action: 'Nhập kho', note: 'Tạo hồ sơ sản phẩm', performedBy: actor, createdAt: now };
         transaction.create(this.events().doc(event.id), event);
       });
     } else {
+      const sequence = [...this.localItems.values()].filter(x => x.name.startsWith(prefix + '-')).length + 1;
+      item.name = prefix + '-' + String(sequence).padStart(4, '0');
+      item.qrCode = 'HP-' + item.name;
       this.localItems.set(item.qrCode, item);
       this.localEvents.set(item.id, [{ id: randomUUID(), itemId: item.id, action: 'Nhập kho', note: 'Tạo hồ sơ sản phẩm', performedBy: actor, createdAt: now }]);
     }
@@ -142,7 +152,8 @@ class InventoryService {
       salePrice: input.salePrice === undefined ? current.salePrice : Math.max(0, Number(input.salePrice) || 0),
       status: input.status === undefined ? current.status : input.status as InventoryStatus,
       imageUrl: input.imageUrl === undefined ? current.imageUrl : String(input.imageUrl).trim(),
-      notes: input.notes === undefined ? current.notes : String(input.notes).trim(),
+      notes: '',
+      description: input.description === undefined ? current.description : String(input.description).trim(),
       updatedAt: new Date().toISOString(),
     };
     if (!next.name || !['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'].includes(next.category)) throw new Error('Tên hoặc danh mục sản phẩm không hợp lệ.');
