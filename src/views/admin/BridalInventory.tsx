@@ -36,6 +36,13 @@ export const BridalInventory: React.FC = () => {
   const [tryOnOpen, setTryOnOpen] = useState(false);
   const [tryOnCustomer, setTryOnCustomer] = useState('');
   const [tryOnFiles, setTryOnFiles] = useState<File[]>([]);
+  const [tryOnContracts, setTryOnContracts] = useState<import('../../types').QuanLyRecord[]>([]);
+  const [tryOnContractId, setTryOnContractId] = useState('');
+  const [tryOnManualNames, setTryOnManualNames] = useState(false);
+  const [tryOnBride, setTryOnBride] = useState('');
+  const [tryOnGroom, setTryOnGroom] = useState('');
+  const [tryOnBrideDate, setTryOnBrideDate] = useState('');
+  const [tryOnGroomDate, setTryOnGroomDate] = useState('');
   const [tryOnSaving, setTryOnSaving] = useState(false);
 
   const load = useCallback(async (cursor?: string | null) => {
@@ -141,11 +148,25 @@ export const BridalInventory: React.FC = () => {
   };
 
 
+  const openTryOn = async () => {
+    setError('');
+    setTryOnOpen(true);
+    try {
+      const contracts = await api.quanLy.getAll('HOP_DONG');
+      setTryOnContracts(contracts.filter(record => !['Đã hủy', 'Hủy'].includes(String(record.DuLieu?.TrangThai || ''))));
+    } catch (e: any) {
+      setError(e?.message || 'Không tải được danh sách hợp đồng.');
+    }
+  };
+
   const uploadTryOnPhotos = async () => {
-    if (!tryOnCustomer.trim()) { setError('Vui lòng nhập tên khách hàng hoặc mã lịch thử.'); return; }
-    if (!tryOnFiles.length) { setError('Vui lòng chọn ít nhất một ảnh.'); return; }
+    const linkedContract = tryOnContracts.find(record => record.QuanLyID === tryOnContractId);
+    if (!tryOnManualNames && !linkedContract) { setError('Vui lòng chọn hợp đồng hoặc chọn nhập tên ngoài hợp đồng.'); return; }
+    if (!tryOnBride.trim() && !tryOnGroom.trim() && !tryOnCustomer.trim()) { setError('Vui lòng nhập tên cô dâu hoặc chú rể.'); return; }
+    if (!tryOnFiles.length) { setError('Vui lòng chọn ít nhất một ảnh váy khách đã chọn.'); return; }
     setTryOnSaving(true); setError('');
     try {
+      const uploadedPhotos: Array<{ fileName: string; imageUrl: string; fileId: string }> = [];
       for (const file of tryOnFiles) {
         if (!['image/jpeg','image/png','image/webp'].includes(file.type)) throw new Error('Ảnh chỉ hỗ trợ JPG, PNG hoặc WebP.');
         const raw = await new Promise<string>((resolve,reject)=>{ const reader=new FileReader(); reader.onload=()=>resolve(String(reader.result||'')); reader.onerror=()=>reject(new Error('Không đọc được ảnh.')); reader.readAsDataURL(file); });
@@ -155,10 +176,26 @@ export const BridalInventory: React.FC = () => {
         const ctx=canvas.getContext('2d'); if(!ctx) throw new Error('Không xử lý được ảnh.');
         ctx.drawImage(image,0,0,canvas.width,canvas.height);
         const safeName=tryOnCustomer.trim().replace(/[^a-zA-Z0-9_-]/g,'_');
-        await api.inventory.uploadImage(canvas.toDataURL('image/jpeg',0.82), safeName+'_'+Date.now()+'.jpg','tryOn');
+        const uploaded = await api.inventory.uploadImage(canvas.toDataURL('image/jpeg',0.82), safeName+'_'+Date.now()+'.jpg','tryOn');
+        uploadedPhotos.push({ fileName: file.name, imageUrl: uploaded.imageUrl, fileId: uploaded.fileId });
       }
-      setTryOnOpen(false); setTryOnCustomer(''); setTryOnFiles([]);
-      alert('Đã lưu ảnh khách thử và chọn váy vào Google Drive.');
+      const customerName = [tryOnBride.trim() && 'Cô dâu: '+tryOnBride.trim(), tryOnGroom.trim() && 'Chú rể: '+tryOnGroom.trim()].filter(Boolean).join(' - ') || tryOnCustomer.trim();
+      await api.quanLy.create('THU_VAY', {
+        HopDongQuanLyID: linkedContract?.QuanLyID || '',
+        MaHopDong: linkedContract?.DuLieu?.MaHopDong || '',
+        TenHopDong: linkedContract?.DuLieu?.KhachHang || '',
+        NhapNgoaiHopDong: tryOnManualNames,
+        TenCoDau: tryOnBride.trim(),
+        TenChuRe: tryOnGroom.trim(),
+        KhachHang: customerName,
+        NgayLayVayNhaGai: tryOnBrideDate,
+        NgayLayVayNhaTrai: tryOnGroomDate,
+        AnhVay: uploadedPhotos,
+        SoLuongAnh: uploadedPhotos.length,
+        TaoLuc: new Date().toISOString(),
+      });
+      setTryOnOpen(false); setTryOnCustomer(''); setTryOnFiles([]); setTryOnContractId(''); setTryOnManualNames(false); setTryOnBride(''); setTryOnGroom(''); setTryOnBrideDate(''); setTryOnGroomDate('');
+      alert('Đã lưu hồ sơ thử và chọn váy, liên kết hợp đồng và ảnh trên Google Drive.');
     } catch(e:any) { setError(e?.message || 'Không lưu được ảnh thử váy.'); }
     finally { setTryOnSaving(false); }
   };
@@ -224,7 +261,7 @@ export const BridalInventory: React.FC = () => {
         <button onClick={openCreate} className="group rounded-2xl border border-[#D8C39B] bg-gradient-to-br from-[#28231D] to-[#665238] p-4 text-left text-white shadow-sm transition hover:-translate-y-0.5">
           <QrCode className="mb-3 text-[#E6C98F]" size={25}/><p className="font-bold">Tạo định danh SP</p><p className="mt-1 text-xs text-white/70">Tạo hồ sơ và mã QR</p>
         </button>
-        <button onClick={()=>setTryOnOpen(true)} className="rounded-2xl border border-[#E7DFD5] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5">
+        <button onClick={()=>void openTryOn()} className="rounded-2xl border border-[#E7DFD5] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5">
           <UserRound className="mb-3 text-[#A97D3E]" size={25}/><p className="font-bold text-stone-900">Thử & Chọn váy</p><p className="mt-1 text-xs text-stone-500">Lưu ảnh khách thử váy</p>
         </button>
         {[
@@ -277,9 +314,21 @@ export const BridalInventory: React.FC = () => {
 
       {tryOnOpen && <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-3"><div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl">
         <div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-[#A97D3E]">HẠNH PHẠM LUXURY BRIDAL</p><h2 className="text-xl font-bold">Thử & Chọn váy</h2></div><button onClick={()=>setTryOnOpen(false)}><X/></button></div>
-        <label className="block text-sm font-semibold">Tên khách hàng / mã lịch thử<input value={tryOnCustomer} onChange={e=>setTryOnCustomer(e.target.value)} placeholder="Ví dụ: Nguyễn Thị A - 15/11" className="mt-1 w-full rounded-xl border p-3"/></label>
-        <label className="mt-3 block text-sm font-semibold">Ảnh khách thử và chọn váy<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>setTryOnFiles(Array.from(e.target.files||[]))} className="mt-1 w-full rounded-xl border p-3 text-sm"/></label>
-        <p className="mt-2 text-xs text-stone-500">Ảnh sẽ tự lưu trong thư mục riêng “05 - HINH KHACH THU VA CHON VAY” trên Drive chung. Chỉ tải ảnh khách đã đồng ý lưu.</p>
+        <label className="block text-sm font-semibold">Liên kết hợp đồng<select value={tryOnManualNames ? '__manual__' : tryOnContractId} onChange={e=>{const value=e.target.value;setTryOnManualNames(value==='__manual__');setTryOnContractId(value==='__manual__'?'':value);const record=tryOnContracts.find(x=>x.QuanLyID===value);if(record){setTryOnBride(String(record.DuLieu?.TenCoDau||''));setTryOnGroom(String(record.DuLieu?.TenChuRe||''));setTryOnCustomer(String(record.DuLieu?.KhachHang||''));}}} className="mt-1 w-full rounded-xl border p-3">
+          <option value="">-- Chọn hợp đồng --</option>{tryOnContracts.map(record=><option key={record.QuanLyID} value={record.QuanLyID}>{record.DuLieu?.MaHopDong || record.QuanLyID} · {record.DuLieu?.KhachHang || 'Chưa có tên khách'}</option>)}<option value="__manual__">Khách ngoài hợp đồng – nhập tên riêng</option>
+        </select></label>
+        {tryOnManualNames && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">Hồ sơ này không gắn với hợp đồng có sẵn.</p>}
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="text-sm font-semibold">Tên cô dâu<input value={tryOnBride} onChange={e=>setTryOnBride(e.target.value)} placeholder="Nhập tên cô dâu" className="mt-1 w-full rounded-xl border p-3"/></label>
+          <label className="text-sm font-semibold">Tên chú rể<input value={tryOnGroom} onChange={e=>setTryOnGroom(e.target.value)} placeholder="Nhập tên chú rể" className="mt-1 w-full rounded-xl border p-3"/></label>
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="text-sm font-semibold">Ngày lấy váy – Nhà gái<input type="date" value={tryOnBrideDate} onChange={e=>setTryOnBrideDate(e.target.value)} className="mt-1 w-full rounded-xl border p-3"/></label>
+          <label className="text-sm font-semibold">Ngày lấy váy – Nhà trai<input type="date" value={tryOnGroomDate} onChange={e=>setTryOnGroomDate(e.target.value)} className="mt-1 w-full rounded-xl border p-3"/></label>
+        </div>
+        <label className="mt-3 block text-sm font-semibold">Tên ghi chú / mã lịch thử (không bắt buộc)<input value={tryOnCustomer} onChange={e=>setTryOnCustomer(e.target.value)} placeholder="Thông tin bổ sung" className="mt-1 w-full rounded-xl border p-3"/></label>
+        <label className="mt-3 block text-sm font-semibold">Chụp hoặc chọn ảnh váy khách đã chọn<input type="file" multiple capture="environment" accept="image/jpeg,image/png,image/webp" onChange={e=>setTryOnFiles(Array.from(e.target.files||[]))} className="mt-1 w-full rounded-xl border p-3 text-sm"/></label>
+        <p className="mt-2 text-xs text-stone-500">Ảnh được lưu vào thư mục “05 - HINH KHACH THU VA CHON VAY” trên Drive. Có thể chụp nhiều ảnh trong một hồ sơ.</p>
         {tryOnFiles.length>0 && <p className="mt-2 text-sm text-stone-600">Đã chọn {tryOnFiles.length} ảnh.</p>}
         <div className="mt-5 flex justify-end gap-2"><button onClick={()=>setTryOnOpen(false)} className="rounded-xl border px-4 py-2">Hủy</button><button disabled={tryOnSaving} onClick={()=>void uploadTryOnPhotos()} className="rounded-xl bg-stone-900 px-5 py-2 font-bold text-white disabled:opacity-50">{tryOnSaving?'Đang tải ảnh...':'Lưu ảnh lên Drive'}</button></div>
       </div></div>}
