@@ -43,6 +43,7 @@ export const BridalInventory: React.FC = () => {
   const [qrImage, setQrImage] = useState('');
   const [history, setHistory] = useState<InventoryEvent[]>([]);
   const [tryOnHistory, setTryOnHistory] = useState<QuanLyRecord[]>([]);
+  const [allTryOnHistory, setAllTryOnHistory] = useState<QuanLyRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanInput, setScanInput] = useState('');
@@ -122,6 +123,7 @@ export const BridalInventory: React.FC = () => {
   }, [category, status, query]);
 
   useEffect(() => { void load(null); setCursorStack([]); }, [load]);
+  useEffect(() => { api.quanLy.getAll('THU_VAY').then(setAllTryOnHistory).catch(() => setAllTryOnHistory([])); }, []);
 
   useEffect(() => {
     let active = true;
@@ -445,7 +447,7 @@ export const BridalInventory: React.FC = () => {
               {loading ? <tr><td colSpan={5} className="p-8 text-center text-stone-400">Đang tải kho...</td></tr> :
                 items.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-stone-400">Chưa có sản phẩm. Hãy thêm sản phẩm đầu tiên.</td></tr> :
                 items.map(item => <tr key={item.id} onClick={() => setSelected(item)} className="cursor-pointer hover:bg-[#FAF8F5]">
-                  <td className="p-3"><div className="flex items-center gap-3">{item.imageUrl ? <img src={getDisplayImageUrl(item.imageUrl)} className="h-12 w-10 rounded-lg object-cover" alt={item.name}/> : <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-stone-100"><Shirt size={18} className="text-stone-400"/></div>}<div><p className="font-semibold text-stone-900">{item.name}</p><p className="text-xs text-stone-400">{item.description || item.collection || item.category}</p></div></div></td>
+                  <td className="p-3"><div className="flex items-center gap-3">{item.imageUrl ? <img src={getDisplayImageUrl(item.imageUrl)} className="h-12 w-10 rounded-lg object-cover" alt={item.name}/> : <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-stone-100"><Shirt size={18} className="text-stone-400"/></div>}<div><p className="font-semibold text-stone-900">{item.name}</p><p className="text-xs text-stone-400">{item.description || item.collection || item.category}</p><p className="mt-1 text-[11px] font-semibold text-[#9A7138]">Khách đã chọn: {allTryOnHistory.reduce((total, record) => total + ((Array.isArray(record.DuLieu?.SanPhamVay) ? record.DuLieu.SanPhamVay : []).some((p: any) => String(p.MaQR || p.qrCode || '').toUpperCase() === item.qrCode.toUpperCase()) ? 1 : 0), 0)} lượt</p></div></div></td>
                   <td className="p-3 font-mono text-xs text-[#a97d3e]">{item.qrCode}</td><td className="p-3">{item.category}</td><td className="p-3">{item.description || '—'}</td>
                   <td className="p-3"><div className="flex items-center justify-between gap-2"><span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold">{item.status}</span><button type="button" disabled={deletingQr===item.qrCode} onClick={(event)=>{event.stopPropagation();void deleteItem(item);}} title="Xóa sản phẩm" aria-label={`Xóa ${item.name}`} className="rounded-lg border border-rose-200 p-2 text-rose-600 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/></button></div></td>
                 </tr>)}
