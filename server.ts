@@ -665,7 +665,7 @@ app.get('/api/reports/contracts-revenue', authenticateToken, requireAdmin, (_req
 
 app.post('/api/inventory/upload-image', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const result = await uploadInventoryImage(String(req.body?.dataUrl || ''), String(req.body?.fileName || 'bridal-image.jpg'));
+    const result = await uploadInventoryImage(String(req.body?.dataUrl || ''), String(req.body?.fileName || 'bridal-image.jpg'), String(req.body?.folderKey || 'dresses'));
     return res.status(201).json(result);
   } catch (error: any) {
     console.error('[INVENTORY] Google Drive upload failed:', error);
