@@ -238,6 +238,8 @@ export interface InventoryItem {
   rentalPrice: number;
   salePrice: number;
   status: InventoryStatus;
+  location?: string;
+  locationNote?: string;
   imageUrl: string;
   notes: string;
   description?: string;
