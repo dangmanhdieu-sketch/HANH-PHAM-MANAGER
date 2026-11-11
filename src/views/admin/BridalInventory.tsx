@@ -36,10 +36,10 @@ export const BridalInventory: React.FC = () => {
   const [tryOnOpen, setTryOnOpen] = useState(false);
   const [tryOnCustomer, setTryOnCustomer] = useState('');
   const [tryOnFiles, setTryOnFiles] = useState<File[]>([]);
-  const [tryOnContracts, setTryOnContracts] = useState<import('../../types').QuanLyRecord[]>([]);
-  const [tryOnContractId, setTryOnContractId] = useState('');
-  const [tryOnContractSearch, setTryOnContractSearch] = useState('');
-  const [tryOnManualNames, setTryOnManualNames] = useState(false);
+  const [tryOnProducts, setTryOnProducts] = useState<InventoryItem[]>([]);
+  const [tryOnQrInput, setTryOnQrInput] = useState('');
+  const [tryOnScannerOpen, setTryOnScannerOpen] = useState(false);
+  const [tryOnConflict, setTryOnConflict] = useState('');
   const [tryOnPickupBride, setTryOnPickupBride] = useState(false);
   const [tryOnPickupGroom, setTryOnPickupGroom] = useState(false);
   const [tryOnBride, setTryOnBride] = useState('');
@@ -151,22 +151,55 @@ export const BridalInventory: React.FC = () => {
   };
 
 
-  const openTryOn = async () => {
-    setError('');
+  const openTryOn = () => {
+    setError(''); setTryOnConflict(''); setTryOnProducts([]); setTryOnQrInput('');
     setTryOnOpen(true);
-    try {
-      const contracts = await api.quanLy.getAll('HOP_DONG');
-      setTryOnContracts(contracts.filter(record => !['Đã hủy', 'Hủy'].includes(String(record.DuLieu?.TrangThai || ''))));
-    } catch (e: any) {
-      setError(e?.message || 'Không tải được danh sách hợp đồng.');
-    }
   };
 
+  const addTryOnProduct = async (rawCode: string) => {
+    const code = rawCode.trim().toUpperCase();
+    if (!code) return;
+    if (tryOnProducts.some(item => item.qrCode.toUpperCase() === code)) { setTryOnConflict('Sản phẩm này đã được quét trong hồ sơ hiện tại.'); return; }
+    try {
+      const item = await api.inventory.get(code);
+      if (item.category !== 'Váy cưới') { setTryOnConflict('Mã QR này không thuộc danh mục váy cưới.'); return; }
+      setTryOnProducts(current => [...current, item]); setTryOnConflict(''); setTryOnQrInput('');
+    } catch (e: any) { setTryOnConflict(e?.message || 'Không tìm thấy sản phẩm theo mã QR.'); }
+  };
+
+  useEffect(() => {
+    if (!tryOnScannerOpen) return;
+    const scanner = new Html5Qrcode('try-on-qr-reader');
+    let stopped = false;
+    scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 230, height: 230 } }, async decoded => {
+      if (stopped) return;
+      stopped = true;
+      try { await scanner.stop(); } catch {}
+      setTryOnScannerOpen(false);
+      await addTryOnProduct(decoded);
+    }, () => {}).catch((e: any) => {
+      setTryOnConflict(e?.message || 'Không mở được camera. Hãy cấp quyền camera.'); setTryOnScannerOpen(false);
+    });
+    return () => { stopped = true; try { scanner.stop(); } catch {} try { scanner.clear(); } catch {} };
+  }, [tryOnScannerOpen]);
+
   const uploadTryOnPhotos = async () => {
-    const linkedContract = tryOnContracts.find(record => record.QuanLyID === tryOnContractId);
-    if (!tryOnManualNames && !linkedContract) { setError('Vui lòng chọn hợp đồng hoặc chọn nhập tên ngoài hợp đồng.'); return; }
-    if (tryOnManualNames && !tryOnCustomer.trim()) { setError('Vui lòng nhập tên khách ngoài hợp đồng.'); return; }
-    if (!tryOnManualNames && !linkedContract) { setError('Vui lòng chọn hợp đồng hoặc chọn Khác.'); return; }
+    if (!tryOnCustomer.trim()) { setError('Vui lòng nhập tên khách hàng.'); return; }
+    if (!tryOnProducts.length) { setError('Vui lòng quét QR ít nhất một váy để đối chiếu lịch thuê.'); return; }
+    if (tryOnConflict) { setError(tryOnConflict); return; }
+    try {
+      const existingRecords = await api.quanLy.getAll('THU_VAY');
+      const selectedDates = [tryOnPickupBride ? tryOnBrideDate : '', tryOnPickupGroom ? tryOnGroomDate : ''].filter(Boolean);
+      for (const product of tryOnProducts) {
+        const conflict = existingRecords.find(record => {
+          const data = record.DuLieu || {};
+          const dates = [data.NgayLayVayNhaGai, data.NgayLayVayNhaTrai].filter(Boolean);
+          const savedProducts = Array.isArray(data.SanPhamVay) ? data.SanPhamVay : [];
+          return dates.some((date: string) => selectedDates.includes(date)) && savedProducts.some((saved: any) => String(saved.MaQR || saved.qrCode || '').toUpperCase() === product.qrCode.toUpperCase());
+        });
+        if (conflict) { setError(`Váy ${product.qrCode} đã có người thuê vào ngày đã chọn. Vui lòng chọn váy khác.`); return; }
+      }
+    } catch (e: any) { setError(e?.message || 'Không kiểm tra được lịch thuê. Vui lòng thử lại.'); return; }
     if (!tryOnPickupBride && !tryOnPickupGroom) { setError('Vui lòng chọn Nhà gái hoặc Nhà trai để nhập ngày lấy váy.'); return; }
     if ((tryOnPickupBride && !tryOnBrideDate) || (tryOnPickupGroom && !tryOnGroomDate)) { setError('Vui lòng nhập ngày lấy váy cho bên đã chọn.'); return; }
     if (!tryOnFiles.length) { setError('Vui lòng chọn ít nhất một ảnh váy khách đã chọn.'); return; }
@@ -181,19 +214,14 @@ export const BridalInventory: React.FC = () => {
         const canvas=document.createElement('canvas'); canvas.width=Math.round(image.width*scale); canvas.height=Math.round(image.height*scale);
         const ctx=canvas.getContext('2d'); if(!ctx) throw new Error('Không xử lý được ảnh.');
         ctx.drawImage(image,0,0,canvas.width,canvas.height);
-        const safeName=(tryOnCustomer.trim() || linkedContract?.DuLieu?.MaHopDong || 'Khach-thu-vay').replace(/[^a-zA-Z0-9_-]/g,'_');
+        const safeName=tryOnCustomer.trim().replace(/[^a-zA-Z0-9_-]/g,'_');
         const uploaded = await api.inventory.uploadImage(canvas.toDataURL('image/jpeg',0.82), safeName+'_'+Date.now()+'.jpg','tryOn');
         uploadedPhotos.push({ fileName: file.name, imageUrl: uploaded.imageUrl, fileId: uploaded.fileId });
       }
-      const customerName = tryOnManualNames ? tryOnCustomer.trim() : String(linkedContract?.DuLieu?.KhachHang || '');
       await api.quanLy.create('THU_VAY', {
-        HopDongQuanLyID: linkedContract?.QuanLyID || '',
-        MaHopDong: linkedContract?.DuLieu?.MaHopDong || '',
-        TenHopDong: linkedContract?.DuLieu?.KhachHang || '',
-        NhapNgoaiHopDong: tryOnManualNames,
-        TenCoDau: tryOnManualNames ? tryOnCustomer.trim() : '',
-        TenChuRe: '',
-        KhachHang: customerName,
+        HopDongQuanLyID: '', MaHopDong: '', TenHopDong: '', NhapNgoaiHopDong: true,
+        TenCoDau: tryOnCustomer.trim(), TenChuRe: '', KhachHang: tryOnCustomer.trim(),
+        SanPhamVay: tryOnProducts.map(item => ({ MaQR: item.qrCode, TenSanPham: item.name, DanhMuc: item.category })),
         LayVayNhaGai: tryOnPickupBride,
         LayVayNhaTrai: tryOnPickupGroom,
         NgayLayVayNhaGai: tryOnPickupBride ? tryOnBrideDate : '',
@@ -202,7 +230,7 @@ export const BridalInventory: React.FC = () => {
         SoLuongAnh: uploadedPhotos.length,
         TaoLuc: new Date().toISOString(),
       });
-      setTryOnOpen(false); setTryOnCustomer(''); setTryOnFiles([]); setTryOnContractId(''); setTryOnManualNames(false); setTryOnBride(''); setTryOnGroom(''); setTryOnBrideDate(''); setTryOnGroomDate('');
+      setTryOnOpen(false); setTryOnCustomer(''); setTryOnFiles([]); setTryOnProducts([]); setTryOnBrideDate(''); setTryOnGroomDate('');
       alert('Đã lưu hồ sơ thử và chọn váy, liên kết hợp đồng và ảnh trên Google Drive.');
     } catch(e:any) { setError(e?.message || 'Không lưu được ảnh thử váy.'); }
     finally { setTryOnSaving(false); }
@@ -320,14 +348,11 @@ export const BridalInventory: React.FC = () => {
       {scanInput !== null && <div className="rounded-2xl border border-[#E7DFD5] bg-white p-3"><form onSubmit={e=>{e.preventDefault();void openScannedCode();}} className="flex gap-2"><input value={scanInput} onChange={e=>setScanInput(e.target.value)} placeholder="Nhập hoặc dán mã QR, ví dụ HP-VAY-..." className="min-w-0 flex-1 rounded-lg border border-stone-200 px-3 py-2 text-sm"/><button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Tra cứu</button></form></div>}
 
 
+      {tryOnScannerOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-3"><div className="w-full max-w-md rounded-2xl bg-white p-4"><div className="mb-3 flex items-center justify-between"><b>Quét QR váy</b><button type="button" onClick={()=>setTryOnScannerOpen(false)}><X/></button></div><div id="try-on-qr-reader" className="overflow-hidden rounded-xl"/><p className="mt-3 text-xs text-stone-500">Quét mã QR trên váy để kiểm tra ngày thuê.</p></div></div>}
+
       {tryOnOpen && <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-3"><div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl">
         <div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-[#A97D3E]">HẠNH PHẠM LUXURY BRIDAL</p><h2 className="text-xl font-bold">Thử & Chọn váy</h2></div><button onClick={()=>setTryOnOpen(false)}><X/></button></div>
-        <label className="block text-sm font-semibold">Tìm hợp đồng<input value={tryOnContractSearch} onChange={e=>setTryOnContractSearch(e.target.value)} placeholder="Nhập mã hợp đồng hoặc tên khách để lọc..." className="mt-1 w-full rounded-xl border p-3"/></label>
-        <label className="mt-2 block text-sm font-semibold">Chọn hợp đồng<select value={tryOnManualNames ? '__manual__' : tryOnContractId} onChange={e=>{const value=e.target.value;setTryOnManualNames(value==='__manual__');setTryOnContractId(value==='__manual__'?'':value);setTryOnCustomer('');}} className="mt-1 w-full rounded-xl border p-3">
-          <option value="">-- Chọn hợp đồng --</option>{tryOnContracts.filter(record=>{const term=tryOnContractSearch.trim().toLocaleLowerCase('vi');const hay=[record.DuLieu?.MaHopDong,record.DuLieu?.KhachHang,record.DuLieu?.SDT].join(' ').toLocaleLowerCase('vi');return !term||hay.includes(term);}).map(record=><option key={record.QuanLyID} value={record.QuanLyID}>{record.DuLieu?.MaHopDong || record.QuanLyID} · {record.DuLieu?.KhachHang || 'Chưa có tên khách'}</option>)}
-        </select></label>
-        <button type="button" onClick={()=>{setTryOnManualNames(true);setTryOnContractId('');setTryOnCustomer('');}} className="mt-2 text-sm font-bold text-[#A97D3E] underline">Khác – khách không có hợp đồng</button>
-        {tryOnManualNames && <label className="mt-3 block text-sm font-semibold">Tên khách hàng<input value={tryOnCustomer} onChange={e=>setTryOnCustomer(e.target.value)} placeholder="Nhập tên cô dâu/chú rể hoặc tên khách" className="mt-1 w-full rounded-xl border p-3"/></label>}
+        <label className="block text-sm font-semibold">Tên khách hàng<input value={tryOnCustomer} onChange={e=>setTryOnCustomer(e.target.value)} placeholder="Nhập tên khách hàng" className="mt-1 w-full rounded-xl border p-3"/></label>
         <div className="mt-4">
           <p className="text-sm font-semibold">Bên lấy váy</p>
           <div className="mt-2 flex gap-2">
@@ -336,6 +361,13 @@ export const BridalInventory: React.FC = () => {
           </div>
           {tryOnPickupBride && <label className="mt-3 block text-sm font-semibold">Ngày lấy váy nhà gái<input type="date" value={tryOnBrideDate} onChange={e=>setTryOnBrideDate(e.target.value)} className="mt-1 w-full rounded-xl border p-3"/></label>}
           {tryOnPickupGroom && <label className="mt-3 block text-sm font-semibold">Ngày lấy váy nhà trai<input type="date" value={tryOnGroomDate} onChange={e=>setTryOnGroomDate(e.target.value)} className="mt-1 w-full rounded-xl border p-3"/></label>}
+        </div>
+        <div className="mt-4 rounded-xl border border-[#E7DFD5] p-3">
+          <p className="text-sm font-semibold">Quét QR váy để kiểm tra trùng lịch</p>
+          <form onSubmit={e=>{e.preventDefault();void addTryOnProduct(tryOnQrInput);}} className="mt-2 flex gap-2"><input value={tryOnQrInput} onChange={e=>setTryOnQrInput(e.target.value)} placeholder="Nhập mã QR sản phẩm..." className="min-w-0 flex-1 rounded-lg border p-3 text-sm"/><button className="rounded-lg bg-stone-900 px-3 text-sm font-bold text-white">Đối chiếu</button></form>
+          <button type="button" onClick={()=>setTryOnScannerOpen(true)} className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-[#A97D3E] p-3 text-sm font-bold text-[#A97D3E]"><Camera size={17}/> Quét mã QR bằng camera</button>
+          {tryOnProducts.map(product=><div key={product.qrCode} className="mt-2 flex items-center justify-between rounded-lg bg-stone-50 p-2 text-sm"><span><b>{product.qrCode}</b> · {product.name}</span><button type="button" onClick={()=>setTryOnProducts(current=>current.filter(x=>x.qrCode!==product.qrCode))} className="px-2 text-rose-600">Xóa</button></div>)}
+          {tryOnConflict && <p className="mt-2 text-sm font-semibold text-rose-700">{tryOnConflict}</p>}
         </div>
         <label className="mt-3 block text-sm font-semibold">Chụp hoặc chọn ảnh váy khách đã chọn<input type="file" multiple capture="environment" accept="image/jpeg,image/png,image/webp" onChange={e=>setTryOnFiles(Array.from(e.target.files||[]))} className="mt-1 w-full rounded-xl border p-3 text-sm"/></label>
         <p className="mt-2 text-xs text-stone-500">Ảnh được lưu vào thư mục “05 - HINH KHACH THU VA CHON VAY” trên Drive. Có thể chụp nhiều ảnh trong một hồ sơ.</p>
