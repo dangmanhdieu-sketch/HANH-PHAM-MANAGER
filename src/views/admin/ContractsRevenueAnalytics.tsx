@@ -64,6 +64,7 @@ export const ContractsRevenueAnalytics: React.FC = () => {
   }, [period, year, month, weekDate]);
 
   const summary = useMemo(() => {
+    const branchOf = (record: QuanLyRecord) => String(record.DuLieu?.ChiNhanh || 'HP_DONG_XOAI') === 'HP_LUMA' ? 'HP_LUMA' : 'HP_DONG_XOAI';
     const contractsByCode = new Map<string, string[]>();
     const contractIds = new Set(contracts.map(record => String(record.QuanLyID)));
     for (const record of contracts) {
@@ -74,6 +75,8 @@ export const ContractsRevenueAnalytics: React.FC = () => {
     }
 
     const collectedByContractId = new Map<string, number>();
+    const contractBranchById = new Map(contracts.map(record => [String(record.QuanLyID), branchOf(record)]));
+    const collectedByBranch = { HP_DONG_XOAI: 0, HP_LUMA: 0 };
     for (const receipt of receipts) {
       const data = receipt.DuLieu || {};
       if (String(data.Loai || '').toUpperCase() !== 'THU' || String(data.TrangThaiDuyet || '') !== 'Đã duyệt') continue;
@@ -83,7 +86,10 @@ export const ContractsRevenueAnalytics: React.FC = () => {
       const linkedId = String(data.HopDongQuanLyID || '');
       if (linkedId && contractIds.has(linkedId)) matched.add(linkedId);
       const amount = Math.max(0, Number(data.SoTien || 0));
-      for (const id of matched) collectedByContractId.set(id, (collectedByContractId.get(id) || 0) + amount);
+      for (const id of matched) {
+        collectedByContractId.set(id, (collectedByContractId.get(id) || 0) + amount);
+        collectedByBranch[contractBranchById.get(id) === 'HP_LUMA' ? 'HP_LUMA' : 'HP_DONG_XOAI'] += amount / Math.max(1, matched.size);
+      }
     }
 
     const periodContracts = contracts.filter(record => {
@@ -99,12 +105,23 @@ export const ContractsRevenueAnalytics: React.FC = () => {
       const value = Math.max(0, Number(record.DuLieu?.TongGiaTri ?? record.DuLieu?.GiaGoiBanDau ?? 0) || 0);
       return sum + Math.min(value, collectedByContractId.get(String(record.QuanLyID)) || 0);
     }, 0);
+    const byBranch = (branch: 'HP_DONG_XOAI' | 'HP_LUMA') => {
+      const rows = periodContracts.filter(record => branchOf(record) === branch);
+      const sales = rows.reduce((sum, record) => sum + Math.max(0, Number(record.DuLieu?.TongGiaTri ?? record.DuLieu?.GiaGoiBanDau ?? 0) || 0), 0);
+      const paid = rows.reduce((sum, record) => {
+        const value = Math.max(0, Number(record.DuLieu?.TongGiaTri ?? record.DuLieu?.GiaGoiBanDau ?? 0) || 0);
+        return sum + Math.min(value, collectedByContractId.get(String(record.QuanLyID)) || 0);
+      }, 0);
+      return { count: rows.length, sales, collected: paid, remaining: Math.max(0, sales - paid) };
+    };
 
     return {
       signedCount: periodContracts.length,
       totalSales,
       collected,
       remaining: Math.max(0, totalSales - collected),
+      dongXoai: byBranch('HP_DONG_XOAI'),
+      luma: byBranch('HP_LUMA'),
     };
   }, [contracts, receipts, bounds]);
 
@@ -161,6 +178,7 @@ export const ContractsRevenueAnalytics: React.FC = () => {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 gap-3 px-3 pb-3 sm:grid-cols-2 sm:px-4"><div className="rounded-2xl border border-[#E7DFD5] bg-[#FFFEFC] p-4"><div className="text-xs font-bold uppercase tracking-wide text-[#A98743]">Đồng Xoài</div><div className="mt-1 text-xs text-stone-500">{loading?'—':summary.dongXoai.count+' hợp đồng trong kỳ'}</div><div className="mt-3 grid grid-cols-3 gap-2"><div><p className="text-[10px] text-stone-400">Doanh số</p><b className="text-sm">{loading?'—':money(summary.dongXoai.sales)}</b></div><div><p className="text-[10px] text-stone-400">Đã thu</p><b className="text-sm text-emerald-700">{loading?'—':money(summary.dongXoai.collected)}</b></div><div><p className="text-[10px] text-stone-400">Còn lại</p><b className="text-sm">{loading?'—':money(summary.dongXoai.remaining)}</b></div></div></div><div className="rounded-2xl border border-[#E7DFD5] bg-[#FFFEFC] p-4"><div className="text-xs font-bold uppercase tracking-wide text-[#A98743]">Luma</div><div className="mt-1 text-xs text-stone-500">{loading?'—':summary.luma.count+' hợp đồng trong kỳ'}</div><div className="mt-3 grid grid-cols-3 gap-2"><div><p className="text-[10px] text-stone-400">Doanh số</p><b className="text-sm">{loading?'—':money(summary.luma.sales)}</b></div><div><p className="text-[10px] text-stone-400">Đã thu</p><b className="text-sm text-emerald-700">{loading?'—':money(summary.luma.collected)}</b></div><div><p className="text-[10px] text-stone-400">Còn lại</p><b className="text-sm">{loading?'—':money(summary.luma.remaining)}</b></div></div></div></div>
       {error && <div className="mx-3 mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 sm:mx-4">{error}</div>}
 
       <div className="grid grid-cols-1 gap-3 p-3 pt-0 sm:grid-cols-3 sm:p-4 sm:pt-0">
