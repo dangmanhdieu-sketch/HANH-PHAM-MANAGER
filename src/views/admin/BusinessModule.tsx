@@ -1026,7 +1026,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <label className="block text-sm font-bold text-stone-900 mb-2">CHI NHÁNH LẬP HỢP ĐỒNG *</label>
                 <select required={!editing} value={String(formData.ChiNhanh || '')} onChange={e => setFormData(prev => ({...prev, ChiNhanh: e.target.value}))} className="w-full rounded-lg border-2 border-stone-400 bg-white p-3 text-base">
                   <option value="HP_DONG_XOAI">HP Đồng Xoài</option>
-                  <option value="HP_BINH_LONG">HP Bình Long</option>
+                  <option value="HP_LUMA">Luma</option>
                 </select>
               </section>
             )}
