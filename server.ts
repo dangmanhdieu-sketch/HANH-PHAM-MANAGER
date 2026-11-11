@@ -1521,15 +1521,18 @@ app.get('/google-drive/auth', (req: Request, res: Response) => {
   const expected = process.env.GOOGLE_OAUTH_SETUP_SECRET || '';
   if (!expected) return res.status(503).send('Render chưa cấu hình GOOGLE_OAUTH_SETUP_SECRET.');
   const header = String(req.headers.authorization || '');
-  const match = /^Basic\\s+(.+)$/i.exec(header);
+  console.log('[GOOGLE DRIVE OAUTH] Setup request:', { secretConfigured: Boolean(expected), basicHeaderPresent: Boolean(header) });
+  const match = /^Basic\s+(.+)$/i.exec(header);
   let password = '';
   if (match) {
     try { const decoded = Buffer.from(match[1], 'base64').toString('utf8'); const i = decoded.indexOf(':'); password = i >= 0 ? decoded.slice(i + 1) : ''; } catch { password = ''; }
   }
   if (!safeSecretEqual(password, expected)) {
+    console.warn('[GOOGLE DRIVE OAUTH] Setup authentication rejected. Check GOOGLE_OAUTH_SETUP_SECRET in Render.');
     res.setHeader('WWW-Authenticate', 'Basic realm="Hanh Pham Google Drive setup", charset="UTF-8"');
     return res.status(401).send('Cần mật khẩu thiết lập OAuth để tiếp tục.');
   }
+  console.log('[GOOGLE DRIVE OAUTH] Setup authentication accepted; redirecting to Google consent.');
   const now = Date.now();
   for (const [key, expiry] of googleDriveOAuthStates) if (expiry < now) googleDriveOAuthStates.delete(key);
   const state = randomBytes(32).toString('hex');
