@@ -477,6 +477,8 @@ export const BridalInventory: React.FC = () => {
           </div>
           <div className="w-full max-w-3xl text-center">
             <h2 className="text-2xl font-extrabold text-stone-900">{tryOnDetailProduct.name || 'Váy cưới'}</h2>
+            <p className="mt-1 text-sm text-stone-600">Trạng thái kho: <b>{tryOnDetailProduct.status}</b> · Vị trí: <b>{tryOnDetailProduct.location || 'Kho chính'}</b></p>
+            {tryOnDetailProduct.locationNote && <p className="mt-1 text-xs text-stone-500">{tryOnDetailProduct.locationNote}</p>}
             {(() => {
               const availability = tryOnProductStatuses[tryOnDetailProduct.qrCode] || { label: 'Đang kiểm tra lịch...', tone: 'orange' as const };
               const toneClass = availability.tone === 'green' ? 'bg-lime-300 text-lime-950' : availability.tone === 'red' ? 'bg-red-600 text-white' : 'bg-orange-400 text-white';
