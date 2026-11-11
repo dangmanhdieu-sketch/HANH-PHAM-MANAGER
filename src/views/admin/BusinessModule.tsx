@@ -363,6 +363,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               DanhMuc: `Thu tiền cọc · ${contractCode} · ${contractName}`,
               NoiDungThu: `Thu tiền cọc hợp đồng ${contractCode} - ${contractName}`,
               SoTien: deposit, HopDongID: contractCode, MaHopDong: contractCode,
+              ChiNhanh: payload.ChiNhanh || 'HP_DONG_XOAI',
               TenHopDong: contractName, DoiTuong: contractName,
               NhanVienID: currentUser?.NhanVienID || '', NhanVien: loggedInStaffName,
               NguoiTao: loggedInStaffName, NguoiTaoID: currentUser?.NhanVienID || '',
