@@ -67,7 +67,7 @@ async function ensureFolder(name: string, parentId: string, token: string) {
 }
 
 export async function uploadInventoryImage(dataUrl: string, fileName: string, folderKey: string) {
-  const match = /^data:(image\\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl || '');
+  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl || '');
   if (!match) throw new Error('Ảnh phải là JPG, PNG hoặc WebP.');
   const mimeType = match[1];
   const bytes = Buffer.from(match[2], 'base64');
