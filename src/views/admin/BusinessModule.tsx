@@ -318,7 +318,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       }
       if (module === 'THU_CHI' && !editing && payload.Loai === 'THU' && payload.HopDongQuanLyID) {
         const linked = contractRecords.find((r) => r.QuanLyID === String(payload.HopDongQuanLyID));
-        if (linked) { const d = linked.DuLieu || {}; payload.HopDongID = String(d.MaHopDong || linked.QuanLyID); payload.MaHopDong = payload.HopDongID; payload.TenHopDong = String(d.KhachHang || ''); payload.DoiTuong = payload.TenHopDong; payload.NguonTao = 'THU_TU_HOP_DONG'; }
+        if (linked) { const d = linked.DuLieu || {}; payload.HopDongID = String(d.MaHopDong || linked.QuanLyID); payload.MaHopDong = payload.HopDongID; payload.TenHopDong = String(d.KhachHang || ''); payload.DoiTuong = payload.TenHopDong; payload.NguonTao = 'THU_TU_HOP_DONG'; payload.ChiNhanh = d.ChiNhanh || 'HP_DONG_XOAI'; }
       }
       if (module === 'THU_CHI' && !editing) {
         payload.NguoiTao = loggedInStaffName || 'Admin';
