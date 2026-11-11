@@ -259,10 +259,10 @@ export const BridalInventory: React.FC = () => {
       if (!['Váy cưới', 'Vest', 'Áo dài', 'Phụ kiện'].includes(item.category)) { setTryOnConflict('Mã QR không thuộc danh mục sản phẩm được quản lý.'); return; }
       const chosenDates = [tryOnPickupBride ? tryOnBrideDate : '', tryOnPickupGroom ? tryOnGroomDate : ''].filter(Boolean);
       const historyRecords = await api.quanLy.getAll('THU_VAY');
-      const savedMatch = historyRecords.find(record => record.QuanLyID !== tryOnRecordId && (record.DuLieu?.SanPhamVay || []).some((saved: any) => String(saved.MaQR || '').toUpperCase() === code));
-      const conflictDates = savedMatch ? [savedMatch.DuLieu?.NgayLayVayNhaGai, savedMatch.DuLieu?.NgayLayVayNhaTrai].filter(Boolean).map((v: string) => String(v).slice(0,10)) : [];
-      const exactDate = conflictDates.some((date: string) => chosenDates.includes(date));
-      if (exactDate) { setTryOnConflict('Mã này đã được chọn đúng ngày lấy váy. Không thể chọn trùng lịch.'); return; }
+      const productBookings = historyRecords.filter(record => record.QuanLyID !== tryOnRecordId && (Array.isArray(record.DuLieu?.SanPhamVay) ? record.DuLieu.SanPhamVay : []).some((saved: any) => String(saved.MaQR || saved.qrCode || '').toUpperCase() === code));
+      const conflictDates = productBookings.flatMap(record => [record.DuLieu?.NgayLayVayNhaGai, record.DuLieu?.NgayLayVayNhaTrai].filter(Boolean).map((v: string) => String(v).slice(0,10)));
+      const exactBooking = productBookings.find(record => [record.DuLieu?.NgayLayVayNhaGai, record.DuLieu?.NgayLayVayNhaTrai].filter(Boolean).map((v: string) => String(v).slice(0,10)).some((date: string) => chosenDates.includes(date)));
+      if (exactBooking) { setTryOnConflict('Mã này đã có lịch chọn trùng ngày trong hợp đồng ' + (exactBooking.DuLieu?.MaHopDong || exactBooking.DuLieu?.TenHopDong || 'khác') + '. Không thể chọn trùng lịch.'); return; }
       const nearDate = conflictDates.some((date: string) => chosenDates.some(chosen => Math.abs(new Date(date+'T00:00:00').getTime()-new Date(chosen+'T00:00:00').getTime()) <= 86400000));
       setTryOnNearWarning(nearDate ? 'Lưu ý: Váy này có lịch khách khác sát ngày (trước hoặc sau 1 ngày). Vẫn có thể chọn nếu đã xác nhận với quản lý.' : '');
       setTryOnProducts(current => [...current, item]); setTryOnDetailProduct(item); setTryOnDetailOpen(true); setTryOnConflict(''); setTryOnQrInput('');
