@@ -76,7 +76,6 @@ export const ContractsRevenueAnalytics: React.FC = () => {
 
     const collectedByContractId = new Map<string, number>();
     const contractBranchById = new Map(contracts.map(record => [String(record.QuanLyID), branchOf(record)]));
-    const collectedByBranch = { HP_DONG_XOAI: 0, HP_LUMA: 0 };
     for (const receipt of receipts) {
       const data = receipt.DuLieu || {};
       if (String(data.Loai || '').toUpperCase() !== 'THU' || String(data.TrangThaiDuyet || '') !== 'Đã duyệt') continue;
@@ -88,7 +87,6 @@ export const ContractsRevenueAnalytics: React.FC = () => {
       const amount = Math.max(0, Number(data.SoTien || 0));
       for (const id of matched) {
         collectedByContractId.set(id, (collectedByContractId.get(id) || 0) + amount);
-        collectedByBranch[contractBranchById.get(id) === 'HP_LUMA' ? 'HP_LUMA' : 'HP_DONG_XOAI'] += amount / Math.max(1, matched.size);
       }
     }
 
