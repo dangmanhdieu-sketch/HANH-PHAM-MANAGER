@@ -801,10 +801,11 @@ app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => 
   let records = dbService.getQuanLyRecords(module || undefined);
 
   // Employees must request a specific module and may only read their own permitted records.
-  if (!module || !['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
+  if (!module || !['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'THU_VAY'].includes(module)) {
     return res.status(400).json({ error: 'Vui lòng chọn phân hệ dữ liệu hợp lệ.' });
   }
   if (req.user!.Quyen !== 'Admin') {
+    if (module === 'THU_VAY') return res.status(403).json({ error: 'Chỉ Admin được xem hồ sơ thử và chọn váy.' });
     if (!['THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
       return res.status(403).json({ error: 'Bạn không có quyền xem phân hệ dữ liệu này.' });
     }
@@ -821,6 +822,7 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
     if (!['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
       return res.status(400).json({ error: 'Loại dữ liệu không hợp lệ.' });
     }
+    if (module === 'THU_VAY' && req.user!.Quyen !== 'Admin') return res.status(403).json({ error: 'Chỉ Admin được tạo hồ sơ thử và chọn váy.' });
     if (req.user!.Quyen !== 'Admin' && !['THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
       return res.status(403).json({ error: 'Bạn không có quyền tạo dữ liệu nghiệp vụ này.' });
     }
