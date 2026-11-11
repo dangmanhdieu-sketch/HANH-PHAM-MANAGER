@@ -734,6 +734,16 @@ app.put('/api/inventory/items/:qrCode', authenticateToken, requireAdmin, async (
   }
 });
 
+app.delete('/api/inventory/items/:qrCode', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await inventoryService.delete(String(req.params.qrCode || '').toUpperCase(), req.user!.HoTen);
+    return res.json(result);
+  } catch (error: any) {
+    console.error('[INVENTORY] Delete failed:', error);
+    return res.status(400).json({ error: error.message || 'Không thể xóa sản phẩm.' });
+  }
+});
+
 // ==========================================
 // BRIDAL INVENTORY (ISOLATED FIRESTORE COLLECTION)
 // ==========================================
