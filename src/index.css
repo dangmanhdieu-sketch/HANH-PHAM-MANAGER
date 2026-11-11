@@ -42,3 +42,73 @@ body {
   background: #bfb09d;
 }
 
+
+
+/* Thermal QR label: print through the operating system's installed printer driver. */
+#qr-print-area {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #qr-print-area,
+  #qr-print-area * {
+    visibility: visible !important;
+  }
+
+  #qr-print-area {
+    display: flex !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: var(--qr-label-width, 58mm) !important;
+    box-sizing: border-box !important;
+    padding: 2mm !important;
+    margin: 0 !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 1.5mm !important;
+    color: #000 !important;
+    background: #fff !important;
+    font-family: Arial, sans-serif !important;
+    text-align: center !important;
+    overflow: visible !important;
+  }
+
+  #qr-print-area .qr-print-brand {
+    font-size: 8pt !important;
+    font-weight: 700 !important;
+  }
+
+  #qr-print-area .qr-print-name {
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  #qr-print-area .qr-print-category {
+    font-size: 8pt !important;
+  }
+
+  #qr-print-area img {
+    display: block !important;
+    width: 34mm !important;
+    height: 34mm !important;
+    object-fit: contain !important;
+    image-rendering: pixelated !important;
+  }
+
+  #qr-print-area .qr-print-code {
+    font-size: 9pt !important;
+    font-weight: 700 !important;
+    letter-spacing: .3pt !important;
+  }
+}
