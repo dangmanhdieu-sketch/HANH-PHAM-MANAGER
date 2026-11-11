@@ -46,6 +46,8 @@ export const BridalInventory: React.FC = () => {
   const [scanInput, setScanInput] = useState('');
   const [tryOnOpen, setTryOnOpen] = useState(false);
   const [tryOnFiles, setTryOnFiles] = useState<File[]>([]);
+  const [tryOnStaff, setTryOnStaff] = useState<import('../../types').NhanVien[]>([]);
+  const [tryOnStaffId, setTryOnStaffId] = useState('');
   const [tryOnContracts, setTryOnContracts] = useState<import('../../types').QuanLyRecord[]>([]);
   const [tryOnContractId, setTryOnContractId] = useState('');
   const [tryOnManualNames, setTryOnManualNames] = useState(false);
@@ -202,11 +204,12 @@ export const BridalInventory: React.FC = () => {
 
   const openTryOn = async () => {
     setError(''); setTryOnConflict(''); setTryOnProducts([]); setTryOnRecordId(''); setTryOnNearWarning(''); setTryOnProductStatuses({}); setTryOnDetailProduct(null); setTryOnDetailOpen(false); setTryOnQrInput('');
-    setTryOnContractId(''); setTryOnManualNames(false); setTryOnOpen(true);
+    setTryOnContractId(''); setTryOnManualNames(false); setTryOnPickupBride(false); setTryOnPickupGroom(false); setTryOnBrideDate(''); setTryOnGroomDate(''); setTryOnStaffId(''); setTryOnFiles([]); setTryOnOpen(true);
     try {
-      const contracts = await api.quanLy.getAll('HOP_DONG');
+      const [contracts, staff] = await Promise.all([api.quanLy.getAll('HOP_DONG'), api.staff.getAll()]);
       setTryOnContracts(contracts.filter(record => !['Đã hủy', 'Hủy'].includes(String(record.DuLieu?.TrangThai || ''))));
-    } catch (e: any) { setError(e?.message || 'Không tải được danh sách hợp đồng.'); }
+      setTryOnStaff(staff.filter(person => !['Đã nghỉ', 'Nghỉ việc'].includes(String(person.TrangThai || ''))));
+    } catch (e: any) { setError(e?.message || 'Không tải được danh sách hợp đồng hoặc nhân viên.'); }
   };
 
   useEffect(() => {
@@ -280,23 +283,25 @@ export const BridalInventory: React.FC = () => {
   const uploadTryOnPhotos = async () => {
     const linkedContract = tryOnContracts.find(record => record.QuanLyID === tryOnContractId);
     if (!tryOnManualNames && !linkedContract) { setError('Vui lòng chọn hợp đồng hoặc chọn Khác.'); return; }
-    if (!tryOnProducts.length) { setError('Vui lòng quét QR ít nhất một váy để đối chiếu lịch thuê.'); return; }
+    if (!tryOnStaffId) { setError('Vui lòng chọn nhân viên thử đồ phụ trách.'); return; }
+    if (!tryOnPickupBride && !tryOnPickupGroom) { setError('Vui lòng chọn Nhà gái hoặc Nhà trai trước khi quét mã.'); return; }
+    if ((tryOnPickupBride && !tryOnBrideDate) || (tryOnPickupGroom && !tryOnGroomDate)) { setError('Vui lòng nhập đầy đủ ngày lấy đồ cho bên đã chọn.'); return; }
+    if (!tryOnProducts.length) { setError('Vui lòng quét ít nhất một sản phẩm.'); return; }
     if (tryOnConflict) { setError(tryOnConflict); return; }
     try {
       const existingRecords = await api.quanLy.getAll('THU_VAY');
       const selectedDates = [tryOnPickupBride ? tryOnBrideDate : '', tryOnPickupGroom ? tryOnGroomDate : ''].filter(Boolean);
       for (const product of tryOnProducts) {
         const conflict = existingRecords.find(record => {
+          if (record.QuanLyID === tryOnRecordId) return false;
           const data = record.DuLieu || {};
-          const dates = [data.NgayLayVayNhaGai, data.NgayLayVayNhaTrai].filter(Boolean);
+          const dates = [data.NgayLayVayNhaGai, data.NgayLayVayNhaTrai].filter(Boolean).map((date: string) => String(date).slice(0,10));
           const savedProducts = Array.isArray(data.SanPhamVay) ? data.SanPhamVay : [];
           return dates.some((date: string) => selectedDates.includes(date)) && savedProducts.some((saved: any) => String(saved.MaQR || saved.qrCode || '').toUpperCase() === product.qrCode.toUpperCase());
         });
-        if (conflict) { setError(`Váy ${product.qrCode} đã có người thuê vào ngày đã chọn. Vui lòng chọn váy khác.`); return; }
+        if (conflict) { setError(`Mã ${product.qrCode} đã có hồ sơ khác trùng đúng ngày lấy đồ. Không thể lưu trùng lịch.`); return; }
       }
     } catch (e: any) { setError(e?.message || 'Không kiểm tra được lịch thuê. Vui lòng thử lại.'); return; }
-    if (!tryOnPickupBride && !tryOnPickupGroom) { setError('Vui lòng chọn Nhà gái hoặc Nhà trai để nhập ngày lấy váy.'); return; }
-    if ((tryOnPickupBride && !tryOnBrideDate) || (tryOnPickupGroom && !tryOnGroomDate)) { setError('Vui lòng nhập ngày lấy váy cho bên đã chọn.'); return; }
     if (!tryOnFiles.length) { setError('Vui lòng chọn ít nhất một ảnh váy khách đã chọn.'); return; }
     setTryOnSaving(true); setError('');
     try {
@@ -319,6 +324,8 @@ export const BridalInventory: React.FC = () => {
         TenHopDong: linkedContract?.DuLieu?.KhachHang || '',
         NhapNgoaiHopDong: tryOnManualNames,
         TenCoDau: '', TenChuRe: '', KhachHang: String(linkedContract?.DuLieu?.KhachHang || ''),
+        NhanVienThuID: tryOnStaffId,
+        NhanVienThu: String(tryOnStaff.find(person => person.NhanVienID === tryOnStaffId)?.HoTen || ''),
         SanPhamVay: tryOnProducts.map(item => ({ MaQR: item.qrCode, TenSanPham: item.name, DanhMuc: item.category, AnhSanPham: item.imageUrl, TrangThai: item.status, MoTa: item.description })),
         LayVayNhaGai: tryOnPickupBride,
         LayVayNhaTrai: tryOnPickupGroom,
@@ -330,7 +337,7 @@ export const BridalInventory: React.FC = () => {
       };
       if (tryOnRecordId) await api.quanLy.update(tryOnRecordId, recordData);
       else await api.quanLy.create('THU_VAY', recordData);
-      setTryOnOpen(false); setTryOnFiles([]); setTryOnProducts([]); setTryOnRecordId(''); setTryOnContractId(''); setTryOnManualNames(false); setTryOnBrideDate(''); setTryOnGroomDate('');
+      setTryOnOpen(false); setTryOnFiles([]); setTryOnProducts([]); setTryOnRecordId(''); setTryOnContractId(''); setTryOnManualNames(false); setTryOnBrideDate(''); setTryOnGroomDate(''); setTryOnStaffId('');
       alert('Đã lưu hồ sơ thử và chọn váy, liên kết hợp đồng và ảnh trên Google Drive.');
     } catch(e:any) { setError(e?.message || 'Không lưu được ảnh thử váy.'); }
     finally { setTryOnSaving(false); }
@@ -479,6 +486,7 @@ export const BridalInventory: React.FC = () => {
           <option value="">-- Chọn hợp đồng --</option>{tryOnContracts.map(record=><option key={record.QuanLyID} value={record.QuanLyID}>{record.DuLieu?.MaHopDong || record.QuanLyID} · {record.DuLieu?.KhachHang || 'Chưa có tên khách'}</option>)}
           <option value="__manual__">Khác – khách không có hợp đồng</option>
         </select></label>
+        <label className="mt-3 block text-sm font-semibold">Nhân viên thử đồ phụ trách<select required value={tryOnStaffId} onChange={e=>setTryOnStaffId(e.target.value)} className="mt-1 w-full rounded-xl border p-3"><option value="">-- Chọn nhân viên --</option>{tryOnStaff.map(person=><option key={person.NhanVienID} value={person.NhanVienID}>{person.HoTen}</option>)}</select></label>
         <div className="mt-4">
           <p className="text-sm font-semibold">Bên lấy váy</p>
           <div className="mt-2 flex gap-2">
@@ -490,15 +498,16 @@ export const BridalInventory: React.FC = () => {
         </div>
         <div className="mt-4 rounded-xl border border-[#E7DFD5] p-3">
           <p className="text-sm font-semibold">Quét QR váy để kiểm tra trùng lịch</p>
-          <form onSubmit={e=>{e.preventDefault();void addTryOnProduct(tryOnQrInput);}} className="mt-2 flex gap-2"><input value={tryOnQrInput} onChange={e=>setTryOnQrInput(e.target.value)} placeholder="Nhập mã QR sản phẩm..." className="min-w-0 flex-1 rounded-lg border p-3 text-sm"/><button className="rounded-lg bg-stone-900 px-3 text-sm font-bold text-white">Đối chiếu</button></form>
-          <button type="button" onClick={()=>setTryOnScannerOpen(true)} className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-[#A97D3E] p-3 text-sm font-bold text-[#A97D3E]"><Camera size={17}/> Quét mã QR bằng camera</button>
+          <form onSubmit={e=>{e.preventDefault();void addTryOnProduct(tryOnQrInput);}} className="mt-2 flex gap-2"><input disabled={!((tryOnContractId || tryOnManualNames) && tryOnStaffId && ((tryOnPickupBride && tryOnBrideDate) || (tryOnPickupGroom && tryOnGroomDate)))} value={tryOnQrInput} onChange={e=>setTryOnQrInput(e.target.value)} placeholder="Nhập mã QR sản phẩm..." className="min-w-0 flex-1 rounded-lg border p-3 text-sm disabled:bg-stone-100"/><button disabled={!((tryOnContractId || tryOnManualNames) && tryOnStaffId && ((tryOnPickupBride && tryOnBrideDate) || (tryOnPickupGroom && tryOnGroomDate)))} className="rounded-lg bg-stone-900 px-3 text-sm font-bold text-white disabled:opacity-40">Đối chiếu</button></form>
+          <button type="button" disabled={!((tryOnContractId || tryOnManualNames) && tryOnStaffId && ((tryOnPickupBride && tryOnBrideDate) || (tryOnPickupGroom && tryOnGroomDate)))} onClick={()=>setTryOnScannerOpen(true)} className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-[#A97D3E] p-3 text-sm font-bold text-[#A97D3E] disabled:opacity-40"><Camera size={17}/> Quét mã QR bằng camera</button>
+          {!((tryOnContractId || tryOnManualNames) && tryOnStaffId && ((tryOnPickupBride && tryOnBrideDate) || (tryOnPickupGroom && tryOnGroomDate))) && <p className="mt-2 text-xs text-amber-700">Chọn hợp đồng/Khác, nhân viên thử đồ và bên lấy đồ kèm ngày để mở chức năng quét.</p>
           {tryOnProducts.length > 0 && <p className="mt-3 text-xs text-stone-500">Đã quét {tryOnProducts.length} váy. Chạm “Xem váy vừa quét” để mở lại trang hình ảnh.</p>}
           {tryOnDetailProduct && <button type="button" onClick={() => setTryOnDetailOpen(true)} className="mt-2 w-full rounded-lg border border-[#A97D3E] p-2 text-sm font-semibold text-[#8A642F]">Xem váy vừa quét</button>}
           {tryOnNearWarning && <p className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-800">{tryOnNearWarning}</p>}
           {tryOnConflict && <p className="mt-2 text-sm font-semibold text-rose-700">{tryOnConflict}</p>}
         </div>
-        <label className="mt-3 block text-sm font-semibold">Chụp hoặc chọn ảnh váy khách đã chọn<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>setTryOnFiles(current=>[...current,...Array.from(e.target.files||[])])} className="mt-1 w-full rounded-xl border p-3 text-sm"/></label>
-        <label className="mt-2 block text-sm font-semibold">Chụp ảnh trực tiếp<input type="file" multiple capture="environment" accept="image/jpeg,image/png,image/webp" onChange={e=>setTryOnFiles(current=>[...current,...Array.from(e.target.files||[])])} className="mt-1 w-full rounded-xl border p-3 text-sm"/></label>
+        <label className="mt-3 block text-sm font-semibold">Ảnh khách thử & chọn trang phục<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>{setTryOnFiles(current=>[...current,...Array.from(e.target.files||[])]);e.currentTarget.value='';}} className="mt-1 w-full rounded-xl border p-3 text-sm"/></label>
+        <p className="mt-2 text-xs text-stone-500">Chỉ một nút thêm ảnh: trên điện thoại có thể chọn ảnh trong thư viện hoặc chọn camera; có thể thêm nhiều ảnh cùng lúc, hoặc mở lại để chụp/thêm tiếp nhiều ảnh vào cùng hồ sơ.</p>
          <p className="mt-2 text-xs text-stone-500">Ảnh được lưu vào thư mục “05 - HINH KHACH THU VA CHON VAY” trên Drive. Có thể chụp nhiều ảnh trong một hồ sơ.</p>
         {tryOnFiles.length>0 && <p className="mt-2 text-sm text-stone-600">Đã chọn {tryOnFiles.length} ảnh.</p>}
         <div className="mt-5 flex justify-end gap-2"><button onClick={()=>setTryOnOpen(false)} className="rounded-xl border px-4 py-2">Hủy</button><button disabled={tryOnSaving} onClick={()=>void uploadTryOnPhotos()} className="rounded-xl bg-stone-900 px-5 py-2 font-bold text-white disabled:opacity-50">{tryOnSaving?'Đang tải ảnh...':'Lưu ảnh lên Drive'}</button></div>
