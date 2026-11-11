@@ -16,7 +16,7 @@ async function accessToken() {
   const enc = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
   const unsigned = enc({ alg: 'RS256', typ: 'JWT' }) + '.' + enc({
     iss: account.client_email,
-    scope: 'https://www.googleapis.com/auth/drive.file',
+    scope: 'https://www.googleapis.com/auth/drive',
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
     exp: now + 3600,
@@ -34,21 +34,54 @@ async function accessToken() {
   return data.access_token;
 }
 
-export async function uploadInventoryImage(dataUrl: string, fileName: string) {
-  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl || '');
+
+const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '1YL_HvA_D_FGPn2dwqolkWhuQPwF918qX';
+const FOLDER_NAMES: Record<string, string> = {
+  dresses: '01 - VAY CUOI',
+  suits: '02 - VEST',
+  aoDai: '03 - AO DAI',
+  accessories: '04 - PHU KIEN',
+  tryOn: '05 - HINH KHACH THU VA CHON VAY',
+};
+
+async function driveRequest(path: string, token: string, init: RequestInit = {}) {
+  const response = await fetch('https://www.googleapis.com/drive/v3/' + path, {
+    ...init,
+    headers: { Authorization: 'Bearer ' + token, ...(init.headers || {}) },
+  });
+  const data = await response.json() as any;
+  if (!response.ok) throw new Error(data.error?.message || 'Google Drive không phản hồi thành công.');
+  return data;
+}
+
+async function ensureFolder(name: string, parentId: string, token: string) {
+  const query = "mimeType='application/vnd.google-apps.folder' and name='" + name.replace(/'/g, "\\'") + "' and '" + parentId + "' in parents and trashed=false";
+  const found = await driveRequest('files?q=' + encodeURIComponent(query) + '&fields=files(id,name)&pageSize=10', token);
+  if (found.files?.length) return found.files[0].id as string;
+  const created = await driveRequest('files?fields=id,name', token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
+  });
+  return created.id as string;
+}
+
+export async function uploadInventoryImage(dataUrl: string, fileName: string, folderKey: string) {
+  const match = /^data:(image\\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl || '');
   if (!match) throw new Error('Ảnh phải là JPG, PNG hoặc WebP.');
   const mimeType = match[1];
   const bytes = Buffer.from(match[2], 'base64');
   if (!bytes.length || bytes.length > 8 * 1024 * 1024) throw new Error('Ảnh sau nén phải nhỏ hơn 8 MB.');
+  const folderName = FOLDER_NAMES[folderKey];
+  if (!folderName) throw new Error('Không xác định được thư mục lưu ảnh.');
   const token = await accessToken();
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-  const metadata: Record<string, unknown> = { name: fileName.replace(/[^\w.-]/g, '_'), mimeType };
-  if (folderId) metadata.parents = [folderId];
+  const folderId = await ensureFolder(folderName, ROOT_FOLDER_ID, token);
+  const metadata = { name: fileName.replace(/[^\\w.-]/g, '_'), mimeType, parents: [folderId] };
   const boundary = 'hp_drive_' + Date.now();
   const body = Buffer.concat([
-    Buffer.from('--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) + '\r\n--' + boundary + '\r\nContent-Type: ' + mimeType + '\r\n\r\n'),
+    Buffer.from('--' + boundary + '\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n' + JSON.stringify(metadata) + '\\r\\n--' + boundary + '\\r\\nContent-Type: ' + mimeType + '\\r\\n\\r\\n'),
     bytes,
-    Buffer.from('\r\n--' + boundary + '--'),
+    Buffer.from('\\r\\n--' + boundary + '--'),
   ]);
   const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,webViewLink', {
     method: 'POST',
@@ -57,11 +90,9 @@ export async function uploadInventoryImage(dataUrl: string, fileName: string) {
   });
   const file = await response.json() as { id?: string; webViewLink?: string; error?: { message?: string } };
   if (!response.ok || !file.id) throw new Error(file.error?.message || 'Tải ảnh lên Google Drive thất bại.');
-  const permission = await fetch('https://www.googleapis.com/drive/v3/files/' + file.id + '/permissions', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+  const permission = await driveRequest('files/' + file.id + '/permissions', token, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: 'anyone', role: 'reader' }),
   });
-  if (!permission.ok) throw new Error('Ảnh đã tải lên nhưng không thể cấp quyền xem ảnh. Kiểm tra chính sách chia sẻ Google Drive.');
-  return { fileId: file.id, imageUrl: 'https://drive.google.com/uc?export=view&id=' + file.id, webViewLink: file.webViewLink || '' };
+  return { fileId: file.id, imageUrl: 'https://drive.google.com/uc?export=view&id=' + file.id, webViewLink: file.webViewLink || '', folderName };
 }
