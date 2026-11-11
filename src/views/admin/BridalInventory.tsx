@@ -12,6 +12,18 @@ const EMPTY_FORM: Partial<InventoryItem> = {
   rentalPrice: 0, salePrice: 0, imageUrl: '', description: '', notes: '',
 };
 const money = (value: number) => Number(value || 0).toLocaleString('vi-VN') + ' đ';
+const getDisplayImageUrl = (value?: string) => {
+  const url = String(value || '').trim();
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    const driveId = parsed.searchParams.get('id') || parsed.pathname.match(/\/file\/d\/([^/]+)/)?.[1];
+    if (parsed.hostname === 'drive.google.com' && driveId) {
+      return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(driveId) + '&sz=w1200';
+    }
+  } catch { /* retain the original image URL */ }
+  return url;
+};
 
 export const BridalInventory: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -372,7 +384,7 @@ export const BridalInventory: React.FC = () => {
               {loading ? <tr><td colSpan={5} className="p-8 text-center text-stone-400">Đang tải kho...</td></tr> :
                 items.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-stone-400">Chưa có sản phẩm. Hãy thêm sản phẩm đầu tiên.</td></tr> :
                 items.map(item => <tr key={item.id} onClick={() => setSelected(item)} className="cursor-pointer hover:bg-[#FAF8F5]">
-                  <td className="p-3"><div className="flex items-center gap-3">{item.imageUrl ? <img src={item.imageUrl} className="h-12 w-10 rounded-lg object-cover" alt={item.name}/> : <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-stone-100"><Shirt size={18} className="text-stone-400"/></div>}<div><p className="font-semibold text-stone-900">{item.name}</p><p className="text-xs text-stone-400">{item.description || item.collection || item.category}</p></div></div></td>
+                  <td className="p-3"><div className="flex items-center gap-3">{item.imageUrl ? <img src={getDisplayImageUrl(item.imageUrl)} className="h-12 w-10 rounded-lg object-cover" alt={item.name}/> : <div className="flex h-12 w-10 items-center justify-center rounded-lg bg-stone-100"><Shirt size={18} className="text-stone-400"/></div>}<div><p className="font-semibold text-stone-900">{item.name}</p><p className="text-xs text-stone-400">{item.description || item.collection || item.category}</p></div></div></td>
                   <td className="p-3 font-mono text-xs text-[#a97d3e]">{item.qrCode}</td><td className="p-3">{item.category}</td><td className="p-3">{item.description || '—'}</td>
                   <td className="p-3"><div className="flex items-center justify-between gap-2"><span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold">{item.status}</span><button type="button" disabled={deletingQr===item.qrCode} onClick={(event)=>{event.stopPropagation();void deleteItem(item);}} title="Xóa sản phẩm" aria-label={`Xóa ${item.name}`} className="rounded-lg border border-rose-200 p-2 text-rose-600 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/></button></div></td>
                 </tr>)}
@@ -438,7 +450,7 @@ export const BridalInventory: React.FC = () => {
       {selected && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-3" onClick={()=>setSelected(null)}><div onClick={e=>e.stopPropagation()} className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-[#a97d3e]">Hồ sơ sản phẩm</p><h2 className="text-xl font-bold">{selected.name}</h2></div><button onClick={()=>setSelected(null)}><X/></button></div>
         <div className="mt-4 grid gap-5 md:grid-cols-[1fr_220px]">
-          <div className="space-y-3">{selected.imageUrl && <img src={selected.imageUrl} alt={selected.name} className="max-h-72 w-full rounded-xl object-contain bg-stone-50"/>}<div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-stone-400">Danh mục</p><b>{selected.category}</b></div><div><p className="text-xs text-stone-400">Tình trạng</p><b>{selected.status}</b></div><div className="col-span-2"><p className="text-xs text-stone-400">Mô tả</p><b>{selected.description || '—'}</b></div></div></div>
+          <div className="space-y-3">{selected.imageUrl && <img src={getDisplayImageUrl(selected.imageUrl)} alt={selected.name} className="max-h-72 w-full rounded-xl object-contain bg-stone-50"/>}<div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-stone-400">Danh mục</p><b>{selected.category}</b></div><div><p className="text-xs text-stone-400">Tình trạng</p><b>{selected.status}</b></div><div className="col-span-2"><p className="text-xs text-stone-400">Mô tả</p><b>{selected.description || '—'}</b></div></div></div>
           <div id="qr-print-area">
             <div className="qr-print-brand">HẠNH PHẠM LUXURY BRIDAL</div>
             <div className="qr-print-name">{selected.name}</div>
