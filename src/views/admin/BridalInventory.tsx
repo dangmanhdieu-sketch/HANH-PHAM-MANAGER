@@ -50,6 +50,8 @@ export const BridalInventory: React.FC = () => {
   const [tryOnContractId, setTryOnContractId] = useState('');
   const [tryOnManualNames, setTryOnManualNames] = useState(false);
   const [tryOnProducts, setTryOnProducts] = useState<InventoryItem[]>([]);
+  const [tryOnDetailProduct, setTryOnDetailProduct] = useState<InventoryItem | null>(null);
+  const [tryOnDetailOpen, setTryOnDetailOpen] = useState(false);
   const [tryOnProductStatuses, setTryOnProductStatuses] = useState<Record<string, { label: string; tone: 'green' | 'red' | 'orange' }>>({});
   const [tryOnQrInput, setTryOnQrInput] = useState('');
   const [tryOnScannerOpen, setTryOnScannerOpen] = useState(false);
@@ -197,7 +199,7 @@ export const BridalInventory: React.FC = () => {
 
 
   const openTryOn = async () => {
-    setError(''); setTryOnConflict(''); setTryOnProducts([]); setTryOnProductStatuses({}); setTryOnQrInput('');
+    setError(''); setTryOnConflict(''); setTryOnProducts([]); setTryOnProductStatuses({}); setTryOnDetailProduct(null); setTryOnDetailOpen(false); setTryOnQrInput('');
     setTryOnContractId(''); setTryOnManualNames(false); setTryOnOpen(true);
     try {
       const contracts = await api.quanLy.getAll('HOP_DONG');
@@ -243,7 +245,7 @@ export const BridalInventory: React.FC = () => {
     try {
       const item = await api.inventory.get(code);
       if (item.category !== 'Váy cưới') { setTryOnConflict('Mã QR này không thuộc danh mục váy cưới.'); return; }
-      setTryOnProducts(current => [...current, item]); setTryOnConflict(''); setTryOnQrInput('');
+      setTryOnProducts(current => [...current, item]); setTryOnDetailProduct(item); setTryOnDetailOpen(true); setTryOnConflict(''); setTryOnQrInput('');
     } catch (e: any) { setTryOnConflict(e?.message || 'Không tìm thấy sản phẩm theo mã QR.'); }
   };
 
@@ -432,6 +434,29 @@ export const BridalInventory: React.FC = () => {
       {scanInput !== null && <div className="rounded-2xl border border-[#E7DFD5] bg-white p-3"><form onSubmit={e=>{e.preventDefault();void openScannedCode();}} className="flex gap-2"><input value={scanInput} onChange={e=>setScanInput(e.target.value)} placeholder="Nhập hoặc dán mã QR, ví dụ HP-VAY-..." className="min-w-0 flex-1 rounded-lg border border-stone-200 px-3 py-2 text-sm"/><button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Tra cứu</button></form></div>}
 
 
+      {tryOnDetailOpen && tryOnDetailProduct && <div className="fixed inset-0 z-[140] flex flex-col bg-white">
+        <header className="flex shrink-0 items-center justify-between border-b border-stone-200 px-4 py-3">
+          <button type="button" onClick={() => setTryOnDetailOpen(false)} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"><ChevronLeft size={18}/> Quay lại quét</button>
+          <span className="text-sm font-bold text-stone-500">THÔNG TIN VÁY</span>
+          <button type="button" onClick={() => { setTryOnProducts(current => current.filter(x => x.qrCode !== tryOnDetailProduct.qrCode)); setTryOnDetailProduct(null); setTryOnDetailOpen(false); }} className="text-sm font-semibold text-rose-600">Bỏ váy</button>
+        </header>
+        <main className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto p-4">
+          <div className="flex w-full max-w-3xl flex-1 items-center justify-center overflow-hidden rounded-2xl bg-stone-50">
+            {tryOnDetailProduct.imageUrl
+              ? <img src={getDisplayImageUrl(tryOnDetailProduct.imageUrl)} alt={tryOnDetailProduct.name} className="max-h-[68vh] w-full object-contain"/>
+              : <div className="flex flex-col items-center gap-2 p-10 text-stone-400"><Shirt size={64}/><span>Chưa có ảnh váy trong hồ sơ sản phẩm</span></div>}
+          </div>
+          <div className="w-full max-w-3xl text-center">
+            <h2 className="text-2xl font-extrabold text-stone-900">{tryOnDetailProduct.name || 'Váy cưới'}</h2>
+            {(() => {
+              const availability = tryOnProductStatuses[tryOnDetailProduct.qrCode] || { label: 'Đang kiểm tra lịch...', tone: 'orange' as const };
+              const toneClass = availability.tone === 'green' ? 'bg-lime-300 text-lime-950' : availability.tone === 'red' ? 'bg-red-600 text-white' : 'bg-orange-400 text-white';
+              return <div className={`mx-auto mt-3 inline-flex rounded-full px-8 py-3 text-xl font-black ${toneClass}`}>{availability.label}</div>;
+            })()}
+          </div>
+          <button type="button" onClick={() => setTryOnDetailOpen(false)} className="w-full max-w-3xl rounded-xl bg-stone-900 px-5 py-4 text-base font-bold text-white">Quay lại để quét váy tiếp theo</button>
+        </main>
+      </div>}
       {tryOnScannerOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-3"><div className="w-full max-w-md rounded-2xl bg-white p-4"><div className="mb-3 flex items-center justify-between"><b>Quét QR váy</b><button type="button" onClick={()=>setTryOnScannerOpen(false)}><X/></button></div><div id="try-on-qr-reader" className="overflow-hidden rounded-xl"/><p className="mt-3 text-xs text-stone-500">Quét mã QR trên váy để kiểm tra ngày thuê.</p></div></div>}
 
       {tryOnOpen && <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-3"><div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl">
@@ -453,28 +478,8 @@ export const BridalInventory: React.FC = () => {
           <p className="text-sm font-semibold">Quét QR váy để kiểm tra trùng lịch</p>
           <form onSubmit={e=>{e.preventDefault();void addTryOnProduct(tryOnQrInput);}} className="mt-2 flex gap-2"><input value={tryOnQrInput} onChange={e=>setTryOnQrInput(e.target.value)} placeholder="Nhập mã QR sản phẩm..." className="min-w-0 flex-1 rounded-lg border p-3 text-sm"/><button className="rounded-lg bg-stone-900 px-3 text-sm font-bold text-white">Đối chiếu</button></form>
           <button type="button" onClick={()=>setTryOnScannerOpen(true)} className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-[#A97D3E] p-3 text-sm font-bold text-[#A97D3E]"><Camera size={17}/> Quét mã QR bằng camera</button>
-          {tryOnProducts.map(product => {
-            const availability = tryOnProductStatuses[product.qrCode] || { label: 'Đang kiểm tra', tone: 'orange' as const };
-            const toneClass = availability.tone === 'green'
-              ? 'border-lime-300 bg-lime-100 text-lime-800'
-              : availability.tone === 'red'
-                ? 'border-red-300 bg-red-100 text-red-800'
-                : 'border-orange-300 bg-orange-100 text-orange-800';
-            return <div key={product.qrCode} className="mt-3 overflow-hidden rounded-xl border border-stone-200 bg-white">
-              <div className="grid grid-cols-[112px_1fr] gap-3 p-3">
-                <div className="flex h-36 items-center justify-center overflow-hidden rounded-lg bg-stone-50">
-                  {product.imageUrl
-                    ? <img src={getDisplayImageUrl(product.imageUrl)} alt={product.name} className="h-full w-full object-contain"/>
-                    : <Shirt size={34} className="text-stone-300"/>}
-                </div>
-                <div className="flex min-w-0 flex-col items-start justify-center gap-2">
-                  <p className="font-bold text-stone-900">{product.name || 'Váy cưới'}</p>
-                  <span className={`rounded-full border px-3 py-1.5 text-sm font-extrabold ${toneClass}`}>{availability.label}</span>
-                  <button type="button" onClick={() => setTryOnProducts(current => current.filter(x => x.qrCode !== product.qrCode))} className="mt-1 text-sm font-semibold text-rose-600">Xóa váy</button>
-                </div>
-              </div>
-            </div>;
-          })}
+          {tryOnProducts.length > 0 && <p className="mt-3 text-xs text-stone-500">Đã quét {tryOnProducts.length} váy. Chạm “Xem váy vừa quét” để mở lại trang hình ảnh.</p>}
+          {tryOnDetailProduct && <button type="button" onClick={() => setTryOnDetailOpen(true)} className="mt-2 w-full rounded-lg border border-[#A97D3E] p-2 text-sm font-semibold text-[#8A642F]">Xem váy vừa quét</button>}
           {tryOnConflict && <p className="mt-2 text-sm font-semibold text-rose-700">{tryOnConflict}</p>}
         </div>
         <label className="mt-3 block text-sm font-semibold">Chụp hoặc chọn ảnh váy khách đã chọn<input type="file" multiple capture="environment" accept="image/jpeg,image/png,image/webp" onChange={e=>setTryOnFiles(Array.from(e.target.files||[]))} className="mt-1 w-full rounded-xl border p-3 text-sm"/></label>
