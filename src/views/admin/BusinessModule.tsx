@@ -58,7 +58,7 @@ const CONFIG: Record<QuanLyModule, ModuleConfig> = {
     title: 'Hợp đồng',
     icon: FileText,
     fields: [
-      { key: 'ChiNhanh', label: 'Chi nhánh', options: [{ value: 'HP_DONG_XOAI', label: 'HP Đồng Xoài' }, { value: 'HP_BINH_LONG', label: 'HP Bình Long' }] },
+      { key: 'ChiNhanh', label: 'Chi nhánh', options: [{ value: 'HP_DONG_XOAI', label: 'Đồng Xoài' }, { value: 'HP_LUMA', label: 'Luma' }] },
       { key: 'MaHopDong', label: 'Mã hợp đồng' },
       { key: 'KhachHang', label: 'Tên khách hàng' },
       { key: 'SDT', label: 'Số điện thoại' },
@@ -142,6 +142,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const [cashflowSection, setCashflowSection] = useState<'ALL' | 'CONTRACT' | 'INTERNAL'>('ALL');
   const [cashflowCreateMenu, setCashflowCreateMenu] = useState<'THU' | 'CHI' | null>(null);
   const [cashflowStaffFilter, setCashflowStaffFilter] = useState('ALL');
+  const [contractBranchFilter, setContractBranchFilter] = useState<'ALL' | 'HP_DONG_XOAI' | 'HP_LUMA'>('ALL');
   const [cashflowMonthFilter, setCashflowMonthFilter] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -213,6 +214,9 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
 
   const filteredRecords = useMemo(() => {
     let rows = visibleRecords;
+    if (module === 'HOP_DONG' && contractBranchFilter !== 'ALL') {
+      rows = rows.filter(record => String(record.DuLieu?.ChiNhanh || 'HP_DONG_XOAI') === contractBranchFilter);
+    }
     if (module === 'THU_CHI' && cashflowSection !== 'ALL') {
       rows = rows.filter(record => cashflowSection === 'CONTRACT' ? isContractReceipt(record) : !isContractReceipt(record));
     }
@@ -234,7 +238,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     const keyword = search.trim().toLowerCase();
     if (!keyword) return rows;
     return rows.filter((record) => JSON.stringify(record.DuLieu).toLowerCase().includes(keyword));
-  }, [visibleRecords, search, module, cashflowSection, cashflowMonthFilter, cashflowStaffFilter, isEmployee, staffList]);
+  }, [visibleRecords, search, module, cashflowSection, cashflowMonthFilter, cashflowStaffFilter, contractBranchFilter, isEmployee, staffList]);
 
   const getTodayLocal = () => {
     const now = new Date();
@@ -273,6 +277,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         : [{ Dot: 1, TenDot: 'Đợt 1', HanThanhToan: '', SoTienDuKien: getContractDeposit(data), GhiChu: '' }];
       setFormData({
         ...data,
+        ChiNhanh: data.ChiNhanh || 'HP_DONG_XOAI',
         GiaGoiBanDau: data.GiaGoiBanDau ?? legacyTotal,
         GiamGiaTrucTiep: data.GiamGiaTrucTiep ?? 0,
         ChietKhauPhanTram: data.ChietKhauPhanTram ?? 0,
@@ -300,7 +305,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
 
     try {
       const payload: Record<string, any> = { ...formData };
-      if ((module === 'THU_CHI' || module === 'HOP_DONG') && !editing && !['HP_DONG_XOAI', 'HP_BINH_LONG'].includes(String(payload.ChiNhanh || ''))) throw new Error('Vui lòng chọn chi nhánh HP Đồng Xoài hoặc HP Bình Long.');
+      if ((module === 'THU_CHI' || module === 'HOP_DONG') && !editing && !['HP_DONG_XOAI', 'HP_LUMA'].includes(String(payload.ChiNhanh || ''))) throw new Error('Vui lòng chọn cơ sở Đồng Xoài hoặc Luma.');
+      if (module === 'HOP_DONG' && !editing && !payload.ChiNhanh) payload.ChiNhanh = 'HP_DONG_XOAI';
       if (module === 'THU_CHI' && !editing && cashflowSection === 'CONTRACT' && payload.Loai === 'THU' && !payload.HopDongQuanLyID) {
         throw new Error('Vui lòng chọn mã hợp đồng cho khoản thu cọc/thanh toán cưới.');
       }
@@ -737,6 +743,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
           </div>
         </section>
       )}
+      {module === 'HOP_DONG' && <section className="rounded-xl border border-[#E7DFD5] bg-white p-3"><p className="mb-2 text-xs font-bold text-stone-600">LỌC HỢP ĐỒNG THEO CƠ SỞ</p><div className="grid grid-cols-3 gap-2">{([{value:'ALL',label:'Tất cả hợp đồng'},{value:'HP_DONG_XOAI',label:'Đồng Xoài'},{value:'HP_LUMA',label:'Luma'}] as const).map(option=><button key={option.value} type="button" onClick={()=>setContractBranchFilter(option.value)} className={`rounded-lg px-3 py-2.5 text-xs font-bold ${contractBranchFilter===option.value?'bg-stone-900 text-[#E8D5A8]':'border border-stone-200 text-stone-600'}`}>{option.label}</button>)}</div><p className="mt-2 text-[11px] text-stone-400">Hợp đồng cũ chưa có cơ sở được tính mặc định là Đồng Xoài.</p></section>}
       <div className="bg-white p-3 rounded-xl border border-[#E7DFD5] flex items-center gap-2">
         <Search className="w-4 h-4 text-stone-400" />
         <input
