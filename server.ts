@@ -7,7 +7,8 @@ import { gzipSync } from 'node:zlib';
 import dotenv from 'dotenv';
 import { dbService } from './server/db.ts';
 import { inventoryService } from './server/inventory.ts';
-import { uploadInventoryImage } from './server/drive.ts';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { uploadInventoryImage, createGoogleDriveAuthorizationUrl, exchangeGoogleDriveCode } from './server/drive.ts';
 import { automationManager } from './server/automation.ts';
 import type { NhanVien } from './src/types.ts';
 
@@ -1508,6 +1509,51 @@ app.get('/api/export/:table', authenticateToken, requireAdmin, (req: AuthRequest
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   return res.send(bom + csv);
+});
+
+// Google Drive OAuth setup. Protect this one-time setup route with a Render secret.
+const googleDriveOAuthStates = new Map<string, number>();
+function safeSecretEqual(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided); const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+app.get('/google-drive/auth', (req: Request, res: Response) => {
+  const expected = process.env.GOOGLE_OAUTH_SETUP_SECRET || '';
+  if (!expected) return res.status(503).send('Render chưa cấu hình GOOGLE_OAUTH_SETUP_SECRET.');
+  const header = String(req.headers.authorization || '');
+  const match = /^Basic\\s+(.+)$/i.exec(header);
+  let password = '';
+  if (match) {
+    try { const decoded = Buffer.from(match[1], 'base64').toString('utf8'); const i = decoded.indexOf(':'); password = i >= 0 ? decoded.slice(i + 1) : ''; } catch { password = ''; }
+  }
+  if (!safeSecretEqual(password, expected)) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="Hanh Pham Google Drive setup", charset="UTF-8"');
+    return res.status(401).send('Cần mật khẩu thiết lập OAuth để tiếp tục.');
+  }
+  const now = Date.now();
+  for (const [key, expiry] of googleDriveOAuthStates) if (expiry < now) googleDriveOAuthStates.delete(key);
+  const state = randomBytes(32).toString('hex');
+  googleDriveOAuthStates.set(state, now + 10 * 60 * 1000);
+  return res.redirect(createGoogleDriveAuthorizationUrl(state));
+});
+app.get('/google-drive/callback', async (req: Request, res: Response) => {
+  const state = String(req.query.state || '');
+  const expiry = googleDriveOAuthStates.get(state);
+  googleDriveOAuthStates.delete(state);
+  if (!state || !expiry || expiry < Date.now()) return res.status(400).send('Phiên OAuth không hợp lệ hoặc đã hết hạn. Hãy mở lại /google-drive/auth.');
+  if (req.query.error) return res.status(400).send('Bạn đã từ chối hoặc Google không cấp quyền. Hãy mở lại /google-drive/auth.');
+  const code = String(req.query.code || '');
+  if (!code) return res.status(400).send('Google không trả mã xác thực.');
+  try {
+    const refreshToken = await exchangeGoogleDriveCode(code);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return res.type('html').send(`<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Google Drive đã kết nối</title><body style="font:16px Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 18px;line-height:1.6"><h2>Đã nhận Refresh Token từ Google</h2><p>Sao chép giá trị bên dưới và lưu vào Render Environment với tên <b>GOOGLE_DRIVE_REFRESH_TOKEN</b>.</p><textarea readonly style="width:100%;height:120px;box-sizing:border-box">${refreshToken}</textarea><p><b>Bảo mật:</b> Không gửi token này cho nhân viên, không đăng lên GitHub.</p><p>Sau khi lưu biến môi trường trên Render, chờ dịch vụ khởi động lại rồi thử tải ảnh sản phẩm.</p></body></html>`);
+  } catch (error: any) {
+    console.error('[GOOGLE DRIVE OAUTH] Code exchange failed:', error?.message || error);
+    return res.status(400).send('Không lấy được Refresh Token. Kiểm tra cấu hình OAuth trên Render và Google Cloud, sau đó thử cấp quyền lại.');
+  }
 });
 
 // ==========================================
