@@ -34,8 +34,10 @@ export const BridalInventory: React.FC = () => {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanInput, setScanInput] = useState('');
   const [tryOnOpen, setTryOnOpen] = useState(false);
-  const [tryOnCustomer, setTryOnCustomer] = useState('');
   const [tryOnFiles, setTryOnFiles] = useState<File[]>([]);
+  const [tryOnContracts, setTryOnContracts] = useState<import('../../types').QuanLyRecord[]>([]);
+  const [tryOnContractId, setTryOnContractId] = useState('');
+  const [tryOnManualNames, setTryOnManualNames] = useState(false);
   const [tryOnProducts, setTryOnProducts] = useState<InventoryItem[]>([]);
   const [tryOnQrInput, setTryOnQrInput] = useState('');
   const [tryOnScannerOpen, setTryOnScannerOpen] = useState(false);
@@ -151,9 +153,13 @@ export const BridalInventory: React.FC = () => {
   };
 
 
-  const openTryOn = () => {
+  const openTryOn = async () => {
     setError(''); setTryOnConflict(''); setTryOnProducts([]); setTryOnQrInput('');
-    setTryOnOpen(true);
+    setTryOnContractId(''); setTryOnManualNames(false); setTryOnOpen(true);
+    try {
+      const contracts = await api.quanLy.getAll('HOP_DONG');
+      setTryOnContracts(contracts.filter(record => !['Đã hủy', 'Hủy'].includes(String(record.DuLieu?.TrangThai || ''))));
+    } catch (e: any) { setError(e?.message || 'Không tải được danh sách hợp đồng.'); }
   };
 
   const addTryOnProduct = async (rawCode: string) => {
@@ -184,7 +190,8 @@ export const BridalInventory: React.FC = () => {
   }, [tryOnScannerOpen]);
 
   const uploadTryOnPhotos = async () => {
-    if (!tryOnCustomer.trim()) { setError('Vui lòng nhập tên khách hàng.'); return; }
+    const linkedContract = tryOnContracts.find(record => record.QuanLyID === tryOnContractId);
+    if (!tryOnManualNames && !linkedContract) { setError('Vui lòng chọn hợp đồng hoặc chọn Khác.'); return; }
     if (!tryOnProducts.length) { setError('Vui lòng quét QR ít nhất một váy để đối chiếu lịch thuê.'); return; }
     if (tryOnConflict) { setError(tryOnConflict); return; }
     try {
@@ -214,13 +221,16 @@ export const BridalInventory: React.FC = () => {
         const canvas=document.createElement('canvas'); canvas.width=Math.round(image.width*scale); canvas.height=Math.round(image.height*scale);
         const ctx=canvas.getContext('2d'); if(!ctx) throw new Error('Không xử lý được ảnh.');
         ctx.drawImage(image,0,0,canvas.width,canvas.height);
-        const safeName=tryOnCustomer.trim().replace(/[^a-zA-Z0-9_-]/g,'_');
+        const safeName=String(linkedContract?.DuLieu?.MaHopDong || 'Khach-thu-vay').replace(/[^a-zA-Z0-9_-]/g,'_');
         const uploaded = await api.inventory.uploadImage(canvas.toDataURL('image/jpeg',0.82), safeName+'_'+Date.now()+'.jpg','tryOn');
         uploadedPhotos.push({ fileName: file.name, imageUrl: uploaded.imageUrl, fileId: uploaded.fileId });
       }
       await api.quanLy.create('THU_VAY', {
-        HopDongQuanLyID: '', MaHopDong: '', TenHopDong: '', NhapNgoaiHopDong: true,
-        TenCoDau: tryOnCustomer.trim(), TenChuRe: '', KhachHang: tryOnCustomer.trim(),
+        HopDongQuanLyID: linkedContract?.QuanLyID || '',
+        MaHopDong: linkedContract?.DuLieu?.MaHopDong || '',
+        TenHopDong: linkedContract?.DuLieu?.KhachHang || '',
+        NhapNgoaiHopDong: tryOnManualNames,
+        TenCoDau: '', TenChuRe: '', KhachHang: String(linkedContract?.DuLieu?.KhachHang || ''),
         SanPhamVay: tryOnProducts.map(item => ({ MaQR: item.qrCode, TenSanPham: item.name, DanhMuc: item.category })),
         LayVayNhaGai: tryOnPickupBride,
         LayVayNhaTrai: tryOnPickupGroom,
@@ -230,7 +240,7 @@ export const BridalInventory: React.FC = () => {
         SoLuongAnh: uploadedPhotos.length,
         TaoLuc: new Date().toISOString(),
       });
-      setTryOnOpen(false); setTryOnCustomer(''); setTryOnFiles([]); setTryOnProducts([]); setTryOnBrideDate(''); setTryOnGroomDate('');
+      setTryOnOpen(false); setTryOnFiles([]); setTryOnProducts([]); setTryOnContractId(''); setTryOnManualNames(false); setTryOnBrideDate(''); setTryOnGroomDate('');
       alert('Đã lưu hồ sơ thử và chọn váy, liên kết hợp đồng và ảnh trên Google Drive.');
     } catch(e:any) { setError(e?.message || 'Không lưu được ảnh thử váy.'); }
     finally { setTryOnSaving(false); }
@@ -352,7 +362,10 @@ export const BridalInventory: React.FC = () => {
 
       {tryOnOpen && <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-3"><div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl">
         <div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-[#A97D3E]">HẠNH PHẠM LUXURY BRIDAL</p><h2 className="text-xl font-bold">Thử & Chọn váy</h2></div><button onClick={()=>setTryOnOpen(false)}><X/></button></div>
-        <label className="block text-sm font-semibold">Tên khách hàng<input value={tryOnCustomer} onChange={e=>setTryOnCustomer(e.target.value)} placeholder="Nhập tên khách hàng" className="mt-1 w-full rounded-xl border p-3"/></label>
+        <label className="block text-sm font-semibold">Chọn hợp đồng<select value={tryOnManualNames ? '__manual__' : tryOnContractId} onChange={e=>{const value=e.target.value;setTryOnManualNames(value==='__manual__');setTryOnContractId(value==='__manual__'?'':value);}} className="mt-1 w-full rounded-xl border p-3">
+          <option value="">-- Chọn hợp đồng --</option>{tryOnContracts.map(record=><option key={record.QuanLyID} value={record.QuanLyID}>{record.DuLieu?.MaHopDong || record.QuanLyID} · {record.DuLieu?.KhachHang || 'Chưa có tên khách'}</option>)}
+          <option value="__manual__">Khác – khách không có hợp đồng</option>
+        </select></label>
         <div className="mt-4">
           <p className="text-sm font-semibold">Bên lấy váy</p>
           <div className="mt-2 flex gap-2">
