@@ -29,6 +29,7 @@ export const BridalInventory: React.FC = () => {
   const [deletingQr, setDeletingQr] = useState<string | null>(null);
   const [selected, setSelected] = useState<InventoryItem | null>(null);
   const [qrImage, setQrImage] = useState('');
+  const [qrLabelWidth, setQrLabelWidth] = useState<'58mm' | '80mm'>('58mm');
   const [history, setHistory] = useState<InventoryEvent[]>([]);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanInput, setScanInput] = useState('');
@@ -304,7 +305,19 @@ export const BridalInventory: React.FC = () => {
         <div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-[#a97d3e]">Hồ sơ sản phẩm</p><h2 className="text-xl font-bold">{selected.name}</h2></div><button onClick={()=>setSelected(null)}><X/></button></div>
         <div className="mt-4 grid gap-5 md:grid-cols-[1fr_220px]">
           <div className="space-y-3">{selected.imageUrl && <img src={selected.imageUrl} alt={selected.name} className="max-h-72 w-full rounded-xl object-contain bg-stone-50"/>}<div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-stone-400">Danh mục</p><b>{selected.category}</b></div><div><p className="text-xs text-stone-400">Tình trạng</p><b>{selected.status}</b></div><div className="col-span-2"><p className="text-xs text-stone-400">Mô tả</p><b>{selected.description || '—'}</b></div></div></div>
-          <div className="space-y-3 text-center"><div className="rounded-xl border p-3"><p className="font-mono text-xs font-bold">{selected.qrCode}</p>{qrImage && <img src={qrImage} alt="QR sản phẩm" className="mx-auto mt-2 w-44"/>}<button onClick={()=>window.print()} className="mt-2 w-full rounded-lg border px-3 py-2 text-sm">In tem QR</button></div><button onClick={()=>openEdit(selected)} className="w-full rounded-lg bg-stone-900 px-4 py-3 text-sm font-bold text-white">Chỉnh sửa sản phẩm</button><button disabled={deletingQr===selected.qrCode} onClick={()=>void deleteItem(selected)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-rose-200 px-4 py-3 text-sm font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/>{deletingQr===selected.qrCode?'Đang xóa...':'Xóa sản phẩm'}</button></div>
+          <div id="qr-print-area" style={{ '--qr-label-width': qrLabelWidth } as React.CSSProperties}>
+            <div className="qr-print-brand">HẠNH PHẠM LUXURY BRIDAL</div>
+            <div className="qr-print-name">{selected.name}</div>
+            <div className="qr-print-category">{selected.category}{selected.size ? ' · Size ' + selected.size : ''}</div>
+            {qrImage && <img src={qrImage} alt="Mã QR sản phẩm"/>}
+            <div className="qr-print-code">{selected.qrCode}</div>
+          </div>
+          <div className="space-y-3 text-center"><div className="rounded-xl border p-3"><p className="font-mono text-xs font-bold">{selected.qrCode}</p>{qrImage && <img src={qrImage} alt="QR sản phẩm" className="mx-auto mt-2 w-44"/>}<label className="mt-3 block text-left text-xs font-semibold text-stone-600">Khổ giấy máy in
+                <select value={qrLabelWidth} onChange={e=>setQrLabelWidth(e.target.value as '58mm' | '80mm')} className="mt-1 w-full rounded-lg border p-2 text-sm">
+                  <option value="58mm">Máy in nhiệt 58 mm</option>
+                  <option value="80mm">Máy in nhiệt 80 mm</option>
+                </select>
+              </label><button onClick={()=>window.print()} className="mt-2 w-full rounded-lg border px-3 py-2 text-sm">In tem QR / Chọn máy in</button></div><button onClick={()=>openEdit(selected)} className="w-full rounded-lg bg-stone-900 px-4 py-3 text-sm font-bold text-white">Chỉnh sửa sản phẩm</button><button disabled={deletingQr===selected.qrCode} onClick={()=>void deleteItem(selected)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-rose-200 px-4 py-3 text-sm font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-40"><Trash2 size={16}/>{deletingQr===selected.qrCode?'Đang xóa...':'Xóa sản phẩm'}</button></div>
         </div>
         <div className="mt-5 border-t pt-4"><h3 className="mb-2 flex items-center gap-2 font-bold"><Clock3 size={16}/> Lịch sử thao tác</h3>{history.length===0?<p className="text-sm text-stone-400">Chưa có lịch sử khác.</p>:history.map(row=><div key={row.id} className="flex justify-between gap-3 border-b py-2 text-xs"><div><b>{row.action}</b><p className="text-stone-500">{row.note} · {row.performedBy}</p></div><time className="shrink-0 text-stone-400">{new Date(row.createdAt).toLocaleString('vi-VN')}</time></div>)}</div>
       </div></div>}
