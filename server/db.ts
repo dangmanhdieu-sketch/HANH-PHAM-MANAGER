@@ -636,6 +636,19 @@ class DatabaseService {
             (loaded as any).HOAHONG = [];
             continue;
           }
+          // QUAN_LY contains heterogeneous business records (contracts, leave requests,
+          // receipts, approvals). Store it as JSON text rather than a Firestore nested
+          // entity so one unusual nested object cannot invalidate the entire write.
+          // Keep backward compatibility with existing native and chunked table formats.
+          if (tableMeta.storage === 'json-string') {
+            if (typeof tableMeta.dataJson !== 'string') {
+              missingTables.push(table);
+              continue;
+            }
+            (loaded as any)[table] = restoreFirestoreValue(JSON.parse(tableMeta.dataJson));
+            continue;
+          }
+
           if (tableMeta.storage === 'chunked-json-base64') {
             const chunkCount = Number(tableMeta.chunkCount || 0);
             if (!Number.isInteger(chunkCount) || chunkCount < 1 || chunkCount > 500) {
@@ -729,7 +742,7 @@ class DatabaseService {
             // for minutes (especially for the HOAHONG history).
             const oversizedTables = this.firestoreTables.filter((table, index) => {
               const tableMeta = tableSnaps[index]?.data() || {};
-              if (tableMeta.storage === 'chunked-json-base64') return false;
+              if (tableMeta.storage === 'chunked-json-base64' || tableMeta.storage === 'json-string') return false;
               const serialized = JSON.stringify(sanitizeFirestoreValue((this.db as any)[table]));
               return Buffer.from(serialized, 'utf8').toString('base64').length > 600000;
             });
@@ -1020,7 +1033,7 @@ class DatabaseService {
     const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
     const committedAt = new Date().toISOString();
     const PART_SIZE = 200000;
-    const smallTables: Array<{ table: FirestoreTableName; data: any; bytes: number }> = [];
+    const smallTables: Array<{ table: FirestoreTableName; data: any; bytes: number; jsonString?: boolean }> = [];
     const largeTables: Array<{ table: FirestoreTableName; encoded: string; bytes: number; encoding: string }> = [];
 
     try {
@@ -1036,7 +1049,13 @@ class DatabaseService {
         // encoding. This keeps routine approval writes lighter on small Render
         // instances while preserving the exact Firestore schema and data.
         if (bytes <= 150000) {
-          smallTables.push({ table, data: JSON.parse(serialized), bytes });
+          if (table === 'QUAN_LY') {
+            // Avoid Firestore's nested-entity validation on heterogeneous records.
+            // JSON text is lossless for the existing JSON-backed database model.
+            smallTables.push({ table, data: serialized, bytes, jsonString: true });
+          } else {
+            smallTables.push({ table, data: JSON.parse(serialized), bytes });
+          }
           continue;
         }
 
@@ -1064,11 +1083,20 @@ class DatabaseService {
         await this.firestore.runTransaction(async (transaction) => {
           await this.assertFirestoreWriterLease(transaction);
           for (const item of smallTables) {
-            transaction.set(
-              rootRef.collection('tables').doc(item.table),
-              { data: item.data, updatedAt: committedAt },
-              { merge: false }
-            );
+            const tableRef = rootRef.collection('tables').doc(item.table);
+            if (item.jsonString) {
+              transaction.set(tableRef, {
+                storage: 'json-string',
+                dataJson: item.data,
+                updatedAt: committedAt,
+              }, { merge: false });
+            } else {
+              transaction.set(
+                tableRef,
+                { data: item.data, updatedAt: committedAt },
+                { merge: false }
+              );
+            }
           }
           transaction.set(rootRef, {
             __schemaVersion: 3,
