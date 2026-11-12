@@ -1039,6 +1039,10 @@ app.get('/api/luong', authenticateToken, (req: AuthRequest, res: Response) => {
   // Security Check: Non-admins can only see their own salary records
   const targetNhanVienId = user.Quyen === 'Admin' ? nhanVienId : user.NhanVienID;
 
+  // Automatically reconcile only pending rows before returning payroll data.
+  // Approved and paid payroll remain immutable.
+  dbService.autoSyncPendingPayrollCommissions({ thang, nhanVienId: targetNhanVienId });
+
   const list = dbService.getLuongList({
     thang,
     trangThai,
