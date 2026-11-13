@@ -17,7 +17,6 @@ import {
   FileText,
   Wallet,
   Shirt,
-  CalendarDays,
 } from 'lucide-react';
 
 import type { NhanVien, ThongBao } from '../types';
@@ -80,7 +79,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'danhba_me', label: 'Danh bạ nhân viên', shortLabel: 'Danh bạ', icon: Contact },
     { id: 'thuchi_me', label: 'Thu chi của tôi', shortLabel: 'Thu chi', icon: Wallet },
     { id: 'congviec', label: 'Công việc', shortLabel: 'Công việc', icon: CheckSquare },
-    { id: 'lichcuoi', label: 'Lịch cưới & Điều phối', shortLabel: 'Lịch cưới', icon: CalendarDays },
   ];
 
   const saleTabs = [
