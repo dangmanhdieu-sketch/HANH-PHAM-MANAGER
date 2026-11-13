@@ -2663,7 +2663,7 @@ class DatabaseService {
   }
 
   public createQuanLyRecord(module: QuanLyModule, data: Record<string, any>, adminUser: { HoTen: string; Email: string }): QuanLyRecord {
-    if (!['CONG_VIEC', 'HOP_DONG', 'THU_CHI', 'NGHI_PHEP'].includes(module)) {
+    if (!['CONG_VIEC', 'HOP_DONG', 'THU_CHI', 'NGHI_PHEP', 'LICH_CUOI'].includes(module)) {
       throw new Error('Module nghiệp vụ không hợp lệ.');
     }
     const now = new Date().toISOString();
