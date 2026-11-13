@@ -10,6 +10,7 @@ import { inventoryService } from './server/inventory.ts';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { uploadInventoryImage, uploadAttendancePhoto, getAttendancePhotoDataUrl, createGoogleDriveAuthorizationUrl, exchangeGoogleDriveCode } from './server/drive.ts';
 import { automationManager } from './server/automation.ts';
+import { startDailyDriveBackup } from './server/driveBackup.ts';
 import type { NhanVien } from './src/types.ts';
 
 dotenv.config();
@@ -1691,6 +1692,9 @@ app.get('/google-drive/callback', async (req: Request, res: Response) => {
 // ==========================================
 
 async function startServer() {
+  // Wait for Firestore to load its authoritative data before starting the daily Drive backup worker.
+  await dbService.waitUntilReady();
+  startDailyDriveBackup();
   const isProd = process.env.NODE_ENV === 'production';
 
   if (!isProd) {
