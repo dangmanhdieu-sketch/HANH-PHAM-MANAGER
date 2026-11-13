@@ -861,12 +861,13 @@ app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => 
   let records = dbService.getQuanLyRecords(module || undefined);
 
   // Employees must request a specific module and may only read their own permitted records.
-  if (!module || !['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'THU_VAY'].includes(module)) {
+  if (!module || !['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'THU_VAY', 'LICH_CUOI'].includes(module)) {
     return res.status(400).json({ error: 'Vui lòng chọn phân hệ dữ liệu hợp lệ.' });
   }
   if (req.user!.Quyen !== 'Admin') {
     if (module === 'THU_VAY') return res.status(403).json({ error: 'Chỉ Admin được xem hồ sơ thử và chọn váy.' });
-    if (!['THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
+    if (module === 'LICH_CUOI' && req.user!.Quyen === 'Freelancer') return res.status(403).json({ error: 'Tài khoản Freelancer không có quyền xem lịch điều phối.' });
+    if (!['THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'LICH_CUOI'].includes(module)) {
       return res.status(403).json({ error: 'Bạn không có quyền xem phân hệ dữ liệu này.' });
     }
     records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
@@ -879,11 +880,12 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
   try {
     const { module, data } = req.body || {};
 
-    if (!['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'THU_VAY'].includes(module)) {
+    if (!['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'THU_VAY', 'LICH_CUOI'].includes(module)) {
       return res.status(400).json({ error: 'Loại dữ liệu không hợp lệ.' });
     }
     if (module === 'THU_VAY' && req.user!.Quyen !== 'Admin') return res.status(403).json({ error: 'Chỉ Admin được tạo hồ sơ thử và chọn váy.' });
-    if (req.user!.Quyen !== 'Admin' && !['THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
+    if (module === 'LICH_CUOI' && req.user!.Quyen === 'Freelancer') return res.status(403).json({ error: 'Tài khoản Freelancer không có quyền tạo lịch điều phối.' });
+    if (req.user!.Quyen !== 'Admin' && !['THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'LICH_CUOI'].includes(module)) {
       return res.status(403).json({ error: 'Bạn không có quyền tạo dữ liệu nghiệp vụ này.' });
     }
 
@@ -957,6 +959,26 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       delete payload.CongNo;
     }
 
+    if (module === 'LICH_CUOI') {
+      const allowedServices = ['Chụp ảnh cưới', 'Chụp ảnh cổng', 'Ngày cưới', 'Giao album', 'Makeup ngày cưới', 'Chụp phóng sự cưới', 'Thử váy cưới'];
+      if (!allowedServices.includes(String(payload.DichVu || ''))) return res.status(400).json({ error: 'Loại dịch vụ lịch cưới không hợp lệ.' });
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(payload.Ngay || '')) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(payload.Gio || ''))) return res.status(400).json({ error: 'Vui lòng chọn ngày và giờ hợp lệ.' });
+      if (!String(payload.KhachHang || '').trim()) return res.status(400).json({ error: 'Vui lòng nhập tên khách hàng.' });
+      const duration = Math.max(30, Math.min(1440, Number(payload.ThoiLuong || 180)));
+      payload.ThoiLuong = duration;
+      payload.TrangThai = payload.TrangThai || 'Chờ xác nhận';
+      if (!['Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'].includes(String(payload.TrangThai))) return res.status(400).json({ error: 'Trạng thái lịch không hợp lệ.' });
+      const staffIds = [payload.ThoChupID, payload.MakeupID, payload.NguoiPhuTrachID].filter(Boolean).map(String);
+      for (const staffId of staffIds) if (!dbService.findNhanVienById(staffId)) return res.status(400).json({ error: 'Nhân viên được phân công không tồn tại.' });
+      if (payload.ThoChupID && payload.ThoChupID === payload.MakeupID) return res.status(400).json({ error: 'Không thể phân công một người vừa chụp vừa makeup cùng lịch.' });
+      const start = Number(String(payload.Gio).slice(0,2))*60 + Number(String(payload.Gio).slice(3,5));
+      const assigned = [payload.ThoChupID, payload.MakeupID].filter(Boolean);
+      const conflict = dbService.getQuanLyRecords('LICH_CUOI').find((r) => r.DuLieu?.Ngay === payload.Ngay && r.DuLieu?.TrangThai !== 'Đã hủy' && [r.DuLieu?.ThoChupID, r.DuLieu?.MakeupID].some((id: string) => assigned.includes(id)) && start < (Number(String(r.DuLieu?.Gio || '00:00').slice(0,2))*60 + Number(String(r.DuLieu?.Gio || '00:00').slice(3,5))) + Number(r.DuLieu?.ThoiLuong || 180) && (Number(String(r.DuLieu?.Gio || '00:00').slice(0,2))*60 + Number(String(r.DuLieu?.Gio || '00:00').slice(3,5))) < start + duration);
+      if (conflict) return res.status(409).json({ error: `Nhân viên đã có lịch ${conflict.DuLieu?.DichVu} lúc ${conflict.DuLieu?.Gio} ngày ${conflict.DuLieu?.Ngay}.` });
+      payload.NguoiTaoID = req.user!.NhanVienID;
+      payload.NguoiTao = req.user!.HoTen;
+    }
+
     if (module === 'THU_CHI') {
       if (!['HP_DONG_XOAI', 'HP_BINH_LONG', 'HP_LUMA'].includes(String(payload.ChiNhanh || ''))) return res.status(400).json({ error: 'Vui lòng chọn chi nhánh Đồng Xoài, Bình Long hoặc Luma.' });
       // Người lập phiếu luôn lấy từ tài khoản đang đăng nhập, kể cả Admin.
@@ -981,17 +1003,45 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
+    if (module === 'LICH_CUOI') {
+      const assignedIds = Array.from(new Set([payload.ThoChupID, payload.MakeupID, payload.NguoiPhuTrachID].filter(Boolean).map(String)));
+      for (const staffId of assignedIds) dbService.addNotification('Lịch cưới mới được phân công', `${payload.DichVu} – ${payload.KhachHang}, ngày ${payload.Ngay} lúc ${payload.Gio}. Vui lòng mở Lịch cưới & Điều phối để xác nhận.`, 'info', staffId);
+      dbService.addNotification('Lịch cưới vừa được tạo', `${payload.DichVu} – ${payload.KhachHang}, ngày ${payload.Ngay} lúc ${payload.Gio}.`, 'info');
+    }
     return res.status(201).json(record);
   } catch (err: any) {
     return res.status(400).json({ error: err.message || 'Không thể tạo dữ liệu.' });
   }
 });
 
-app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response) => {
   try {
     const current = dbService.getQuanLyRecords().find((x) => x.QuanLyID === req.params.id);
     if (!current) return res.status(404).json({ error: 'Không tìm thấy dữ liệu.' });
+    if (current.Module === 'LICH_CUOI') {
+      if (req.user!.Quyen === 'Freelancer') return res.status(403).json({ error: 'Tài khoản Freelancer không có quyền sửa lịch điều phối.' });
+    } else if (req.user!.Quyen !== 'Admin') {
+      return res.status(403).json({ error: 'Chỉ Admin được cập nhật dữ liệu này.' });
+    }
     const changes = { ...(req.body?.data || {}) };
+    if (current.Module === 'LICH_CUOI') {
+      const merged = { ...current.DuLieu, ...changes };
+      const allowedServices = ['Chụp ảnh cưới', 'Chụp ảnh cổng', 'Ngày cưới', 'Giao album', 'Makeup ngày cưới', 'Chụp phóng sự cưới', 'Thử váy cưới'];
+      if (!allowedServices.includes(String(merged.DichVu || '')) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(String(merged.Ngay || '')) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(merged.Gio || '')) || !String(merged.KhachHang || '').trim()) {
+        return res.status(400).json({ error: 'Thông tin lịch cưới chưa hợp lệ.' });
+      }
+      if (!['Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'].includes(String(merged.TrangThai))) return res.status(400).json({ error: 'Trạng thái lịch không hợp lệ.' });
+      const duration = Math.max(30, Math.min(1440, Number(merged.ThoiLuong || 180)));
+      merged.ThoiLuong = duration;
+      const assignedIds = [merged.ThoChupID, merged.MakeupID, merged.NguoiPhuTrachID].filter(Boolean).map(String);
+      for (const staffId of assignedIds) if (!dbService.findNhanVienById(staffId)) return res.status(400).json({ error: 'Nhân viên được phân công không tồn tại.' });
+      if (merged.ThoChupID && merged.ThoChupID === merged.MakeupID) return res.status(400).json({ error: 'Không thể phân công một người vừa chụp vừa makeup cùng lịch.' });
+      const start = Number(String(merged.Gio).slice(0,2))*60 + Number(String(merged.Gio).slice(3,5));
+      const assigned = [merged.ThoChupID, merged.MakeupID].filter(Boolean);
+      const conflict = dbService.getQuanLyRecords('LICH_CUOI').find((r) => r.QuanLyID !== current.QuanLyID && r.DuLieu?.Ngay === merged.Ngay && r.DuLieu?.TrangThai !== 'Đã hủy' && [r.DuLieu?.ThoChupID, r.DuLieu?.MakeupID].some((id: string) => assigned.includes(id)) && start < (Number(String(r.DuLieu?.Gio || '00:00').slice(0,2))*60 + Number(String(r.DuLieu?.Gio || '00:00').slice(3,5))) + Number(r.DuLieu?.ThoiLuong || 180) && (Number(String(r.DuLieu?.Gio || '00:00').slice(0,2))*60 + Number(String(r.DuLieu?.Gio || '00:00').slice(3,5))) < start + duration);
+      if (conflict) return res.status(409).json({ error: `Nhân viên đã có lịch ${conflict.DuLieu?.DichVu} lúc ${conflict.DuLieu?.Gio} ngày ${conflict.DuLieu?.Ngay}.` });
+      changes.ThoiLuong = duration;
+    }
 
     if (current.Module === 'HOP_DONG') {
       delete changes.DaThu;
@@ -1059,6 +1109,11 @@ app.put('/api/quan-ly/:id', authenticateToken, requireAdmin, (req: AuthRequest, 
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
+    if (current.Module === 'LICH_CUOI') {
+      const merged = { ...current.DuLieu, ...changes };
+      const assignedIds = Array.from(new Set([merged.ThoChupID, merged.MakeupID, merged.NguoiPhuTrachID].filter(Boolean).map(String)));
+      for (const staffId of assignedIds) dbService.addNotification('Lịch cưới được cập nhật', `${merged.DichVu} – ${merged.KhachHang}, ngày ${merged.Ngay} lúc ${merged.Gio}. Nội dung vừa được điều phối cập nhật.`, 'warning', staffId);
+    }
     if (current.Module === 'NGHI_PHEP' && changes.TrangThai && changes.TrangThai !== current.DuLieu?.TrangThai) {
       const approved = changes.TrangThai === 'Đã duyệt';
       dbService.addNotification(
