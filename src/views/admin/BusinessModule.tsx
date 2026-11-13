@@ -58,7 +58,7 @@ const CONFIG: Record<QuanLyModule, ModuleConfig> = {
     title: 'Hợp đồng',
     icon: FileText,
     fields: [
-      { key: 'ChiNhanh', label: 'Chi nhánh', options: [{ value: 'HP_DONG_XOAI', label: 'Đồng Xoài' }, { value: 'HP_LUMA', label: 'Luma' }] },
+      { key: 'ChiNhanh', label: 'Chi nhánh', options: [{ value: 'HP_DONG_XOAI', label: 'Đồng Xoài' }, { value: 'HP_BINH_LONG', label: 'Bình Long' }] },
       { key: 'MaHopDong', label: 'Mã hợp đồng' },
       { key: 'KhachHang', label: 'Tên khách hàng' },
       { key: 'SDT', label: 'Số điện thoại' },
@@ -142,7 +142,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const [cashflowSection, setCashflowSection] = useState<'ALL' | 'CONTRACT' | 'INTERNAL'>('ALL');
   const [cashflowCreateMenu, setCashflowCreateMenu] = useState<'THU' | 'CHI' | null>(null);
   const [cashflowStaffFilter, setCashflowStaffFilter] = useState('ALL');
-  const [contractBranchFilter, setContractBranchFilter] = useState<'ALL' | 'HP_DONG_XOAI' | 'HP_LUMA'>('ALL');
+  const [contractBranchFilter, setContractBranchFilter] = useState<'ALL' | 'HP_DONG_XOAI' | 'HP_BINH_LONG'>('ALL');
   const [cashflowMonthFilter, setCashflowMonthFilter] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -305,7 +305,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
 
     try {
       const payload: Record<string, any> = { ...formData };
-      if ((module === 'THU_CHI' || module === 'HOP_DONG') && !editing && !['HP_DONG_XOAI', 'HP_LUMA'].includes(String(payload.ChiNhanh || ''))) throw new Error('Vui lòng chọn cơ sở Đồng Xoài hoặc Luma.');
+      if ((module === 'THU_CHI' || module === 'HOP_DONG') && !editing && !['HP_DONG_XOAI', 'HP_BINH_LONG'].includes(String(payload.ChiNhanh || ''))) throw new Error('Vui lòng chọn cơ sở Đồng Xoài hoặc Bình Long.');
       if (module === 'HOP_DONG' && !editing && !payload.ChiNhanh) payload.ChiNhanh = 'HP_DONG_XOAI';
       if (module === 'THU_CHI' && !editing && cashflowSection === 'CONTRACT' && payload.Loai === 'THU' && !payload.HopDongQuanLyID) {
         throw new Error('Vui lòng chọn mã hợp đồng cho khoản thu cọc/thanh toán cưới.');
@@ -744,7 +744,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
           </div>
         </section>
       )}
-      {module === 'HOP_DONG' && <section className="rounded-xl border border-[#E7DFD5] bg-white p-3"><p className="mb-2 text-xs font-bold text-stone-600">LỌC HỢP ĐỒNG THEO CƠ SỞ</p><div className="grid grid-cols-3 gap-2">{([{value:'ALL',label:'Tất cả hợp đồng'},{value:'HP_DONG_XOAI',label:'Đồng Xoài'},{value:'HP_LUMA',label:'Luma'}] as const).map(option=><button key={option.value} type="button" onClick={()=>setContractBranchFilter(option.value)} className={`rounded-lg px-3 py-2.5 text-xs font-bold ${contractBranchFilter===option.value?'bg-stone-900 text-[#E8D5A8]':'border border-stone-200 text-stone-600'}`}>{option.label}</button>)}</div><p className="mt-2 text-[11px] text-stone-400">Hợp đồng cũ chưa có cơ sở được tính mặc định là Đồng Xoài.</p></section>}
+      {module === 'HOP_DONG' && <section className="rounded-xl border border-[#E7DFD5] bg-white p-3"><p className="mb-2 text-xs font-bold text-stone-600">LỌC HỢP ĐỒNG THEO CƠ SỞ</p><div className="grid grid-cols-3 gap-2">{([{value:'ALL',label:'Tất cả hợp đồng'},{value:'HP_DONG_XOAI',label:'Đồng Xoài'},{value:'HP_BINH_LONG',label:'Luma'}] as const).map(option=><button key={option.value} type="button" onClick={()=>setContractBranchFilter(option.value)} className={`rounded-lg px-3 py-2.5 text-xs font-bold ${contractBranchFilter===option.value?'bg-stone-900 text-[#E8D5A8]':'border border-stone-200 text-stone-600'}`}>{option.label}</button>)}</div><p className="mt-2 text-[11px] text-stone-400">Hợp đồng cũ chưa có cơ sở được tính mặc định là Đồng Xoài.</p></section>}
       <div className="bg-white p-3 rounded-xl border border-[#E7DFD5] flex items-center gap-2">
         <Search className="w-4 h-4 text-stone-400" />
         <input
@@ -1026,7 +1026,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <label className="block text-sm font-bold text-stone-900 mb-2">CHI NHÁNH LẬP HỢP ĐỒNG *</label>
                 <select required={!editing} value={String(formData.ChiNhanh || '')} onChange={e => setFormData(prev => ({...prev, ChiNhanh: e.target.value}))} className="w-full rounded-lg border-2 border-stone-400 bg-white p-3 text-base">
                   <option value="HP_DONG_XOAI">HP Đồng Xoài</option>
-                  <option value="HP_LUMA">Luma</option>
+                  <option value="HP_BINH_LONG">Bình Long</option>
                 </select>
               </section>
             )}
@@ -1120,7 +1120,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                   <label className="block text-sm font-bold text-stone-900 mb-2">CHI NHÁNH THU / CHI *</label>
                   <select required={!editing} value={String(formData.ChiNhanh || '')} onChange={e => setFormData(prev => ({...prev, ChiNhanh: e.target.value}))} className="w-full rounded-lg border-2 border-stone-400 bg-white p-3 text-base">
                     <option value="HP_DONG_XOAI">HP Đồng Xoài</option>
-                    <option value="HP_LUMA">Luma</option>
+                    <option value="HP_BINH_LONG">Bình Long</option>
                   </select>
                 </section>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
