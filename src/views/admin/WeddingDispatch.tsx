@@ -80,12 +80,12 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
       const payload = { ...form, ThoiLuong:Number(form.ThoiLuong||180), NguoiTaoID: currentUser.NhanVienID, NguoiTao:currentUser.HoTen, CapNhatBoi:currentUser.HoTen, CapNhatLuc:new Date().toISOString() };
       if (editing) await api.quanLy.update(editing.QuanLyID,payload);
       else await api.quanLy.create('LICH_CUOI',payload);
-      setShowForm(false); setEditing(null); await load();
+      setShowForm(false); setEditing(null); await load(); window.dispatchEvent(new Event('hp:notifications-refresh'));
     } catch(e:any) { setError(e?.message || 'Không lưu được lịch.'); }
     finally { setSaving(false); }
   };
   const updateStatus = async (r:QuanLyRecord, status:string) => {
-    try { await api.quanLy.update(r.QuanLyID,{TrangThai:status,CapNhatBoi:currentUser.HoTen,CapNhatLuc:new Date().toISOString()}); await load(); }
+    try { await api.quanLy.update(r.QuanLyID,{TrangThai:status,CapNhatBoi:currentUser.HoTen,CapNhatLuc:new Date().toISOString()}); await load(); window.dispatchEvent(new Event('hp:notifications-refresh')); }
     catch(e:any) { alert(e?.message || 'Không cập nhật được trạng thái.'); }
   };
   const dueSoon = filtered.filter(r => r.DuLieu?.TrangThai !== 'Hoàn thành' && r.DuLieu?.TrangThai !== 'Đã hủy' && r.DuLieu?.Ngay && r.DuLieu.Ngay >= today() && r.DuLieu.Ngay <= new Date(Date.now()+3*86400000).toISOString().slice(0,10));
