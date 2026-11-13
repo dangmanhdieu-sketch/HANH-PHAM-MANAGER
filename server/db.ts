@@ -1088,9 +1088,21 @@ class DatabaseService {
         const updatedAt = new Date().toISOString();
         for (const item of batchItems) {
           const ref = collection.doc(item.id);
+          let safeRecord: any = undefined;
+          if (!item.deleted) {
+            // Firestore's gRPC serializer can reject non-plain nested entities
+            // (for example objects carrying custom prototypes). Normalize the
+            // sanitized record through JSON before sending it to Firestore.
+            const sanitized = sanitizeFirestoreValue(item.record);
+            try {
+              safeRecord = JSON.parse(JSON.stringify(sanitized));
+            } catch (serializationError: any) {
+              throw new Error(`[Firebase] Cannot serialize ${collectionName} record ${item.id}: ${serializationError?.message || serializationError}`);
+            }
+          }
           transaction.set(ref, item.deleted
             ? { deleted: true, updatedAt }
-            : { deleted: false, record: sanitizeFirestoreValue(item.record), updatedAt }, { merge: false });
+            : { deleted: false, record: safeRecord, updatedAt }, { merge: false });
         }
       });
     }
