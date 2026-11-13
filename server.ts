@@ -870,7 +870,7 @@ app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => 
     if (!['THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'LICH_CUOI'].includes(module)) {
       return res.status(403).json({ error: 'Bạn không có quyền xem phân hệ dữ liệu này.' });
     }
-    records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
+    if (module !== 'LICH_CUOI') records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
   }
 
   return res.json(records);
