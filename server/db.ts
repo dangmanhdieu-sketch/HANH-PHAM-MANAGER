@@ -735,7 +735,7 @@ class DatabaseService {
           console.info('[Firebase] Loaded incremental HOAHONG deltas:', this.hoaHongDirtyIds.size);
           this.db.AUDIT_LOG = await this.loadRecordMutationDeltas(rootRef, 'auditLogMutations', this.db.AUDIT_LOG || [], 'LogID', 800);
           this.db.QUAN_LY = await this.loadRecordMutationDeltas(rootRef, 'quanLyMutations', this.db.QUAN_LY || [], 'QuanLyID');
-          this.db.CHAMCONG = await this.loadRecordMutationDeltas(rootRef, 'chamCongMutations', this.db.CHAMCONG || [], 'ChamCongID');
+          this.db.CHAMCONG = await this.loadRecordMutationDeltas(rootRef, 'chamCongMutations', (this.db.CHAMCONG || []) as any, 'ChamCongID') as any;
           this.chamCongDirtyIds.clear();
           this.chamCongDeletedIds.clear();
           this.auditDirtyIds.clear();
