@@ -283,6 +283,8 @@ class DatabaseService {
   private hoaHongDeletedIds = new Set<string>();
   // Append/update-only records are persisted separately so a small approval never rewrites multi-megabyte tables.
   private auditDirtyIds = new Set<string>();
+  private chamCongDirtyIds = new Set<string>();
+  private chamCongDeletedIds = new Set<string>();
   private quanLyDirtyIds = new Set<string>();
   private quanLyDeletedIds = new Set<string>();
   private hoaHongRecordStorageEnabled = false;
@@ -733,6 +735,9 @@ class DatabaseService {
           console.info('[Firebase] Loaded incremental HOAHONG deltas:', this.hoaHongDirtyIds.size);
           this.db.AUDIT_LOG = await this.loadRecordMutationDeltas(rootRef, 'auditLogMutations', this.db.AUDIT_LOG || [], 'LogID', 800);
           this.db.QUAN_LY = await this.loadRecordMutationDeltas(rootRef, 'quanLyMutations', this.db.QUAN_LY || [], 'QuanLyID');
+          this.db.CHAMCONG = await this.loadRecordMutationDeltas(rootRef, 'chamCongMutations', this.db.CHAMCONG || [], 'ChamCongID');
+          this.chamCongDirtyIds.clear();
+          this.chamCongDeletedIds.clear();
           this.auditDirtyIds.clear();
           this.quanLyDirtyIds.clear();
           this.quanLyDeletedIds.clear();
@@ -1103,7 +1108,7 @@ class DatabaseService {
   private getChangedFirestoreTables(): (typeof this.firestoreTables)[number][] {
     return this.firestoreTables.filter((table) => {
       // High-churn/history tables use record-level deltas, never full-table rewrites.
-      if (table === 'HOAHONG' || table === 'AUDIT_LOG' || table === 'QUAN_LY') return false;
+      if (table === 'HOAHONG' || table === 'AUDIT_LOG' || table === 'QUAN_LY' || table === 'CHAMCONG') return false;
       const current = JSON.stringify((this.db as any)[table]);
       return current !== this.firestorePersistedSnapshots[table];
     });
@@ -1338,6 +1343,7 @@ class DatabaseService {
           await this.persistToFirestoreNow(changedTables);
         }
         if (hoaHongChanged) await this.persistHoaHongMutationDeltas();
+        if (this.chamCongDirtyIds.size > 0 || this.chamCongDeletedIds.size > 0) await this.persistRecordMutationDeltas('chamCongMutations', this.chamCongDirtyIds, this.chamCongDeletedIds, this.db.CHAMCONG as any, 'ChamCongID');
         if (this.auditDirtyIds.size > 0) await this.persistRecordMutationDeltas('auditLogMutations', this.auditDirtyIds, new Set<string>(), this.db.AUDIT_LOG as any, 'LogID');
         if (this.quanLyDirtyIds.size > 0 || this.quanLyDeletedIds.size > 0) await this.persistRecordMutationDeltas('quanLyMutations', this.quanLyDirtyIds, this.quanLyDeletedIds, this.db.QUAN_LY as any, 'QuanLyID');
         console.info('[PERF] firestore-mutation-save', {
@@ -1718,6 +1724,8 @@ class DatabaseService {
     record.GhiChuDuyet = note;
     record.NguoiDuyetGiaiTrinh = admin.HoTen;
     record.NgayDuyetGiaiTrinh = new Date().toISOString();
+    this.chamCongDirtyIds.add(record.ChamCongID);
+    this.chamCongDeletedIds.delete(record.ChamCongID);
     this.save();
     this.logAudit(admin.HoTen, admin.Email, 'Duyệt giải trình chấm công', decision + ': ' + record.HoTen + ' ngày ' + record.Ngay);
     return record;
@@ -1728,6 +1736,8 @@ class DatabaseService {
     const index = this.db.CHAMCONG.findIndex((cc) => cc.ChamCongID === id);
     if (index < 0) return false;
     const deleted = this.db.CHAMCONG.splice(index, 1)[0];
+    this.chamCongDirtyIds.delete(deleted.ChamCongID);
+    this.chamCongDeletedIds.add(deleted.ChamCongID);
     this.refreshKPIs();
     this.save();
     this.logAudit('Admin', '', 'Xóa chấm công', 'Xóa bản ghi chấm công ' + deleted.HoTen + ' (' + deleted.NhanVienID + ') ngày ' + deleted.Ngay);
@@ -1838,6 +1848,8 @@ class DatabaseService {
       if (data.ghiChu || policyNote) record.GhiChu = [data.ghiChu, policyNote].filter(Boolean).join(' | ');
     }
 
+    this.chamCongDirtyIds.add(record.ChamCongID);
+    this.chamCongDeletedIds.delete(record.ChamCongID);
     this.refreshKPIs();
     this.save();
 
@@ -1897,6 +1909,9 @@ class DatabaseService {
 
     const diffHours = Math.max(0, (outTotalSec - inTotalSec) / 3600);
     record.SoGioLam = Math.round(diffHours * 100) / 100;
+
+    this.chamCongDirtyIds.add(record.ChamCongID);
+    this.chamCongDeletedIds.delete(record.ChamCongID);
 
     // 20:30 is the standard reference. Early checkout is recorded for Admin review
     // and does not independently create a payroll deduction.
