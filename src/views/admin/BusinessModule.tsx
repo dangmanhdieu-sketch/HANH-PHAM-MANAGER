@@ -89,6 +89,16 @@ const CONFIG: Record<QuanLyModule, ModuleConfig> = {
       { key: 'GhiChu', label: 'Ghi chú' },
     ],
   },
+  LICH_CUOI: {
+    title: 'Lịch cưới & Điều phối',
+    icon: Calendar,
+    fields: [
+      { key: 'DichVu', label: 'Dịch vụ' },
+      { key: 'Ngay', label: 'Ngày thực hiện', type: 'date' },
+      { key: 'Gio', label: 'Giờ bắt đầu' },
+      { key: 'KhachHang', label: 'Khách hàng' },
+    ],
+  },
   THU_VAY: {
     title: 'Hồ sơ thử và chọn trang phục',
     icon: FileText,
