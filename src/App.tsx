@@ -29,6 +29,7 @@ import { AttendanceManagement } from './views/admin/AttendanceManagement';
 import { PayrollManagement } from './views/admin/PayrollManagement';
 import { AuditAndAutomation } from './views/admin/AuditAndAutomation';
 import { BusinessModule } from './views/admin/BusinessModule';
+import { WeddingDispatch } from './views/admin/WeddingDispatch';
 const BridalInventory = React.lazy(() => import('./views/admin/BridalInventory').then(module => ({ default: module.BridalInventory })));
 
 // Employee Views
@@ -231,6 +232,7 @@ function AppContent() {
         case 'congviec':
         case 'hopdong':
         case 'thuchi':
+        case 'lichcuoi':
           setStaffList(await api.staff.getAll());
           return;
         default:
@@ -280,6 +282,7 @@ function AppContent() {
         return;
       case 'thuchi_me':
       case 'hopdong_me':
+      case 'lichcuoi':
         setStaffList(await api.staff.getAll());
         return;
       default:
@@ -548,6 +551,7 @@ function AppContent() {
             {currentTab === 'congviec' && <BusinessModule module="CONG_VIEC" staffList={staffList} onRefresh={() => refreshTabData(currentTab)} />}
             {currentTab === 'hopdong' && <BusinessModule module="HOP_DONG" staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
             {currentTab === 'thuchi' && <BusinessModule module="THU_CHI" staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
+            {currentTab === 'lichcuoi' && <WeddingDispatch staffList={staffList} currentUser={currentUser} />}
             {currentTab === 'thietlap' && (
               <AuditAndAutomation onRefreshAll={refreshAllData} onNavigateToTab={setCurrentTab} />
             )}
@@ -608,6 +612,8 @@ function AppContent() {
                 onRefresh={() => refreshTabData(currentTab)}
               />
             )}
+
+            {currentTab === 'lichcuoi' && currentUser.Quyen !== 'Freelancer' && <WeddingDispatch staffList={staffList} currentUser={currentUser} />}
 
             {currentTab === 'hopdong_me' && currentUser.Quyen === 'Sale' && (
               <BusinessModule
