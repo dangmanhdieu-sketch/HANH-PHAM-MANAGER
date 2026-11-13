@@ -544,7 +544,7 @@ app.get('/api/chamcong/today', authenticateToken, (req: AuthRequest, res: Respon
   }
 });
 
-app.post('/api/chamcong/checkin', authenticateToken, (req: AuthRequest, res: Response) => {
+app.post('/api/chamcong/checkin', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { anh, gps, ghiChu, deviceTime, deviceTimeZone } = req.body;
     if (!anh) {
@@ -575,7 +575,7 @@ app.post('/api/chamcong/checkin', authenticateToken, (req: AuthRequest, res: Res
   }
 });
 
-app.post('/api/chamcong/checkout', authenticateToken, (req: AuthRequest, res: Response) => {
+app.post('/api/chamcong/checkout', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { anh, gps, ghiChu, deviceTime, deviceTimeZone } = req.body;
     if (!anh) {
