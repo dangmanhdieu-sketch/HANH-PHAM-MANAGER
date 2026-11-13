@@ -1790,6 +1790,17 @@ class DatabaseService {
     return { AnhCheckIn: record.AnhCheckIn, AnhCheckOut: record.AnhCheckOut };
   }
 
+  public updateChamCongPhotos(id: string, photos: Partial<Pick<ChamCong, 'AnhCheckIn' | 'AnhCheckOut'>>): boolean {
+    const record = this.db.CHAMCONG.find((item) => item.ChamCongID === id);
+    if (!record) return false;
+    if (photos.AnhCheckIn !== undefined) record.AnhCheckIn = photos.AnhCheckIn;
+    if (photos.AnhCheckOut !== undefined) record.AnhCheckOut = photos.AnhCheckOut;
+    this.chamCongDirtyIds.add(record.ChamCongID);
+    this.chamCongDeletedIds.delete(record.ChamCongID);
+    this.save();
+    return true;
+  }
+
   public checkIn(
     user: NhanVien,
     data: {
