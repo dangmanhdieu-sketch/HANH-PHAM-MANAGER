@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Clock, Calendar, MapPin, Eye, CheckCircle, AlertTriangle } from 'lucide-react';
 import type { ChamCong } from '../../types';
+import { api } from '../../api';
 
 interface MyAttendanceProps {
   attendanceList: ChamCong[];
@@ -101,13 +102,22 @@ export const MyAttendance: React.FC<MyAttendanceProps> = ({ attendanceList }) =>
                       {cc.CheckIn || '--:--:--'}
                     </td>
                     <td className="px-5 py-4">
-                      {cc.AnhCheckIn ? (
+                      {(cc.HasCheckInPhoto || cc.AnhCheckIn) ? (
                         <button
                           type="button"
-                          onClick={() => setViewPhoto(cc.AnhCheckIn!)}
-                          className="w-8 h-8 rounded-lg overflow-hidden border border-stone-200"
+                          onClick={async () => {
+                            try {
+                              const photos = await api.attendance.getPhotos(cc.ChamCongID);
+                              if (photos.AnhCheckIn) setViewPhoto(photos.AnhCheckIn);
+                              else alert('Không tìm thấy ảnh check-in.');
+                            } catch (error: any) {
+                              alert(error?.message || 'Không tải được ảnh chấm công.');
+                            }
+                          }}
+                          className="w-8 h-8 rounded-lg overflow-hidden border border-stone-200 inline-flex items-center justify-center text-stone-600"
+                          title="Xem ảnh check-in"
                         >
-                          <img src={cc.AnhCheckIn} alt="Selfie" className="w-full h-full object-cover" />
+                          <Eye className="w-4 h-4" />
                         </button>
                       ) : (
                         <span className="text-stone-300">--</span>
