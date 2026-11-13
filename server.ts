@@ -962,7 +962,7 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
     if (module === 'LICH_CUOI') {
       const allowedServices = ['Chụp ảnh cưới', 'Chụp ảnh cổng', 'Ngày cưới', 'Giao album', 'Makeup ngày cưới', 'Chụp phóng sự cưới', 'Thử váy cưới'];
       if (!allowedServices.includes(String(payload.DichVu || ''))) return res.status(400).json({ error: 'Loại dịch vụ lịch cưới không hợp lệ.' });
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(payload.Ngay || '')) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(payload.Gio || ''))) return res.status(400).json({ error: 'Vui lòng chọn ngày và giờ hợp lệ.' });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(payload.Ngay || '')) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(payload.Gio || ''))) return res.status(400).json({ error: 'Vui lòng chọn ngày và giờ hợp lệ.' });
       if (!String(payload.KhachHang || '').trim()) return res.status(400).json({ error: 'Vui lòng nhập tên khách hàng.' });
       const duration = Math.max(30, Math.min(1440, Number(payload.ThoiLuong || 180)));
       payload.ThoiLuong = duration;
@@ -1027,7 +1027,7 @@ app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response)
     if (current.Module === 'LICH_CUOI') {
       const merged = { ...current.DuLieu, ...changes };
       const allowedServices = ['Chụp ảnh cưới', 'Chụp ảnh cổng', 'Ngày cưới', 'Giao album', 'Makeup ngày cưới', 'Chụp phóng sự cưới', 'Thử váy cưới'];
-      if (!allowedServices.includes(String(merged.DichVu || '')) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(String(merged.Ngay || '')) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(merged.Gio || '')) || !String(merged.KhachHang || '').trim()) {
+      if (!allowedServices.includes(String(merged.DichVu || '')) || !/^\d{4}-\d{2}-\d{2}$/.test(String(merged.Ngay || '')) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(merged.Gio || '')) || !String(merged.KhachHang || '').trim()) {
         return res.status(400).json({ error: 'Thông tin lịch cưới chưa hợp lệ.' });
       }
       if (!['Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'].includes(String(merged.TrangThai))) return res.status(400).json({ error: 'Trạng thái lịch không hợp lệ.' });
