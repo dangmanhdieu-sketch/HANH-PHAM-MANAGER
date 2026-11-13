@@ -497,6 +497,48 @@ app.get('/api/chamcong/:id/photos', authenticateToken, async (req: AuthRequest, 
   }
 });
 
+app.post('/api/chamcong/migrate-photos', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const records = dbService.getChamCongList({ date: req.body?.date, month: req.body?.month });
+    const limit = Math.min(Math.max(Number(req.body?.limit) || 10, 1), 20);
+    let scanned = 0;
+    let migrated = 0;
+    let failed = 0;
+    const errors: Array<{ id: string; field: string; error: string }> = [];
+    for (const item of records) {
+      if (migrated >= limit) break;
+      const photos = dbService.getChamCongPhotos(item.ChamCongID);
+      if (!photos) continue;
+      for (const field of ['AnhCheckIn', 'AnhCheckOut'] as const) {
+        const value = photos[field] || '';
+        if (!value.startsWith('data:image/')) continue;
+        scanned++;
+        try {
+          const date = String(item.Ngay || new Date().toISOString().slice(0, 10));
+          const uploaded = await uploadAttendancePhoto(value, `${field.toLowerCase()}-${item.NhanVienID}-${item.ChamCongID}.jpg`, date);
+          const updated = dbService.updateChamCongPhotos(item.ChamCongID, { [field]: uploaded.photoRef });
+          if (!updated) throw new Error('Không tìm thấy bản ghi chấm công sau khi upload.');
+          await dbService.saveAndVerify();
+          migrated++;
+          photos[field] = uploaded.photoRef;
+        } catch (error: any) {
+          failed++;
+          errors.push({ id: item.ChamCongID, field, error: error?.message || String(error) });
+          console.error('[ATTENDANCE] Legacy photo migration failed:', item.ChamCongID, field, error);
+        }
+      }
+      if (migrated >= limit) break;
+    }
+    return res.json({ scanned, migrated, failed, remainingInSelection: records.reduce((count, item) => {
+      const p = dbService.getChamCongPhotos(item.ChamCongID);
+      return count + Number(Boolean(p?.AnhCheckIn?.startsWith('data:image/'))) + Number(Boolean(p?.AnhCheckOut?.startsWith('data:image/')));
+    }, 0), errors });
+  } catch (error: any) {
+    console.error('[ATTENDANCE] Legacy photo migration batch failed:', error);
+    return res.status(500).json({ error: error?.message || 'Không thể chuyển ảnh chấm công cũ.' });
+  }
+});
+
 app.delete('/api/chamcong/:id', authenticateToken, (req: AuthRequest, res: Response) => {
   if (req.user!.Quyen !== 'Admin') {
     return res.status(403).json({ error: 'Chỉ Admin mới có quyền xóa chấm công.' });
