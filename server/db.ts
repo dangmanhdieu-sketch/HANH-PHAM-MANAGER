@@ -1049,7 +1049,12 @@ class DatabaseService {
       }
       byId.set(doc.id, record);
     }
-    return Array.from(byId.values());
+    const merged = Array.from(byId.values());
+    if (limit) {
+      merged.sort((a, b) => String(b['ThoiGian'] || '').localeCompare(String(a['ThoiGian'] || '')));
+      return merged.slice(0, limit);
+    }
+    return merged;
   }
 
   private async persistRecordMutationDeltas(
@@ -1368,7 +1373,9 @@ class DatabaseService {
     // Keep the newest 800 audit entries so the audit table cannot block
     // unrelated operations such as approving payroll/commission.
     if (this.db.AUDIT_LOG.length > 800) {
-      this.db.AUDIT_LOG.length = 800;
+      const removedLogs = this.db.AUDIT_LOG.splice(800);
+      // Do not try to persist records trimmed from the in-memory rolling log.
+      removedLogs.forEach((item) => this.auditDirtyIds.delete(String(item.LogID)));
     }
     this.save();
     return log;
