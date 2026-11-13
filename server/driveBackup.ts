@@ -1,4 +1,5 @@
 import { gzipSync } from 'node:zlib';
+import { createCipheriv, randomBytes, scryptSync } from 'node:crypto';
 import { dbService } from './db.ts';
 
 const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '1YL_HvA_D_FGPn2dwqolkWhuQPwF918qX';
@@ -6,6 +7,19 @@ const BACKUP_FOLDER_NAME = '00 - SAO LUU DU LIEU';
 const TIME_ZONE = process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh';
 const DAILY_HOUR = 2;
 const DAILY_MINUTE = 15;
+const BACKUP_MAGIC = Buffer.from('HPB1');
+
+function encryptBackup(compressed: Buffer): Buffer {
+  const passphrase = requiredEnv('GOOGLE_DRIVE_BACKUP_ENCRYPTION_KEY');
+  if (passphrase.length < 24) throw new Error('GOOGLE_DRIVE_BACKUP_ENCRYPTION_KEY phải có ít nhất 24 ký tự.');
+  const salt = randomBytes(16);
+  const iv = randomBytes(12);
+  const key = scryptSync(passphrase, salt, 32);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const ciphertext = Buffer.concat([cipher.update(compressed), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([BACKUP_MAGIC, salt, iv, tag, ciphertext]);
+}
 
 type GoogleToken = { access_token?: string; expires_in?: number; error?: string; error_description?: string };
 let cachedToken: { value: string; expiresAt: number } | null = null;
@@ -98,7 +112,7 @@ async function createBackup() {
   await dbService.waitUntilReady();
   const now = new Date();
   const date = localParts(now).date;
-  const filename = `HANH_PHAM_MANAGER_${date}.json.gz`;
+  const filename = `HANH_PHAM_MANAGER_${date}.json.gz.enc`;
   const token = await getToken();
   const folderId = await findOrCreateBackupFolder(token);
   if (await alreadyUploaded(filename, folderId, token)) {
@@ -133,9 +147,10 @@ async function createBackup() {
     },
   };
   const compressed = gzipSync(Buffer.from(JSON.stringify(payload), 'utf8'), { level: 6 });
-  const uploaded = await uploadPrivateBackup(filename, folderId, compressed, token);
+  const encrypted = encryptBackup(compressed);
+  const uploaded = await uploadPrivateBackup(filename, folderId, encrypted, token);
   console.info('[Drive Backup] Upload verified by Drive API:', {
-    filename, fileId: uploaded.id, bytes: compressed.length, counts: payload.counts,
+    filename, fileId: uploaded.id, bytes: encrypted.length, counts: payload.counts,
   });
 }
 
