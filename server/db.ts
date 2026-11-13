@@ -990,14 +990,22 @@ class DatabaseService {
     }
     for (const id of this.hoaHongDeletedIds) writes.push({ id, deleted: true });
     if (!writes.length) return;
-    for (const item of writes) {
+    // Batch changed commission documents instead of opening one Firestore
+    // transaction per record. A single approval can update the commission row
+    // plus several linked rows for the same employee/month.
+    const BATCH_SIZE = 400; // Leave headroom below Firestore's 500-write limit.
+    for (let offset = 0; offset < writes.length; offset += BATCH_SIZE) {
+      const batchItems = writes.slice(offset, offset + BATCH_SIZE);
       await this.firestore.runTransaction(async (transaction) => {
         await this.assertFirestoreWriterLease(transaction);
-        const ref = collection.doc(item.id);
-        if (item.deleted) {
-          transaction.set(ref, { deleted: true, updatedAt: new Date().toISOString() }, { merge: false });
-        } else {
-          transaction.set(ref, { deleted: false, record: sanitizeFirestoreValue(item.record), updatedAt: new Date().toISOString() }, { merge: false });
+        const updatedAt = new Date().toISOString();
+        for (const item of batchItems) {
+          const ref = collection.doc(item.id);
+          if (item.deleted) {
+            transaction.set(ref, { deleted: true, updatedAt }, { merge: false });
+          } else {
+            transaction.set(ref, { deleted: false, record: sanitizeFirestoreValue(item.record), updatedAt }, { merge: false });
+          }
         }
       });
     }
