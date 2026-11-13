@@ -80,6 +80,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'hoahong_me', label: 'Hoa hồng', shortLabel: 'Hoa hồng', icon: Award },
     { id: 'danhba_me', label: 'Danh bạ nhân viên', shortLabel: 'Danh bạ', icon: Contact },
     { id: 'thuchi_me', label: 'Thu chi của tôi', shortLabel: 'Thu chi', icon: Wallet },
+    { id: 'lichcuoi', label: 'Lịch cưới & Điều phối', shortLabel: 'Lịch cưới', icon: CalendarDays },
   ];
 
   const saleTabs = [
