@@ -134,6 +134,15 @@ function AppContent() {
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, []);
 
+  useEffect(() => {
+    const refreshNotifications = async () => {
+      try { setNotifications(await api.dashboard.getNotifications()); }
+      catch (error) { console.error('Không thể làm mới thông báo:', error); }
+    };
+    window.addEventListener('hp:notifications-refresh', refreshNotifications);
+    return () => window.removeEventListener('hp:notifications-refresh', refreshNotifications);
+  }, []);
+
   // Initialize Auth
   useEffect(() => {
     const storedUser = authStorage.getUser();
