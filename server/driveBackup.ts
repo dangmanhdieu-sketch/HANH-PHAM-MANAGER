@@ -26,6 +26,7 @@ let cachedToken: { value: string; expiresAt: number } | null = null;
 let timer: NodeJS.Timeout | null = null;
 let running = false;
 let lastAttemptKey = '';
+let firstRunPending = true;
 
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -161,12 +162,13 @@ export function startDailyDriveBackup() {
     if (running) return;
     const local = localParts();
     const key = local.date;
-    if (local.hour < DAILY_HOUR || (local.hour === DAILY_HOUR && local.minute < DAILY_MINUTE)) return;
+    if (!firstRunPending && (local.hour < DAILY_HOUR || (local.hour === DAILY_HOUR && local.minute < DAILY_MINUTE))) return;
     if (lastAttemptKey === key) return;
     running = true;
     lastAttemptKey = key;
     try {
       await createBackup();
+      firstRunPending = false;
     } catch (error: any) {
       // Permit retry on the next scheduler tick after transient API/network errors.
       lastAttemptKey = '';
