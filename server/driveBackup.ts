@@ -94,9 +94,9 @@ async function alreadyUploaded(name: string, folderId: string, token: string): P
 
 async function uploadPrivateBackup(name: string, folderId: string, compressed: Buffer, token: string) {
   const boundary = 'hp_backup_' + Date.now();
-  const metadata = { name, mimeType: 'application/gzip', parents: [folderId], description: 'HẠNH PHẠM MANAGER daily Firestore backup. Private; contains confidential business and employee records.' };
+  const metadata = { name, mimeType: 'application/octet-stream', parents: [folderId], description: 'HẠNH PHẠM MANAGER daily Firestore backup. Private; contains confidential business and employee records.' };
   const body = Buffer.concat([
-    Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: application/gzip\r\n\r\n`),
+    Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: application/octet-stream\r\n\r\n`),
     compressed,
     Buffer.from(`\r\n--${boundary}--`),
   ]);
