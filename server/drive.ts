@@ -107,3 +107,57 @@ export async function uploadInventoryImage(dataUrl: string, fileName: string, fo
   }
   return { fileId: String(file.id), imageUrl: 'https://drive.google.com/uc?export=view&id=' + encodeURIComponent(file.id), webViewLink: file.webViewLink || '', folderName };
 }
+
+
+/**
+ * Attendance photos are private Drive files. The returned marker is stored in
+ * Firestore; photo bytes are fetched only through the authenticated API.
+ */
+export async function uploadAttendancePhoto(dataUrl: string, fileName: string, date: string) {
+  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl || '');
+  if (!match) throw new Error('Ảnh chấm công không đúng định dạng JPG, PNG hoặc WebP.');
+  const mimeType = match[1];
+  const bytes = Buffer.from(match[2], 'base64');
+  if (!bytes.length || bytes.length > 8 * 1024 * 1024) throw new Error('Ảnh chấm công sau nén phải nhỏ hơn 8 MB.');
+  const parts = String(date || '').match(/^(\d{4})-(\d{2})-\d{2}$/);
+  if (!parts) throw new Error('Ngày chấm công không hợp lệ khi lưu ảnh.');
+  const token = await accessToken();
+  const attendanceRoot = await ensureFolder('CHẤM CÔNG', ROOT_FOLDER_ID, token);
+  const yearFolder = await ensureFolder(parts[1], attendanceRoot, token);
+  const monthFolder = await ensureFolder(parts[2], yearFolder, token);
+  const safeName = String(fileName || 'attendance.jpg').replace(/[^\w.-]/g, '_').slice(0, 180);
+  const metadata = { name: safeName, mimeType, parents: [monthFolder] };
+  const boundary = 'hp_attendance_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+  const body = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`),
+    bytes,
+    Buffer.from(`\r\n--${boundary}--`),
+  ]);
+  const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
+    body,
+  });
+  const raw = await response.text();
+  let file: any = {};
+  try { file = raw ? JSON.parse(raw) : {}; } catch { /* invalid response handled below */ }
+  if (!response.ok || !file.id) throw new Error(file.error?.message || `Không thể lưu ảnh chấm công lên Drive (HTTP ${response.status}).`);
+  // Deliberately do not create an anyone permission: employee photos remain private.
+  return { photoRef: 'drive:' + String(file.id), fileId: String(file.id), folderPath: `CHẤM CÔNG/${parts[1]}/${parts[2]}` };
+}
+
+export async function getAttendancePhotoDataUrl(photoRef: string): Promise<string | null> {
+  const match = /^drive:([A-Za-z0-9_-]+)$/.exec(String(photoRef || ''));
+  if (!match) return photoRef || null; // Backward-compatible legacy data URL.
+  const token = await accessToken();
+  const response = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(match[1]) + '?alt=media', {
+    headers: { Authorization: 'Bearer ' + token },
+  });
+  if (!response.ok) {
+    const raw = await response.text();
+    throw new Error(`Không đọc được ảnh chấm công trên Drive (HTTP ${response.status}): ${raw.slice(0, 300)}`);
+  }
+  const contentType = response.headers.get('content-type') || 'image/jpeg';
+  const bytes = Buffer.from(await response.arrayBuffer());
+  return `data:${contentType};base64,${bytes.toString('base64')}`;
+}
