@@ -281,6 +281,10 @@ class DatabaseService {
   // history for every approval/create/delete operation.
   private hoaHongDirtyIds = new Set<string>();
   private hoaHongDeletedIds = new Set<string>();
+  // Append/update-only records are persisted separately so a small approval never rewrites multi-megabyte tables.
+  private auditDirtyIds = new Set<string>();
+  private quanLyDirtyIds = new Set<string>();
+  private quanLyDeletedIds = new Set<string>();
   private hoaHongRecordStorageEnabled = false;
   private firestore: Firestore | null = null;
   private firestoreEnabled = false;
@@ -727,6 +731,11 @@ class DatabaseService {
           // Apply only incremental commission changes; the historical legacy table stays untouched.
           await this.loadHoaHongMutationDeltas(rootRef);
           console.info('[Firebase] Loaded incremental HOAHONG deltas:', this.hoaHongDirtyIds.size);
+          this.db.AUDIT_LOG = await this.loadRecordMutationDeltas(rootRef, 'auditLogMutations', this.db.AUDIT_LOG || [], 'LogID', 800);
+          this.db.QUAN_LY = await this.loadRecordMutationDeltas(rootRef, 'quanLyMutations', this.db.QUAN_LY || [], 'QuanLyID');
+          this.auditDirtyIds.clear();
+          this.quanLyDirtyIds.clear();
+          this.quanLyDeletedIds.clear();
           this.captureFirestoreSnapshots();
 
           // Upgrade any legacy table document that is already too large for
@@ -1018,6 +1027,68 @@ class DatabaseService {
     console.info('[Firebase] HOAHONG incremental mutations committed:', writes.length);
   }
 
+  private async loadRecordMutationDeltas<T extends Record<string, any>>(
+    rootRef: FirebaseFirestore.DocumentReference,
+    collectionName: string,
+    baseRecords: T[],
+    idField: string,
+    limit?: number
+  ): Promise<T[]> {
+    let query: FirebaseFirestore.Query = rootRef.collection(collectionName);
+    if (limit) query = query.orderBy('updatedAt', 'desc').limit(limit);
+    const snapshot = await query.get();
+    const byId = new Map(baseRecords.map((record) => [String(record[idField]), record]));
+    // For limited append-only logs, apply oldest-to-newest so the final map keeps the newest state.
+    const docs = limit ? [...snapshot.docs].reverse() : snapshot.docs;
+    for (const doc of docs) {
+      const payload = doc.data() || {};
+      if (payload.deleted === true) { byId.delete(doc.id); continue; }
+      const record = restoreFirestoreValue(payload.record) as T | undefined;
+      if (!record || String(record[idField] || '') !== doc.id) {
+        throw new Error(`[Firebase] Invalid ${collectionName} mutation delta ${doc.id}; refusing unsafe startup.`);
+      }
+      byId.set(doc.id, record);
+    }
+    return Array.from(byId.values());
+  }
+
+  private async persistRecordMutationDeltas(
+    collectionName: string,
+    dirtyIds: Set<string>,
+    deletedIds: Set<string>,
+    records: Array<Record<string, any>>,
+    idField: string
+  ): Promise<void> {
+    if (!this.firestore) throw new Error(`[Firebase] Firestore unavailable for ${collectionName} delta writes.`);
+    const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
+    const collection = rootRef.collection(collectionName);
+    const writes: Array<{ id: string; record?: Record<string, any>; deleted: boolean }> = [];
+    for (const id of dirtyIds) {
+      const record = records.find((item) => String(item[idField]) === id);
+      if (!record) throw new Error(`[Firebase] Dirty ${collectionName} record ${id} is missing; refusing partial write.`);
+      writes.push({ id, record, deleted: false });
+    }
+    for (const id of deletedIds) writes.push({ id, deleted: true });
+    if (!writes.length) return;
+    const BATCH_SIZE = 400;
+    for (let offset = 0; offset < writes.length; offset += BATCH_SIZE) {
+      const batchItems = writes.slice(offset, offset + BATCH_SIZE);
+      await this.firestore.runTransaction(async (transaction) => {
+        await this.assertFirestoreWriterLease(transaction);
+        const updatedAt = new Date().toISOString();
+        for (const item of batchItems) {
+          const ref = collection.doc(item.id);
+          transaction.set(ref, item.deleted
+            ? { deleted: true, updatedAt }
+            : { deleted: false, record: sanitizeFirestoreValue(item.record), updatedAt }, { merge: false });
+        }
+      });
+    }
+    dirtyIds.clear();
+    deletedIds.clear();
+    console.info(`[Firebase] ${collectionName} incremental mutations committed:`, writes.length);
+  }
+
   private captureFirestoreSnapshots(): void {
     for (const table of this.firestoreTables) {
       this.firestorePersistedSnapshots[table] = JSON.stringify((this.db as any)[table]);
@@ -1026,8 +1097,8 @@ class DatabaseService {
 
   private getChangedFirestoreTables(): (typeof this.firestoreTables)[number][] {
     return this.firestoreTables.filter((table) => {
-      // HOAHONG is persisted separately as changed records, never as a full history rewrite.
-      if (table === 'HOAHONG') return false;
+      // High-churn/history tables use record-level deltas, never full-table rewrites.
+      if (table === 'HOAHONG' || table === 'AUDIT_LOG' || table === 'QUAN_LY') return false;
       const current = JSON.stringify((this.db as any)[table]);
       return current !== this.firestorePersistedSnapshots[table];
     });
@@ -1262,6 +1333,8 @@ class DatabaseService {
           await this.persistToFirestoreNow(changedTables);
         }
         if (hoaHongChanged) await this.persistHoaHongMutationDeltas();
+        if (this.auditDirtyIds.size > 0) await this.persistRecordMutationDeltas('auditLogMutations', this.auditDirtyIds, new Set<string>(), this.db.AUDIT_LOG as any, 'LogID');
+        if (this.quanLyDirtyIds.size > 0 || this.quanLyDeletedIds.size > 0) await this.persistRecordMutationDeltas('quanLyMutations', this.quanLyDirtyIds, this.quanLyDeletedIds, this.db.QUAN_LY as any, 'QuanLyID');
         console.info('[PERF] firestore-mutation-save', {
           queueWaitMs,
           diffMs,
@@ -1290,6 +1363,7 @@ class DatabaseService {
       ThoiGian: new Date().toISOString(),
     };
     this.db.AUDIT_LOG.unshift(log);
+    this.auditDirtyIds.add(log.LogID);
     // Firestore stores each table in one document (1 MiB limit).
     // Keep the newest 800 audit entries so the audit table cannot block
     // unrelated operations such as approving payroll/commission.
@@ -2557,6 +2631,7 @@ class DatabaseService {
       TaoBoi: adminUser.HoTen,
     };
     this.db.QUAN_LY.unshift(record);
+    this.quanLyDirtyIds.add(record.QuanLyID);
     this.save();
     this.logAudit(adminUser.HoTen, adminUser.Email, `Tạo ${module}`, JSON.stringify(data || {}));
     return record;
@@ -2567,6 +2642,7 @@ class DatabaseService {
     if (!record) throw new Error('Không tìm thấy dữ liệu nghiệp vụ.');
     record.DuLieu = { ...record.DuLieu, ...(data || {}) };
     record.CapNhatLuc = new Date().toISOString();
+    this.quanLyDirtyIds.add(record.QuanLyID);
     this.save();
     this.logAudit(adminUser.HoTen, adminUser.Email, `Cập nhật ${record.Module}`, id);
     return record;
@@ -2576,6 +2652,8 @@ class DatabaseService {
     const index = (this.db.QUAN_LY || []).findIndex((x) => x.QuanLyID === id);
     if (index < 0) throw new Error('Không tìm thấy dữ liệu nghiệp vụ.');
     const [removed] = this.db.QUAN_LY.splice(index, 1);
+    this.quanLyDirtyIds.delete(removed.QuanLyID);
+    this.quanLyDeletedIds.add(removed.QuanLyID);
     this.save();
     this.logAudit(adminUser.HoTen, adminUser.Email, `Xóa ${removed.Module}`, id);
     return { message: 'Xóa dữ liệu thành công.' };
