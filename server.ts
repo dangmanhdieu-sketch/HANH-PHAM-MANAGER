@@ -8,7 +8,7 @@ import dotenv from 'dotenv';
 import { dbService } from './server/db.ts';
 import { inventoryService } from './server/inventory.ts';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { uploadInventoryImage, createGoogleDriveAuthorizationUrl, exchangeGoogleDriveCode } from './server/drive.ts';
+import { uploadInventoryImage, uploadAttendancePhoto, getAttendancePhotoDataUrl, createGoogleDriveAuthorizationUrl, exchangeGoogleDriveCode } from './server/drive.ts';
 import { automationManager } from './server/automation.ts';
 import type { NhanVien } from './src/types.ts';
 
@@ -475,16 +475,26 @@ app.get('/api/chamcong', authenticateToken, (req: AuthRequest, res: Response) =>
   })));
 });
 
-app.get('/api/chamcong/:id/photos', authenticateToken, (req: AuthRequest, res: Response) => {
-  const user = req.user!;
-  const record = dbService.getChamCongPhotos(req.params.id);
-  if (!record) return res.status(404).json({ error: 'Không tìm thấy bản ghi chấm công.' });
-  const attendance = dbService.getChamCongList().find((item) => item.ChamCongID === req.params.id);
-  if (!attendance) return res.status(404).json({ error: 'Không tìm thấy bản ghi chấm công.' });
-  if (user.Quyen !== 'Admin' && attendance.NhanVienID !== user.NhanVienID) {
-    return res.status(403).json({ error: 'Không có quyền xem ảnh chấm công này.' });
+app.get('/api/chamcong/:id/photos', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    const record = dbService.getChamCongPhotos(req.params.id);
+    if (!record) return res.status(404).json({ error: 'Không tìm thấy bản ghi chấm công.' });
+    const attendance = dbService.getChamCongList().find((item) => item.ChamCongID === req.params.id);
+    if (!attendance) return res.status(404).json({ error: 'Không tìm thấy bản ghi chấm công.' });
+    if (user.Quyen !== 'Admin' && attendance.NhanVienID !== user.NhanVienID) {
+      return res.status(403).json({ error: 'Không có quyền xem ảnh chấm công này.' });
+    }
+    const [AnhCheckIn, AnhCheckOut] = await Promise.all([
+      getAttendancePhotoDataUrl(record.AnhCheckIn || ''),
+      getAttendancePhotoDataUrl(record.AnhCheckOut || ''),
+    ]);
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.json({ AnhCheckIn, AnhCheckOut });
+  } catch (error: any) {
+    console.error('[ATTENDANCE] Photo read failed:', error);
+    return res.status(502).json({ error: error.message || 'Không tải được ảnh chấm công.' });
   }
-  return res.json(record);
 });
 
 app.delete('/api/chamcong/:id', authenticateToken, (req: AuthRequest, res: Response) => {
@@ -544,8 +554,12 @@ app.post('/api/chamcong/checkin', authenticateToken, (req: AuthRequest, res: Res
       return res.status(400).json({ error: 'Yêu cầu vị trí GPS khi Check-in.' });
     }
 
+    const attendanceDate = deviceTime && !Number.isNaN(new Date(deviceTime).getTime())
+      ? new Intl.DateTimeFormat('en-CA', { timeZone: deviceTimeZone || process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(deviceTime))
+      : new Intl.DateTimeFormat('en-CA', { timeZone: process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const storedPhoto = await uploadAttendancePhoto(String(anh), `checkin-${req.user!.NhanVienID}-${attendanceDate}.jpg`, attendanceDate);
     const record = dbService.checkIn(req.user!, {
-      anh,
+      anh: storedPhoto.photoRef,
       gps,
       ghiChu,
       deviceTime,
@@ -571,8 +585,12 @@ app.post('/api/chamcong/checkout', authenticateToken, (req: AuthRequest, res: Re
       return res.status(400).json({ error: 'Yêu cầu vị trí GPS khi Check-out.' });
     }
 
+    const attendanceDate = deviceTime && !Number.isNaN(new Date(deviceTime).getTime())
+      ? new Intl.DateTimeFormat('en-CA', { timeZone: deviceTimeZone || process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(deviceTime))
+      : new Intl.DateTimeFormat('en-CA', { timeZone: process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const storedPhoto = await uploadAttendancePhoto(String(anh), `checkout-${req.user!.NhanVienID}-${attendanceDate}.jpg`, attendanceDate);
     const record = dbService.checkOut(req.user!, {
-      anh,
+      anh: storedPhoto.photoRef,
       gps,
       ghiChu,
       deviceTime,
