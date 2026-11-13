@@ -241,7 +241,6 @@ function AppContent() {
         case 'congviec':
         case 'hopdong':
         case 'thuchi':
-        case 'lichcuoi':
           setStaffList(await api.staff.getAll());
           return;
         default:
@@ -291,7 +290,6 @@ function AppContent() {
         return;
       case 'thuchi_me':
       case 'hopdong_me':
-      case 'lichcuoi':
         setStaffList(await api.staff.getAll());
         return;
       default:
