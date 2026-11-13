@@ -21,6 +21,20 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+// Always derive the attendance day in the studio timezone, never UTC.
+// This prevents the dashboard from showing yesterday's unfinished session
+// after midnight in Vietnam and blocking today's check-in button.
+function getAppTodayDate(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((part) => part.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
 // High payload limit for camera photo uploads in base64
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
@@ -1430,7 +1444,7 @@ app.get('/api/thongke', authenticateToken, (req: AuthRequest, res: Response) => 
   if (user.Quyen === 'Admin') {
     return res.json({
       kpis: raw.THONGKE,
-      todayChamCong: raw.CHAMCONG.filter((cc) => cc.Ngay === new Date().toISOString().split('T')[0]),
+      todayChamCong: raw.CHAMCONG.filter((cc) => cc.Ngay === getAppTodayDate()),
       pendingLuong: raw.LUONG.filter((l) => l.TrangThai === 'Chờ duyệt'),
       paidLuong: raw.LUONG.filter((l) => l.TrangThai === 'Đã thanh toán'),
       // Dashboard needs aggregate commission/payroll figures, not the full
@@ -1452,7 +1466,7 @@ app.get('/api/thongke', authenticateToken, (req: AuthRequest, res: Response) => 
       tongNgayCong: myAttendance.filter((cc) => cc.CheckIn).length,
       tongHoaHong: myHoaHong.filter((hh) => hh.TrangThai === 'Đã duyệt').reduce((sum, h) => sum + h.SoTienHoaHong, 0),
       luongGanNhat: myLuong[0] || null,
-      todayRecord: myAttendance.find((cc) => cc.Ngay === new Date().toISOString().split('T')[0]) || null,
+      todayRecord: myAttendance.find((cc) => cc.Ngay === getAppTodayDate()) || null,
     });
   }
 });
