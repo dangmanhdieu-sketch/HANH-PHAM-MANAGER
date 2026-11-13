@@ -143,7 +143,7 @@ export interface VayCuoiItem {
   CapNhatBoi: string;
 }
 
-export type QuanLyModule = 'CONG_VIEC' | 'HOP_DONG' | 'THU_CHI' | 'NGHI_PHEP' | 'THU_VAY';
+export type QuanLyModule = 'CONG_VIEC' | 'HOP_DONG' | 'THU_CHI' | 'NGHI_PHEP' | 'THU_VAY' | 'LICH_CUOI';
 
 export interface QuanLyRecord {
   QuanLyID: string;
