@@ -455,7 +455,7 @@ function AppContent() {
   const todayStr = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-stone-900 flex flex-col font-sans selection:bg-[#E2D4BA]">
+    <div className="hp-dark-ui min-h-screen bg-[#08102B] text-slate-100 flex flex-col font-sans selection:bg-violet-300">
       {/* Top Navbar */}
       <Navbar
         currentUser={currentUser}
