@@ -81,19 +81,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   return (
     <div
       className="
+        hp-login-screen
         min-h-screen
-        min-h-[100dvh]
-        bg-[#FAF8F5]
+        min-h-[100svh]
         flex
         flex-col
-        justify-center
+        justify-start
+        sm:justify-center
         py-8
         sm:py-12
         px-4
         sm:px-6
         lg:px-8
         relative
-        overflow-hidden
+        overflow-x-hidden
+        overflow-y-auto
       "
       style={{
         paddingTop:
@@ -149,7 +151,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               layout="vertical"
               showText
               brandName="HẠNH PHẠM LUXURY BRIDAL"
-              logoUrl="/apple-touch-icon.svg"
               subtitle={previewTheme.brandSubtitle}
             />
           </div>
