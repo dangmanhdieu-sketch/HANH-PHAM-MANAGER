@@ -218,3 +218,65 @@ body {
     backdrop-filter: none !important;
   }
 }
+
+/* Login screen branding and responsive dark theme */
+.hp-login-screen {
+  color: #eef1ff;
+  background: radial-gradient(ellipse at 50% 0%, rgba(100,111,235,.22), transparent 34rem), linear-gradient(180deg,#080f2b 0%,#101a3b 58%,#080f2b 100%);
+  color-scheme: dark;
+  isolation: isolate;
+}
+.hp-login-screen > div:first-of-type {
+  background: linear-gradient(180deg,rgba(83,100,210,.20),transparent) !important;
+  opacity: .9 !important;
+}
+.hp-login-screen .font-bridal {
+  color: #f4f2ff !important;
+  text-shadow: 0 2px 18px rgba(116,126,255,.24);
+  line-height: 1.18 !important;
+  overflow-wrap: anywhere;
+}
+.hp-login-screen .text-stone-900,
+.hp-login-screen .text-stone-700 { color: #eef1ff !important; }
+.hp-login-screen .text-stone-400 { color: #aeb8d8 !important; }
+.hp-login-screen .text-stone-300 { color: #8996bd !important; }
+.hp-login-screen .bg-white {
+  background: rgba(20,30,62,.96) !important;
+  border-color: rgba(145,158,224,.30) !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,.34), 0 0 0 1px rgba(125,139,255,.08) !important;
+  color: #eef1ff !important;
+}
+.hp-login-screen input {
+  background: #0d1735 !important;
+  border-color: rgba(145,158,224,.34) !important;
+  color: #fff !important;
+  min-height: 48px;
+}
+.hp-login-screen input::placeholder { color: #8794b9 !important; }
+.hp-login-screen input:focus {
+  border-color: #8793ff !important;
+  box-shadow: 0 0 0 3px rgba(111,126,255,.18) !important;
+}
+.hp-login-screen button[type="submit"] {
+  background: linear-gradient(110deg,#5268dc,#7965e9) !important;
+  border-color: rgba(173,180,255,.35) !important;
+  color: #fff !important;
+  min-height: 50px;
+  box-shadow: 0 10px 28px rgba(80,98,221,.28) !important;
+}
+.hp-login-screen button[type="submit"]:disabled { opacity: .52 !important; }
+.hp-login-screen .border-stone-100 { border-color: rgba(145,158,224,.20) !important; }
+.hp-login-screen .bg-rose-50 {
+  background: rgba(127,29,29,.22) !important;
+  border-color: rgba(248,113,113,.35) !important;
+  color: #fecaca !important;
+}
+.hp-login-screen .text-gold-500,
+.hp-login-screen .text-gold-600 { color: #c4cbff !important; }
+.hp-login-screen .flex.justify-center > div { max-width: 100%; }
+@media (max-width: 640px) {
+  .hp-login-screen { padding-top: max(24px,env(safe-area-inset-top)) !important; }
+  .hp-login-screen > div.relative.z-10 { max-width: 420px; }
+  .hp-login-screen .mb-7 { margin-bottom: 1.25rem !important; }
+  .hp-login-screen .rounded-3xl { border-radius: 22px !important; }
+}
