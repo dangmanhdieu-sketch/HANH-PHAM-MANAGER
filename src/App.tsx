@@ -460,7 +460,7 @@ function AppContent() {
   const todayStr = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-stone-900 flex flex-col font-sans selection:bg-[#E2D4BA]">
+    <div className={`hp-luxury-app min-h-screen bg-[#FAF8F5] text-stone-900 flex flex-col font-sans selection:bg-[#E2D4BA] ${isAdmin ? "hp-admin-shell" : "hp-employee-shell"}`}>
       {/* Top Navbar */}
       <Navbar
         currentUser={currentUser}
