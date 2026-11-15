@@ -283,9 +283,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </p>
                     ) : (
                       notifications.slice(0, 8).map((n) => (
-                        <div
+                        <button
                           key={n.NotificationID}
-                          className="py-3 border-b border-stone-100 last:border-0"
+                          type="button"
+                          onClick={() => {
+                            const text = `${n.TieuDe} ${n.NoiDung}`.toLowerCase();
+                            const target = /thu chi|phiếu thu|phiếu chi|thu nhập/.test(text) ? 'thuchi'
+                              : /hoa hồng|lương|ứng lương/.test(text) ? 'luong'
+                              : /nghỉ phép|đơn nghỉ/.test(text) ? 'chamcong'
+                              : /hợp đồng/.test(text) ? 'hopdong' : 'dashboard';
+                            onTabChange(target);
+                            setNotifDropdownOpen(false);
+                          }}
+                          className="block w-full py-3 border-b border-stone-100 last:border-0 text-left hover:bg-stone-50"
                         >
                           <p className="text-xs font-semibold text-stone-800">
                             {n.TieuDe}
@@ -300,7 +310,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                               n.TaoLuc
                             ).toLocaleDateString('vi-VN')}
                           </p>
-                        </div>
+                        </button>
                       ))
                     )}
                   </div>
