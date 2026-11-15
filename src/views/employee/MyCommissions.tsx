@@ -33,7 +33,12 @@ export const MyCommissions: React.FC<MyCommissionsProps> = ({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [newClaims, setNewClaims] = useState<HoaHong[]>([]);
   const [submitNotice, setSubmitNotice] = useState<string | null>(null);
-  const visibleCommissionList = [...newClaims, ...commissionList];
+  // A successful server response may arrive while the optimistic row is still
+  // in local state. Merge by immutable server ID so the same claim is never
+  // displayed twice after refresh/rerender.
+  const visibleCommissionList = Array.from(
+    new Map([...newClaims, ...commissionList].map((item) => [item.HoaHongID, item])).values()
+  );
 
   // Filter list
   const filteredList = visibleCommissionList.filter((c) => {
