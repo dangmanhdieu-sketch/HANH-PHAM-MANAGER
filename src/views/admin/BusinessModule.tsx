@@ -1045,9 +1045,17 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               <div className="space-y-4">
                 <section className="border rounded-xl p-4"><h3 className="font-bold mb-3">Thông tin khách hàng</h3><div className="grid sm:grid-cols-2 gap-3">
                   <div><label className="block text-xs mb-1">Mã hợp đồng</label><input readOnly value={String(formData.MaHopDong||'Tự tạo khi lưu')} className="w-full border rounded-lg p-2 bg-stone-50"/></div>
-                  <div><label className="block text-xs mb-1">Tên cô dâu/chú rể *</label><input required value={String(formData.KhachHang||'')} onChange={e=>setFormData({...formData,KhachHang:e.target.value})} className="w-full border rounded-lg p-2"/></div>
-                  <div><label className="block text-xs mb-1">Số điện thoại *</label><input required value={String(formData.SDT||'')} onChange={e=>setFormData({...formData,SDT:e.target.value})} className="w-full border rounded-lg p-2"/></div>
+                  <div><label className="block text-xs mb-1">Tên hiển thị trên hợp đồng</label><input value={String(formData.KhachHang||'')} onChange={e=>setFormData({...formData,KhachHang:e.target.value})} className="w-full border rounded-lg p-2"/></div>
+                  <div><label className="block text-xs mb-1">Số điện thoại liên hệ</label><input value={String(formData.SDT||'')} onChange={e=>setFormData({...formData,SDT:e.target.value})} className="w-full border rounded-lg p-2"/></div>
                   <div><label className="block text-xs mb-1">Địa chỉ</label><input value={String(formData.DiaChi||'')} onChange={e=>setFormData({...formData,DiaChi:e.target.value})} className="w-full border rounded-lg p-2"/></div>
+                </div></section>
+                <section className="border rounded-xl p-4"><h3 className="font-bold mb-3">Thông tin riêng cô dâu & chú rể</h3><div className="grid sm:grid-cols-2 gap-3">
+                  <div><label className="block text-xs mb-1">Tên cô dâu</label><input value={String(formData.TenCoDau||'')} onChange={e=>setFormData({...formData,TenCoDau:e.target.value})} className="w-full border rounded-lg p-2"/></div>
+                  <div><label className="block text-xs mb-1">Tên chú rể</label><input value={String(formData.TenChuRe||'')} onChange={e=>setFormData({...formData,TenChuRe:e.target.value})} className="w-full border rounded-lg p-2"/></div>
+                  <div><label className="block text-xs mb-1">Số điện thoại cô dâu</label><input value={String(formData.SDTCoDau||'')} onChange={e=>setFormData({...formData,SDTCoDau:e.target.value})} className="w-full border rounded-lg p-2"/></div>
+                  <div><label className="block text-xs mb-1">Số điện thoại chú rể</label><input value={String(formData.SDTChuRe||'')} onChange={e=>setFormData({...formData,SDTChuRe:e.target.value})} className="w-full border rounded-lg p-2"/></div>
+                  <div><label className="block text-xs mb-1">Địa chỉ nhà gái</label><input value={String(formData.DiaChiNhaGai||'')} onChange={e=>setFormData({...formData,DiaChiNhaGai:e.target.value})} className="w-full border rounded-lg p-2"/></div>
+                  <div><label className="block text-xs mb-1">Địa chỉ nhà trai</label><input value={String(formData.DiaChiNhaTrai||'')} onChange={e=>setFormData({...formData,DiaChiNhaTrai:e.target.value})} className="w-full border rounded-lg p-2"/></div>
                 </div></section>
                 <section className="border rounded-xl p-4"><h3 className="font-bold mb-3">Ngày cưới</h3><div className="grid sm:grid-cols-2 gap-3">
                   <div><label className="block text-xs mb-1">Ngày cưới nhà trai</label><input type="date" value={String(formData.NgayCuoiNhaTrai||'')} onChange={e=>setFormData({...formData,NgayCuoiNhaTrai:e.target.value})} className="w-full border rounded-lg p-2"/></div>

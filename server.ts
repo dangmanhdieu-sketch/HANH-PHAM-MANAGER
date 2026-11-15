@@ -871,6 +871,51 @@ app.put('/api/vay-cuoi/:id', authenticateToken, requireAdmin, async (req: AuthRe
   }
 });
 
+const validateWeddingSchedule = (payload: any, excludeId?: string): string | null => {
+  const service = String(payload.DichVu || '').trim();
+  if (!service || service.length > 120) return 'Vui lòng nhập tên dịch vụ hợp lệ (tối đa 120 ký tự).';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(payload.Ngay || '')) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(payload.Gio || ''))) return 'Vui lòng chọn ngày và giờ hợp lệ.';
+  if (!String(payload.KhachHang || '').trim()) return 'Vui lòng nhập tên khách hàng.';
+  if (!['Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'].includes(String(payload.TrangThai || 'Chờ xác nhận'))) return 'Trạng thái lịch không hợp lệ.';
+
+  const roleIds = [payload.ThoChupID, payload.MakeupID, payload.ThoQuayID].filter(Boolean).map(String);
+  if (new Set(roleIds).size !== roleIds.length) return 'Một nhân viên không thể vừa chụp, makeup hoặc quay phim trong cùng công việc.';
+  const staffIds = Array.from(new Set([...roleIds, payload.NguoiPhuTrachID].filter(Boolean).map(String)));
+  for (const staffId of staffIds) {
+    const staff = dbService.findNhanVienById(staffId);
+    if (!staff || staff.TrangThai !== 'Đang Làm') return 'Nhân viên được phân công không tồn tại hoặc không ở trạng thái đang làm.';
+  }
+
+  if (String(payload.TrangThai) === 'Đã xác nhận') {
+    const lowerService = service.toLocaleLowerCase('vi');
+    if (!payload.NguoiPhuTrachID) return 'Cần chọn người phụ trách trước khi xác nhận lịch.';
+    if ((lowerService.includes('chụp') || lowerService.includes('ảnh')) && !payload.ThoChupID) return 'Dịch vụ chụp ảnh cần có thợ chụp trước khi xác nhận.';
+    if (lowerService.includes('makeup') && !payload.MakeupID) return 'Dịch vụ makeup cần có nhân viên makeup trước khi xác nhận.';
+    if (lowerService.includes('quay phim') && !payload.ThoQuayID) return 'Dịch vụ quay phim cần có thợ quay trước khi xác nhận.';
+    if (lowerService.includes('trọn gói') && (!payload.ThoChupID || !payload.MakeupID)) return 'Gói cưới cần phân công cả thợ chụp và makeup trước khi xác nhận.';
+  }
+
+  const duration = Math.max(30, Math.min(1440, Number(payload.ThoiLuong || 180)));
+  const startAt = Date.parse(String(payload.Ngay) + 'T' + String(payload.Gio) + ':00+07:00');
+  if (!Number.isFinite(startAt)) return 'Ngày hoặc giờ thực hiện không hợp lệ.';
+  const endAt = startAt + duration * 60 * 1000;
+  const normalizePlace = (value: any) => String(value || '').trim().toLocaleLowerCase('vi');
+  const assigned = new Set(staffIds);
+  const conflict = dbService.getQuanLyRecords('LICH_CUOI').find((record: any) => {
+    if (record.QuanLyID === excludeId || ['Đã hủy', 'Hủy'].includes(String(record.DuLieu?.TrangThai || ''))) return false;
+    const otherIds = [record.DuLieu?.ThoChupID, record.DuLieu?.MakeupID, record.DuLieu?.ThoQuayID, record.DuLieu?.NguoiPhuTrachID].filter(Boolean).map(String);
+    if (!otherIds.some((id: string) => assigned.has(id))) return false;
+    const otherStart = Date.parse(String(record.DuLieu?.Ngay || '') + 'T' + String(record.DuLieu?.Gio || '00:00') + ':00+07:00');
+    if (!Number.isFinite(otherStart)) return false;
+    const otherEnd = otherStart + Math.max(30, Number(record.DuLieu?.ThoiLuong || 180)) * 60 * 1000;
+    const samePlace = normalizePlace(payload.DiaDiem) && normalizePlace(payload.DiaDiem) === normalizePlace(record.DuLieu?.DiaDiem);
+    const travelBuffer = samePlace ? 0 : 60 * 60 * 1000;
+    return startAt < otherEnd + travelBuffer && otherStart < endAt + travelBuffer;
+  });
+  if (conflict) return 'Nhân viên đã có lịch "' + conflict.DuLieu?.DichVu + '" lúc ' + conflict.DuLieu?.Gio + ' ngày ' + conflict.DuLieu?.Ngay + ' tại ' + (conflict.DuLieu?.DiaDiem || 'địa điểm chưa rõ') + '. Cần chừa tối thiểu 60 phút di chuyển khi khác địa điểm.';
+  return null;
+};
+
 app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => {
   const module = req.query.module as any;
   let records = dbService.getQuanLyRecords(module || undefined);
@@ -927,6 +972,8 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
     }
 
     if (module === 'HOP_DONG') {
+      payload.KhachHang = String(payload.KhachHang || [payload.TenCoDau, payload.TenChuRe].filter(Boolean).join(' & ')).trim();
+      payload.SDT = String(payload.SDT || [payload.SDTCoDau, payload.SDTChuRe].filter(Boolean).join(' / ')).trim();
       if (!['HP_DONG_XOAI', 'HP_BINH_LONG', 'HP_LUMA'].includes(String(payload.ChiNhanh || ''))) return res.status(400).json({ error: 'Vui lòng chọn chi nhánh Đồng Xoài, Bình Long hoặc Luma.' });
       if (!String(payload.KhachHang || '').trim() || !String(payload.SDT || '').trim() ||
           !String(payload.GoiDichVu || '').trim() || !Number.isFinite(Number(payload.TongGiaTri)) ||
@@ -975,21 +1022,10 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
     }
 
     if (module === 'LICH_CUOI') {
-      const allowedServices = ['Chụp ảnh cưới', 'Chụp ảnh cổng', 'Ngày cưới', 'Giao album', 'Makeup ngày cưới', 'Chụp phóng sự cưới', 'Thử váy cưới'];
-      if (!allowedServices.includes(String(payload.DichVu || ''))) return res.status(400).json({ error: 'Loại dịch vụ lịch cưới không hợp lệ.' });
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(payload.Ngay || '')) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(payload.Gio || ''))) return res.status(400).json({ error: 'Vui lòng chọn ngày và giờ hợp lệ.' });
-      if (!String(payload.KhachHang || '').trim()) return res.status(400).json({ error: 'Vui lòng nhập tên khách hàng.' });
-      const duration = Math.max(30, Math.min(1440, Number(payload.ThoiLuong || 180)));
-      payload.ThoiLuong = duration;
       payload.TrangThai = payload.TrangThai || 'Chờ xác nhận';
-      if (!['Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'].includes(String(payload.TrangThai))) return res.status(400).json({ error: 'Trạng thái lịch không hợp lệ.' });
-      const staffIds = [payload.ThoChupID, payload.MakeupID, payload.NguoiPhuTrachID].filter(Boolean).map(String);
-      for (const staffId of staffIds) if (!dbService.findNhanVienById(staffId)) return res.status(400).json({ error: 'Nhân viên được phân công không tồn tại.' });
-      if (payload.ThoChupID && payload.ThoChupID === payload.MakeupID) return res.status(400).json({ error: 'Không thể phân công một người vừa chụp vừa makeup cùng lịch.' });
-      const start = Number(String(payload.Gio).slice(0,2))*60 + Number(String(payload.Gio).slice(3,5));
-      const assigned = [payload.ThoChupID, payload.MakeupID].filter(Boolean);
-      const conflict = dbService.getQuanLyRecords('LICH_CUOI').find((r) => r.DuLieu?.Ngay === payload.Ngay && r.DuLieu?.TrangThai !== 'Đã hủy' && [r.DuLieu?.ThoChupID, r.DuLieu?.MakeupID].some((id: string) => assigned.includes(id)) && start < (Number(String(r.DuLieu?.Gio || '00:00').slice(0,2))*60 + Number(String(r.DuLieu?.Gio || '00:00').slice(3,5))) + Number(r.DuLieu?.ThoiLuong || 180) && (Number(String(r.DuLieu?.Gio || '00:00').slice(0,2))*60 + Number(String(r.DuLieu?.Gio || '00:00').slice(3,5))) < start + duration);
-      if (conflict) return res.status(409).json({ error: `Nhân viên đã có lịch ${conflict.DuLieu?.DichVu} lúc ${conflict.DuLieu?.Gio} ngày ${conflict.DuLieu?.Ngay}.` });
+      payload.ThoiLuong = Math.max(30, Math.min(1440, Number(payload.ThoiLuong || 180)));
+      const validationError = validateWeddingSchedule(payload);
+      if (validationError) return res.status(409).json({ error: validationError });
       payload.NguoiTaoID = req.user!.NhanVienID;
       payload.NguoiTao = req.user!.HoTen;
     }
@@ -1019,7 +1055,7 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       Email: req.user!.Email,
     });
     if (module === 'LICH_CUOI') {
-      const assignedIds = Array.from(new Set([payload.ThoChupID, payload.MakeupID, payload.NguoiPhuTrachID].filter(Boolean).map(String)));
+      const assignedIds = Array.from(new Set([payload.ThoChupID, payload.MakeupID, payload.ThoQuayID, payload.NguoiPhuTrachID].filter(Boolean).map(String)));
       for (const staffId of assignedIds) dbService.addNotification('Lịch cưới mới được phân công', `${payload.DichVu} – ${payload.KhachHang}, ngày ${payload.Ngay} lúc ${payload.Gio}. Vui lòng mở Lịch cưới & Điều phối để xác nhận.`, 'info', staffId);
       dbService.addNotification('Lịch cưới vừa được tạo', `${payload.DichVu} – ${payload.KhachHang}, ngày ${payload.Ngay} lúc ${payload.Gio}.`, 'info');
     }
@@ -1031,30 +1067,15 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
 
 app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response) => {
   try {
+    const changes: Record<string, any> = req.body || {};
     const current = dbService.getQuanLyRecords().find((x) => x.QuanLyID === req.params.id);
     if (!current) return res.status(404).json({ error: 'Không tìm thấy dữ liệu.' });
     if (current.Module === 'LICH_CUOI') {
-      if (req.user!.Quyen === 'Freelancer') return res.status(403).json({ error: 'Tài khoản Freelancer không có quyền sửa lịch điều phối.' });
-    } else if (req.user!.Quyen !== 'Admin') {
-      return res.status(403).json({ error: 'Chỉ Admin được cập nhật dữ liệu này.' });
-    }
-    const changes = { ...(req.body?.data || {}) };
-    if (current.Module === 'LICH_CUOI') {
       const merged = { ...current.DuLieu, ...changes };
-      const allowedServices = ['Chụp ảnh cưới', 'Chụp ảnh cổng', 'Ngày cưới', 'Giao album', 'Makeup ngày cưới', 'Chụp phóng sự cưới', 'Thử váy cưới'];
-      if (!allowedServices.includes(String(merged.DichVu || '')) || !/^\d{4}-\d{2}-\d{2}$/.test(String(merged.Ngay || '')) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(merged.Gio || '')) || !String(merged.KhachHang || '').trim()) {
-        return res.status(400).json({ error: 'Thông tin lịch cưới chưa hợp lệ.' });
-      }
-      if (!['Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'].includes(String(merged.TrangThai))) return res.status(400).json({ error: 'Trạng thái lịch không hợp lệ.' });
       const duration = Math.max(30, Math.min(1440, Number(merged.ThoiLuong || 180)));
       merged.ThoiLuong = duration;
-      const assignedIds = [merged.ThoChupID, merged.MakeupID, merged.NguoiPhuTrachID].filter(Boolean).map(String);
-      for (const staffId of assignedIds) if (!dbService.findNhanVienById(staffId)) return res.status(400).json({ error: 'Nhân viên được phân công không tồn tại.' });
-      if (merged.ThoChupID && merged.ThoChupID === merged.MakeupID) return res.status(400).json({ error: 'Không thể phân công một người vừa chụp vừa makeup cùng lịch.' });
-      const start = Number(String(merged.Gio).slice(0,2))*60 + Number(String(merged.Gio).slice(3,5));
-      const assigned = [merged.ThoChupID, merged.MakeupID].filter(Boolean);
-      const conflict = dbService.getQuanLyRecords('LICH_CUOI').find((r) => r.QuanLyID !== current.QuanLyID && r.DuLieu?.Ngay === merged.Ngay && r.DuLieu?.TrangThai !== 'Đã hủy' && [r.DuLieu?.ThoChupID, r.DuLieu?.MakeupID].some((id: string) => assigned.includes(id)) && start < (Number(String(r.DuLieu?.Gio || '00:00').slice(0,2))*60 + Number(String(r.DuLieu?.Gio || '00:00').slice(3,5))) + Number(r.DuLieu?.ThoiLuong || 180) && (Number(String(r.DuLieu?.Gio || '00:00').slice(0,2))*60 + Number(String(r.DuLieu?.Gio || '00:00').slice(3,5))) < start + duration);
-      if (conflict) return res.status(409).json({ error: `Nhân viên đã có lịch ${conflict.DuLieu?.DichVu} lúc ${conflict.DuLieu?.Gio} ngày ${conflict.DuLieu?.Ngay}.` });
+      const validationError = validateWeddingSchedule(merged, current.QuanLyID);
+      if (validationError) return res.status(409).json({ error: validationError });
       changes.ThoiLuong = duration;
     }
 
@@ -1126,7 +1147,7 @@ app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response)
     });
     if (current.Module === 'LICH_CUOI') {
       const merged = { ...current.DuLieu, ...changes };
-      const assignedIds = Array.from(new Set([merged.ThoChupID, merged.MakeupID, merged.NguoiPhuTrachID].filter(Boolean).map(String)));
+      const assignedIds = Array.from(new Set([merged.ThoChupID, merged.MakeupID, merged.ThoQuayID, merged.NguoiPhuTrachID].filter(Boolean).map(String)));
       for (const staffId of assignedIds) dbService.addNotification('Lịch cưới được cập nhật', `${merged.DichVu} – ${merged.KhachHang}, ngày ${merged.Ngay} lúc ${merged.Gio}. Nội dung vừa được điều phối cập nhật.`, 'warning', staffId);
     }
     if (current.Module === 'NGHI_PHEP' && changes.TrangThai && changes.TrangThai !== current.DuLieu?.TrangThai) {
