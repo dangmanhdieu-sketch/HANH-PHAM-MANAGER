@@ -353,12 +353,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* MOBILE BOTTOM NAV — primary shortcuts + drawer for remaining modules */}
         <div className="hp-mobile-tabbar">
           <div className="hp-mobile-bottom-inner">
-            {(isAdmin ? [
-              { id: 'dashboard', label: 'Tổng quan', icon: BarChart3 },
-              { id: 'nhanvien', label: 'Nhân viên', icon: Users },
-              { id: 'chamcong', label: 'Công việc', icon: CalendarDays },
-              { id: 'thuchi', label: 'Thu chi', icon: Wallet },
-            ] : activeTabs.filter((tab) => ['home','luong_me','danhba_me','chamcong_me','thuchi_me'].includes(tab.id)).slice(0,4)).map((tab) => {
+            {(activeTabs.some((tab) => tab.id === 'nhanvien')
+              ? ['dashboard','nhanvien','chamcong','thuchi']
+              : ['home','chamcong_me','luong_me','danhba_me']
+            ).map((id) => activeTabs.find((tab) => tab.id === id)).filter(Boolean).map((tab) => {
               const Icon = tab.icon;
               const active = currentTab === tab.id;
               return <button key={tab.id} type="button" onClick={() => handleTabChange(tab.id)} className={active ? 'hp-bottom-item is-active' : 'hp-bottom-item'}>
