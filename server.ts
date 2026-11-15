@@ -1068,7 +1068,14 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
 
 app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response) => {
   try {
-    const changes: Record<string, any> = req.body || {};
+    // The frontend API client wraps update payloads as { data: {...} }.
+    // Unwrap this envelope before merging into the business record; otherwise
+    // approvals silently write a nested "data" field and leave TrangThaiDuyet unchanged.
+    const requestBody = req.body || {};
+    const changes: Record<string, any> =
+      requestBody.data && typeof requestBody.data === 'object' && !Array.isArray(requestBody.data)
+        ? requestBody.data
+        : requestBody;
     const current = dbService.getQuanLyRecords().find((x) => x.QuanLyID === req.params.id);
     if (!current) return res.status(404).json({ error: 'Không tìm thấy dữ liệu.' });
     if (current.Module === 'LICH_CUOI') {
