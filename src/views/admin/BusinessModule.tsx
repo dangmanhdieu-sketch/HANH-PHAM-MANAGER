@@ -147,6 +147,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
   const [formOpen, setFormOpen] = useState(false);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
+  const [contractOcrBusy, setContractOcrBusy] = useState(false);
+  const [contractOcrWarnings, setContractOcrWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [cashflowType, setCashflowType] = useState<'THU' | 'CHI'>('THU');
   const [cashflowSection, setCashflowSection] = useState<'ALL' | 'CONTRACT' | 'INTERNAL'>('ALL');
@@ -300,6 +302,27 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       setFormData({ ...record.DuLieu });
     }
     setFormOpen(true);
+  };
+
+  const recognizeContractImages = async (files: FileList | File[]) => {
+    const selected = Array.from(files || []).filter((file) => ['image/jpeg','image/png','image/webp'].includes(file.type)).slice(0, 3);
+    if (!selected.length) return;
+    if (selected.some((file) => file.size > 8 * 1024 * 1024)) { alert('Mỗi ảnh phải nhỏ hơn 8 MB.'); return; }
+    setContractOcrBusy(true); setContractOcrWarnings([]);
+    try {
+      const dataUrls = await Promise.all(selected.map((file) => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader(); reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Không đọc được ảnh.'));
+        reader.onerror = () => reject(new Error('Không đọc được ảnh.')); reader.readAsDataURL(file);
+      })));
+      const result = await api.contracts.recognizeHandwriting(dataUrls);
+      setFormData((previous) => { const next = { ...previous }; Object.entries(result.fields || {}).forEach(([key, value]) => {
+        if (value === null || value === undefined || value === '') return;
+        if (key === 'LichThanhToan' && Array.isArray(value)) next[key] = value;
+        else if (['GiaGoiBanDau','GiamGiaTrucTiep','PhuThuDichVu','TienDatCoc'].includes(key)) { const number = Number(value); if (Number.isFinite(number)) next[key] = number; }
+        else if (typeof value === 'string') next[key] = value;
+      }); return next; });
+      setContractOcrWarnings(result.warnings || []); alert('AI đã đọc xong. Hãy kiểm tra và sửa thông tin trong biểu mẫu trước khi lưu hợp đồng.');
+    } catch (error: any) { alert(error?.message || 'Không nhận diện được ảnh hợp đồng.'); } finally { setContractOcrBusy(false); }
   };
 
   const closeForm = () => {
@@ -1030,6 +1053,19 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
                 <X />
               </button>
             </div>
+
+            {module === 'HOP_DONG' && !editing && (
+              <section className="rounded-xl border border-violet-200 bg-violet-50 p-4 space-y-3">
+                <div><h3 className="font-bold text-violet-950">AI đọc hợp đồng viết tay</h3><p className="mt-1 text-xs text-violet-800">Chụp hoặc chọn tối đa 3 ảnh. AI sẽ điền thông tin nhận diện được vào biểu mẫu; nhân viên kiểm tra và sửa trước khi lưu.</p></div>
+                <div className="flex flex-wrap gap-2">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-violet-700 px-4 py-2.5 text-sm font-bold text-white"><Camera className="h-4 w-4"/> Chụp hợp đồng<input type="file" accept="image/*" capture="environment" multiple className="hidden" disabled={contractOcrBusy} onChange={e=>{if(e.target.files?.length) void recognizeContractImages(e.target.files);e.currentTarget.value='';}}/></label>
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-violet-300 bg-white px-4 py-2.5 text-sm font-bold text-violet-900"><Upload className="h-4 w-4"/> Chọn ảnh<input type="file" accept="image/*" multiple className="hidden" disabled={contractOcrBusy} onChange={e=>{if(e.target.files?.length) void recognizeContractImages(e.target.files);e.currentTarget.value='';}}/></label>
+                </div>
+                {contractOcrBusy && <p className="text-sm font-semibold text-violet-800">Đang nhận diện chữ viết tay bằng Gemini...</p>}
+                {contractOcrWarnings.length > 0 && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"><b>Cần kiểm tra kỹ:</b><ul className="mt-1 list-disc pl-4">{contractOcrWarnings.map((warning,i)=><li key={i}>{warning}</li>)}</ul></div>}
+                <p className="text-[11px] text-violet-800">Ảnh gửi đến Google Gemini để nhận diện; không chụp CCCD. AI có thể đọc sai chữ hoặc số.</p>
+              </section>
+            )}
 
             {module === 'HOP_DONG' && (
               <section className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4">
