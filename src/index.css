@@ -453,3 +453,22 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
     border-radius:12px !important;
   }
 }
+
+
+/* Final mobile correction: explicit visible brand bar + compact reference hierarchy */
+@media (max-width: 767px) {
+  .hp-navbar { display:block !important; width:100% !important; min-height:68px !important; height:auto !important; overflow:visible !important; }
+  .hp-navbar .hp-mobile-shell { display:block !important; visibility:visible !important; opacity:1 !important; }
+  .hp-navbar .hp-mobile-shell > div:first-child { display:flex !important; visibility:visible !important; min-height:68px !important; height:68px !important; }
+  .hp-navbar .hp-mobile-shell > div:first-child > button { visibility:visible !important; }
+  .hp-navbar .hp-desktop-shell { display:none !important; }
+  .hp-admin-dashboard { display:flex !important; flex-direction:column !important; gap:12px !important; }
+  .hp-admin-dashboard .hp-dashboard-hero { order:0 !important; margin:0 !important; min-height:138px !important; justify-content:center !important; }
+  .hp-admin-dashboard .hp-pending-approvals { order:2 !important; }
+  .hp-admin-dashboard > section:nth-of-type(2) { order:1 !important; }
+  .hp-admin-dashboard > section:nth-of-type(3) { order:3 !important; }
+  .hp-admin-dashboard > section:nth-of-type(4) { order:4 !important; }
+  .hp-admin-dashboard > section:nth-of-type(5) { order:5 !important; }
+  .hp-admin-dashboard .hp-dashboard-kpis > button { min-height:96px !important; }
+  .hp-admin-dashboard .hp-dashboard-hero h1 { font-size:27px !important; }
+}
