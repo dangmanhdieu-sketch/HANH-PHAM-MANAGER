@@ -123,13 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header
-      className="
-        sticky top-0 z-50
-        bg-white/95
-        backdrop-blur-xl
-        border-b border-[#E7DFD5]
-        shadow-sm
-      "
+      className="hp-navbar sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-[#E7DFD5] shadow-sm"
     >
       {/* ======================================================
           MOBILE
