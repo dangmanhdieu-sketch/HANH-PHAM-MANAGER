@@ -310,10 +310,28 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
     if (selected.some((file) => file.size > 8 * 1024 * 1024)) { alert('Mỗi ảnh phải nhỏ hơn 8 MB.'); return; }
     setContractOcrBusy(true); setContractOcrWarnings([]);
     try {
+      // Resize/compress iPhone photos before sending; prevents Express 15 MB JSON limit errors.
       const dataUrls = await Promise.all(selected.map((file) => new Promise<string>((resolve, reject) => {
-        const reader = new FileReader(); reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Không đọc được ảnh.'));
-        reader.onerror = () => reject(new Error('Không đọc được ảnh.')); reader.readAsDataURL(file);
+        const objectUrl = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = () => {
+          try {
+            const scale = Math.min(1, 1800 / Math.max(image.naturalWidth, image.naturalHeight));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            const context = canvas.getContext('2d');
+            if (!context) throw new Error('Không xử lý được ảnh.');
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.78);
+            URL.revokeObjectURL(objectUrl); resolve(compressed);
+          } catch (error) { URL.revokeObjectURL(objectUrl); reject(error); }
+        };
+        image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Không mở được ảnh.')); };
+        image.src = objectUrl;
       })));
+      const totalBytes = dataUrls.reduce((sum, value) => sum + Math.ceil(value.length * 0.75), 0);
+      if (totalBytes > 10 * 1024 * 1024) throw new Error('Tổng dung lượng ảnh vẫn quá lớn. Vui lòng chọn tối đa 2-3 ảnh rõ nét.');
       const result = await api.contracts.recognizeHandwriting(dataUrls);
       setFormData((previous) => { const next = { ...previous }; Object.entries(result.fields || {}).forEach(([key, value]) => {
         if (value === null || value === undefined || value === '') return;
