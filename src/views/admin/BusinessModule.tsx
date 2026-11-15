@@ -1045,8 +1045,8 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               <div className="space-y-4">
                 <section className="border rounded-xl p-4"><h3 className="font-bold mb-3">Thông tin khách hàng</h3><div className="grid sm:grid-cols-2 gap-3">
                   <div><label className="block text-xs mb-1">Mã hợp đồng</label><input readOnly value={String(formData.MaHopDong||'Tự tạo khi lưu')} className="w-full border rounded-lg p-2 bg-stone-50"/></div>
-                  <div><label className="block text-xs mb-1">Tên cô dâu/chú rể *</label><input required value={String(formData.KhachHang||'')} onChange={e=>setFormData({...formData,KhachHang:e.target.value})} className="w-full border rounded-lg p-2"/></div>
-                  <div><label className="block text-xs mb-1">Số điện thoại *</label><input required value={String(formData.SDT||'')} onChange={e=>setFormData({...formData,SDT:e.target.value})} className="w-full border rounded-lg p-2"/></div>
+                  <div><label className="block text-xs mb-1">Tên hiển thị trên hợp đồng</label><input value={String(formData.KhachHang||'')} onChange={e=>setFormData({...formData,KhachHang:e.target.value})} className="w-full border rounded-lg p-2"/></div>
+                  <div><label className="block text-xs mb-1">Số điện thoại liên hệ</label><input value={String(formData.SDT||'')} onChange={e=>setFormData({...formData,SDT:e.target.value})} className="w-full border rounded-lg p-2"/></div>
                   <div><label className="block text-xs mb-1">Địa chỉ</label><input value={String(formData.DiaChi||'')} onChange={e=>setFormData({...formData,DiaChi:e.target.value})} className="w-full border rounded-lg p-2"/></div>
                 </div></section>
                 <section className="border rounded-xl p-4"><h3 className="font-bold mb-3">Thông tin riêng cô dâu & chú rể</h3><div className="grid sm:grid-cols-2 gap-3">
