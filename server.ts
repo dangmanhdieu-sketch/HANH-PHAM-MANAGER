@@ -1067,6 +1067,7 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
 
 app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response) => {
   try {
+    const changes: Record<string, any> = req.body || {};
     const current = dbService.getQuanLyRecords().find((x) => x.QuanLyID === req.params.id);
     if (!current) return res.status(404).json({ error: 'Không tìm thấy dữ liệu.' });
     if (current.Module === 'LICH_CUOI') {
