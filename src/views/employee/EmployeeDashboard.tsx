@@ -44,7 +44,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   const isCheckedOut = Boolean(todayRecord?.CheckOut);
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
+    <div className="hp-employee-dashboard space-y-6 animate-fade-in pb-12">
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 text-white p-6 sm:p-8 rounded-3xl border border-[#c5a059]/40 shadow-xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
