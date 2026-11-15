@@ -16,6 +16,8 @@ import {
   FileText,
   Wallet,
   Shirt,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 import type { NhanVien, ThongBao } from '../types';
@@ -43,6 +45,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { theme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    try { return localStorage.getItem('hp-ui-mode') === 'dark'; } catch { return false; }
+  });
+  React.useEffect(() => {
+    document.documentElement.dataset.hpMode = isDarkMode ? 'dark' : 'light';
+    try { localStorage.setItem('hp-ui-mode', isDarkMode ? 'dark' : 'light'); } catch {}
+  }, [isDarkMode]);
+  const modeToggle = <button type="button" onClick={() => setIsDarkMode((value) => !value)} className="hp-mode-toggle" aria-label="Chuyển chế độ sáng tối" title="Chuyển chế độ sáng tối">{isDarkMode ? <Sun className="w-4 h-4"/> : <Moon className="w-4 h-4"/>}</button>;
   void onQuickSwitchUser;
 
   const unreadCount = notifications.filter((n) => !n.DaDoc).length;
@@ -123,7 +133,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* ======================================================
           MOBILE
       ====================================================== */}
-      <div className="lg:hidden">
+      <div className="hp-mobile-shell lg:hidden">
 
         {/* ====================================================
             MOBILE BRAND HEADER
@@ -196,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {/* ACTIONS */}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">\n            {modeToggle}
 
             {/* =================================================
                 NOTIFICATION
@@ -423,8 +433,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* ======================================================
           DESKTOP HEADER
       ====================================================== */}
-      <div className="hidden lg:block">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="hp-desktop-shell hidden lg:block">
+        <div className="hp-desktop-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <div className="flex items-center justify-between h-16">
 
@@ -454,7 +464,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* ACTIONS */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">\n              {modeToggle}
 
               {/* DESKTOP NOTIFICATION */}
               <div className="relative">
@@ -572,7 +582,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* ====================================================
               DESKTOP NAVIGATION
           ==================================================== */}
-          <nav className="flex space-x-1 border-t border-[#f4eee7] py-1.5 overflow-x-auto">
+          <nav className="hp-desktop-nav flex space-x-1 border-t border-[#f4eee7] py-1.5 overflow-x-auto">
 
             {activeTabs.map((tab) => {
               const Icon = tab.icon;
