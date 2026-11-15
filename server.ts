@@ -878,8 +878,9 @@ const validateWeddingSchedule = (payload: any, excludeId?: string): string | nul
   if (!String(payload.KhachHang || '').trim()) return 'Vui lòng nhập tên khách hàng.';
   if (!['Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'].includes(String(payload.TrangThai || 'Chờ xác nhận'))) return 'Trạng thái lịch không hợp lệ.';
 
-  const staffIds = [payload.ThoChupID, payload.MakeupID, payload.ThoQuayID, payload.NguoiPhuTrachID].filter(Boolean).map(String);
-  if (new Set(staffIds).size !== staffIds.length) return 'Một nhân viên không thể đảm nhận nhiều vai trò trong cùng công việc.';
+  const roleIds = [payload.ThoChupID, payload.MakeupID, payload.ThoQuayID].filter(Boolean).map(String);
+  if (new Set(roleIds).size !== roleIds.length) return 'Một nhân viên không thể vừa chụp, makeup hoặc quay phim trong cùng công việc.';
+  const staffIds = Array.from(new Set([...roleIds, payload.NguoiPhuTrachID].filter(Boolean).map(String)));
   for (const staffId of staffIds) {
     const staff = dbService.findNhanVienById(staffId);
     if (!staff || staff.TrangThai !== 'Đang Làm') return 'Nhân viên được phân công không tồn tại hoặc không ở trạng thái đang làm.';
