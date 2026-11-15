@@ -57,8 +57,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   ];
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-4 overflow-x-hidden px-0 pb-6 animate-fade-in sm:space-y-5">
-      <header className="flex flex-col gap-3 rounded-2xl border border-[#e9e1d5] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+    <div className="hp-admin-dashboard mx-auto w-full max-w-7xl space-y-4 overflow-x-hidden px-0 pb-6 animate-fade-in sm:space-y-5">
+      <header className="hp-dashboard-hero flex flex-col gap-3 rounded-2xl border border-[#e9e1d5] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a88752]">HẠNH PHẠM LUXURY BRIDAL</p>
           <h1 className="mt-1 text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">Tổng quan</h1>
@@ -74,7 +74,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </button>
       </header>
 
-      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+      <section className="hp-pending-approvals rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-2"><div><h2 className="text-base font-bold text-amber-950">Cần bạn duyệt</h2><p className="mt-1 text-xs text-amber-800">Các yêu cầu đang chờ xử lý, bấm để mở đúng mục.</p></div><span className="rounded-full bg-amber-200 px-3 py-1 text-sm font-bold text-amber-950">{pendingApprovals.length}</span></div>
         {pendingApprovals.length === 0 ? <p className="rounded-xl bg-white/70 p-3 text-sm text-stone-600">Hiện không có yêu cầu nào chờ duyệt.</p> : <div className="space-y-2">{pendingApprovals.slice(0,10).map((record) => {
           const data = record.DuLieu || {};
@@ -90,7 +90,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <h2 className="text-sm font-bold text-stone-800">Chỉ số vận hành</h2>
           <span className="text-xs text-stone-400">Cập nhật theo dữ liệu hiện có</span>
         </div>
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
+        <div className="hp-dashboard-kpis grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
           {cards.map(({ label, value, note, icon: Icon, action }) => (
             <button
               type="button"
