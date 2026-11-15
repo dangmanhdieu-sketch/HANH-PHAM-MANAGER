@@ -1048,7 +1048,15 @@ class DatabaseService {
     for (const doc of docs) {
       const payload = doc.data() || {};
       if (payload.deleted === true) { byId.delete(doc.id); continue; }
-      const record = restoreFirestoreValue(payload.record) as T | undefined;
+      let storedRecord: any = payload.record;
+      // QUAN_LY can contain heterogeneous legacy/custom fields. Keep each delta
+      // as JSON text in Firestore to avoid gRPC INVALID_ARGUMENT nested-entity
+      // errors; older object-shaped delta documents remain readable.
+      if (collectionName === 'quanLyMutations' && typeof storedRecord === 'string') {
+        try { storedRecord = JSON.parse(storedRecord); }
+        catch { throw new Error(`[Firebase] Invalid JSON in ${collectionName} delta ${doc.id}; refusing unsafe startup.`); }
+      }
+      const record = restoreFirestoreValue(storedRecord) as T | undefined;
       if (!record || String(record[idField] || '') !== doc.id) {
         throw new Error(`[Firebase] Invalid ${collectionName} mutation delta ${doc.id}; refusing unsafe startup.`);
       }
@@ -1096,6 +1104,12 @@ class DatabaseService {
             const sanitized = sanitizeFirestoreValue(item.record);
             try {
               safeRecord = JSON.parse(JSON.stringify(sanitized));
+              // Store contract/cashflow/work records as a JSON string, not a
+              // nested Firestore entity. This avoids Firestore rejecting mixed
+              // nested values while preserving the full JSON data losslessly.
+              if (collectionName === 'quanLyMutations') {
+                safeRecord = JSON.stringify(restoreFirestoreValue(safeRecord));
+              }
             } catch (serializationError: any) {
               throw new Error(`[Firebase] Cannot serialize ${collectionName} record ${item.id}: ${serializationError?.message || serializationError}`);
             }
