@@ -131,12 +131,15 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
   );
 
   const filteredList = currentCommissionList.filter((hh) => {
+    // Pending review queue is global: never hide an employee's request
+    // because the current month, staff, branch or category filters differ.
     const matchStaff = showPendingQueue || hh.NhanVienID === selectedStaffId;
-    const matchBranch = selectedBranch === 'ALL' || hh.ChiNhanh === selectedBranch;
+    const matchBranch = showPendingQueue || selectedBranch === 'ALL' || hh.ChiNhanh === selectedBranch;
     const matchStatus = showPendingQueue ? hh.TrangThai === 'Chờ duyệt' : (selectedStatus === 'ALL' || hh.TrangThai === selectedStatus);
-    const matchMonth = (hh.Ngay || '').startsWith(selectedMonth);
+    const matchMonth = showPendingQueue || (hh.Ngay || '').startsWith(selectedMonth);
     const isShow = hh.LoaiKhoan === 'Tiền Show' || hh.NoiDung.includes('Tiền Show');
     const matchType =
+      showPendingQueue ||
       selectedType === 'ALL' ||
       (selectedType === 'Tiền Show' && isShow) ||
       (selectedType === 'Hoa Hồng' && !isShow);
