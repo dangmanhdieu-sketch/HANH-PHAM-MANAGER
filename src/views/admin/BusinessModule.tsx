@@ -1058,12 +1058,13 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       })()}
 
       {formOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] bg-black/60 overflow-y-auto overscroll-contain">
+          <div className="min-h-full flex items-start sm:items-center justify-center p-2 sm:p-4">
           <form
             onSubmit={handleSubmit}
-            className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4"
+            className="my-1 sm:my-0 bg-white rounded-2xl w-full max-w-2xl max-h-[calc(100dvh-1rem)] sm:max-h-[90dvh] overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 shadow-2xl"
           >
-            <div className="flex justify-between items-center">
+            <div className="sticky top-0 z-20 -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 py-3 sm:px-6 bg-white/95 backdrop-blur border-b border-stone-100 flex justify-between items-center">
               <h2 className="font-bold text-lg">
                 {module === 'THU_CHI' ? (editing ? (cashflowType === 'THU' ? 'CẬP NHẬT PHIẾU THU' : 'CẬP NHẬT PHIẾU CHI') : (cashflowType === 'THU' ? 'PHIẾU THU' : 'PHIẾU CHI')) : `${editing ? 'CẬP NHẬT' : 'THÊM'} ${config.title.toUpperCase()}`}
               </h2>
@@ -1304,6 +1305,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
               </button>
             </div>
           </form>
+          </div>
         </div>
       )}
     </div>
