@@ -675,6 +675,12 @@ export const api = {
   // QUẢN LÝ NGHIỆP VỤ LIÊN KẾT
   // =========================================================
 
+  contracts: {
+    async recognizeHandwriting(images: string[]): Promise<{ fields: Record<string, any>; warnings: string[] }> {
+      return request('/api/contracts/recognize-handwriting', { method: 'POST', body: JSON.stringify({ images }) });
+    },
+  },
+
   quanLy: {
     async getAll(module?: QuanLyModule): Promise<QuanLyRecord[]> {
       const q = module ? `?module=${encodeURIComponent(module)}` : '';
