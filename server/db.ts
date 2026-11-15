@@ -730,7 +730,33 @@ class DatabaseService {
           this.hoaHongPersistedSnapshots.clear();
           this.hoaHongDirtyIds.clear();
           this.hoaHongDeletedIds.clear();
-          // Apply only incremental commission changes; the historical legacy table stays untouched.
+          // When the verified record-level migration marker exists, HOAHONG's
+          // legacy table is intentionally skipped above. Load its authoritative
+          // hoaHongRecords collection here (paged to avoid a single unbounded scan),
+          // then overlay subsequent creates/updates/deletes from hoaHongMutations.
+          if (hasVerifiedHoaHongRecords) {
+            const recordsRef = rootRef.collection('hoaHongRecords');
+            const loadedRecords: HoaHong[] = [];
+            let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined;
+            while (true) {
+              let query: FirebaseFirestore.Query = recordsRef.orderBy('__name__').limit(400);
+              if (lastDoc) query = query.startAfter(lastDoc);
+              const page = await query.get();
+              if (page.empty) break;
+              for (const doc of page.docs) {
+                const record = restoreFirestoreValue(doc.data()?.record) as HoaHong | undefined;
+                if (!record || String(record.HoaHongID || '') !== doc.id) {
+                  throw new Error(`[Firebase] Invalid hoaHongRecords document ${doc.id}; refusing to show incomplete commission data.`);
+                }
+                loadedRecords.push(record);
+              }
+              lastDoc = page.docs[page.docs.length - 1];
+              if (page.size < 400) break;
+            }
+            this.db.HOAHONG = loadedRecords;
+            console.info('[Firebase] Loaded verified HOAHONG records:', loadedRecords.length);
+          }
+          // Overlay incremental changes/deletes on top of the authoritative record set.
           await this.loadHoaHongMutationDeltas(rootRef);
           console.info('[Firebase] Loaded incremental HOAHONG deltas:', this.hoaHongDirtyIds.size);
           this.db.AUDIT_LOG = await this.loadRecordMutationDeltas(rootRef, 'auditLogMutations', this.db.AUDIT_LOG || [], 'LogID', 800);
