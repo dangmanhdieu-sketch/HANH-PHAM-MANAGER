@@ -45,6 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const { theme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     try { return localStorage.getItem('hp-ui-mode') === 'dark'; } catch { return false; }
@@ -324,29 +325,41 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* =================================================
-                MENU
-            ================================================= */}
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(true);
-                setNotifDropdownOpen(false);
-              }}
-              className="
-                w-10 h-10
-                flex items-center justify-center
-                rounded-xl
-                bg-stone-900
-                text-[#dfc79f]
-                shadow-sm
-                hover:bg-stone-800
-                active:scale-95
-              "
-              aria-label="Mở menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
+            {/* ACCOUNT AVATAR — module navigation remains in bottom "Thêm" */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountMenuOpen((open) => !open);
+                  setNotifDropdownOpen(false);
+                }}
+                className="hp-account-avatar w-10 h-10 rounded-full overflow-hidden flex items-center justify-center border-2 border-[#d8bd8d] bg-[#f4ead8] text-[#8b642c] shadow-sm active:scale-95"
+                aria-label="Tài khoản của tôi"
+                title="Tài khoản"
+              >
+                {currentUser.AnhNhanVien ? (
+                  <img src={currentUser.AnhNhanVien} alt="Ảnh đại diện" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-sm font-bold">{(currentUser.HoTen || 'U').trim().charAt(0).toUpperCase()}</span>
+                )}
+              </button>
+              {accountMenuOpen && (
+                <div className="absolute right-0 top-12 z-[140] w-64 rounded-2xl border border-[#e7dfd5] bg-white p-3 shadow-2xl">
+                  <div className="flex items-center gap-3 border-b border-stone-100 pb-3">
+                    <div className="w-11 h-11 rounded-full overflow-hidden border border-[#d8bd8d] bg-[#f4ead8] flex items-center justify-center text-[#8b642c] font-bold">
+                      {currentUser.AnhNhanVien ? <img src={currentUser.AnhNhanVien} alt="" className="w-full h-full object-cover"/> : (currentUser.HoTen || 'U').trim().charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-stone-900 truncate">{currentUser.HoTen}</p>
+                      <p className="text-xs text-stone-500 truncate">{currentUser.ChucVu || currentUser.Quyen}</p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => { setAccountMenuOpen(false); onLogout(); }} className="mt-3 w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50">
+                    Đăng xuất
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
