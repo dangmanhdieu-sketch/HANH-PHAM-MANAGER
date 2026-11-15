@@ -11,6 +11,7 @@ import type {
   HoaHong,
   ThongKeKPI,
   ThongBao,
+  QuanLyRecord,
 } from './types';
 import { api, authStorage } from './api';
 
@@ -96,6 +97,7 @@ function AppContent() {
   const [payrollList, setPayrollList] = useState<Luong[]>([]);
   const [commissionList, setCommissionList] = useState<HoaHong[]>([]);
   const [notifications, setNotifications] = useState<ThongBao[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<QuanLyRecord[]>([]);
   const [automationStatus, setAutomationStatus] = useState<any>(null);
   const [dashboardFinanceSummary, setDashboardFinanceSummary] = useState({
     approvedCommissionTotal: 0,
@@ -173,8 +175,9 @@ function AppContent() {
             api.dashboard.getStats(),
             api.staff.getAll(),
             api.dashboard.getNotifications(),
+            api.quanLy.getAll(),
           ]);
-          const [stats, staff, notice] = results;
+          const [stats, staff, notice, businessRecords] = results;
           if (stats.status === 'fulfilled') {
             setKpis(stats.value.kpis || []);
             setAttendanceList(stats.value.todayChamCong || []);
@@ -187,6 +190,13 @@ function AppContent() {
           }
           if (staff.status === 'fulfilled') setStaffList(staff.value);
           if (notice.status === 'fulfilled') setNotifications(notice.value);
+          if (businessRecords.status === 'fulfilled') setPendingApprovals(businessRecords.value.filter((record) => {
+            const data = record.DuLieu || {};
+            if (record.Module === 'THU_CHI') return !['Đã duyệt','Đã thanh toán và duyệt'].includes(String(data.TrangThaiDuyet || ''));
+            if (record.Module === 'HOP_DONG') return String(data.TrangThai || '').toLowerCase().includes('chờ') && String(data.TrangThai || '').toLowerCase().includes('duyệt');
+            if (record.Module === 'NGHI_PHEP') return ['Chờ duyệt','Chờ Admin duyệt'].includes(String(data.TrangThai || ''));
+            return false;
+          }));
           results.forEach((result, index) => {
             if (result.status === 'rejected') console.error('Lỗi tải Dashboard mục #' + index, result.reason);
           });
@@ -483,6 +493,7 @@ function AppContent() {
                 onApprovePayroll={handleApprovePayroll}
                 onTriggerAutomation={handleTriggerAutomation}
                 onNavigateToTab={setCurrentTab}
+                pendingApprovals={pendingApprovals}
               />
             )}
 
