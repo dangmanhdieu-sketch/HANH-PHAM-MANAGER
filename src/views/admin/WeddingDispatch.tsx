@@ -3,7 +3,7 @@ import { CalendarDays, Plus, Search, Clock, Camera, Palette, CheckCircle2, Alert
 import type { NhanVien, QuanLyRecord } from '../../types';
 import { api } from '../../api';
 
-const SERVICES = ['Chụp ảnh cưới', 'Chụp ảnh cổng', 'Ngày cưới', 'Giao album', 'Makeup ngày cưới', 'Chụp phóng sự cưới', 'Thử váy cưới'];
+const SERVICES = ['Trọn gói một ngày cưới', 'Trọn gói 2 ngày cưới', 'Trọn gói đính hôn - nhà thờ - rước dâu', 'Chụp cổng cưới', 'Chụp hình tiệc cưới', 'Quay phim cưới', 'Thử váy cưới', 'Chụp hình cổng cưới'];
 const STATUSES = ['Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'];
 const today = () => {
   const d = new Date();
@@ -23,6 +23,9 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
   const [showForm,setShowForm] = useState(false);
   const [editing,setEditing] = useState<QuanLyRecord|null>(null);
   const [form,setForm] = useState<any>(emptyForm());
+  const [customService,setCustomService] = useState('');
+  const [showCustomService,setShowCustomService] = useState(false);
+  const [extraServices,setExtraServices] = useState<string[]>([]);
   const [month,setMonth] = useState(today().slice(0,7));
   const [search,setSearch] = useState('');
   const [statusFilter,setStatusFilter] = useState('Tất cả');
@@ -56,8 +59,8 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
     overdue: filtered.filter(r => r.DuLieu?.HanGiao && r.DuLieu.HanGiao < today() && r.DuLieu?.TrangThai !== 'Hoàn thành' && r.DuLieu?.TrangThai !== 'Đã hủy').length,
   }),[filtered]);
 
-  const openNew = () => { setEditing(null); setForm(emptyForm()); setError(''); setShowForm(true); };
-  const openEdit = (r: QuanLyRecord) => { setEditing(r); setForm({ ...emptyForm(), ...r.DuLieu }); setError(''); setShowForm(true); };
+  const openNew = () => { setEditing(null); setForm(emptyForm()); setCustomService(''); setShowCustomService(false); setError(''); setShowForm(true); };
+  const openEdit = (r: QuanLyRecord) => { setEditing(r); setForm({ ...emptyForm(), ...r.DuLieu }); setCustomService(''); setShowCustomService(false); setError(''); setShowForm(true); };
   const chooseContract = (id: string) => {
     const c = contracts.find(x => x.QuanLyID === id);
     setForm((old:any) => ({...old, HopDongID:id, MaHopDong:c?.DuLieu?.MaHopDong || '', KhachHang:c?.DuLieu?.KhachHang || '', SDT:c?.DuLieu?.SDT || '', NgayCuoi:c?.DuLieu?.NgayCuoi || ''}));
@@ -122,7 +125,7 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
       <div className="flex items-center justify-between p-4 border-b border-stone-800"><div><h2 className="text-lg font-bold text-white">{editing?'Cập nhật lịch dịch vụ':'Tạo lịch dịch vụ'}</h2><p className="text-xs text-stone-400">Liên kết hợp đồng có sẵn, tự điền thông tin khách hàng.</p></div><button onClick={()=>setShowForm(false)} className="p-2 text-stone-400"><X/></button></div>
       <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[70vh] overflow-y-auto">
         <label className="text-xs text-stone-300 sm:col-span-2">Hợp đồng<select value={form.HopDongID} onChange={e=>chooseContract(e.target.value)} className="mt-1 w-full rounded-lg bg-stone-900 border border-stone-700 p-2.5 text-white"><option value="">Không liên kết hợp đồng</option>{contracts.map(c=><option key={c.QuanLyID} value={c.QuanLyID}>{c.DuLieu?.MaHopDong} · {c.DuLieu?.KhachHang}</option>)}</select></label>
-        <label className="text-xs text-stone-300">Dịch vụ<select value={form.DichVu} onChange={e=>setForm({...form,DichVu:e.target.value})} className="mt-1 w-full rounded-lg bg-stone-900 border border-stone-700 p-2.5 text-white">{SERVICES.map(s=><option key={s}>{s}</option>)}</select></label>
+        <label className="text-xs text-stone-300">Dịch vụ<select value={form.DichVu} onChange={e=>setForm({...form,DichVu:e.target.value})} className="mt-1 w-full rounded-lg bg-stone-900 border border-stone-700 p-2.5 text-white">{[...SERVICES,...extraServices,...(form.DichVu && ![...SERVICES,...extraServices].includes(form.DichVu) ? [form.DichVu] : [])].map(s=><option key={s}>{s}</option>)}</select><button type="button" onClick={()=>setShowCustomService(v=>!v)} className="mt-2 inline-flex items-center gap-1 rounded-lg border border-[#c5a059]/60 px-3 py-2 text-xs font-semibold text-[#d8b875]"><Plus size={14}/> Thêm Mới</button>{showCustomService && <div className="mt-2 flex gap-2"><input value={customService} onChange={e=>setCustomService(e.target.value)} placeholder="Nhập tên dịch vụ riêng..." className="min-w-0 flex-1 rounded-lg bg-stone-900 border border-stone-700 p-2.5 text-white"/><button type="button" onClick={()=>{const name=customService.trim();if(!name)return;setExtraServices(old=>old.includes(name)?old:[...old,name]);setForm((old:any)=>({...old,DichVu:name}));setCustomService('');setShowCustomService(false);}} className="rounded-lg bg-[#c5a059] px-3 py-2 text-xs font-bold text-stone-950">Áp dụng</button></div>}</label>
         <label className="text-xs text-stone-300">Tên khách hàng<input value={form.KhachHang} onChange={e=>setForm({...form,KhachHang:e.target.value})} className="mt-1 w-full rounded-lg bg-stone-900 border border-stone-700 p-2.5 text-white" required/></label>
         <label className="text-xs text-stone-300">Số điện thoại<input value={form.SDT} onChange={e=>setForm({...form,SDT:e.target.value})} className="mt-1 w-full rounded-lg bg-stone-900 border border-stone-700 p-2.5 text-white"/></label>
         <label className="text-xs text-stone-300">Mã hợp đồng<input value={form.MaHopDong} onChange={e=>setForm({...form,MaHopDong:e.target.value})} className="mt-1 w-full rounded-lg bg-stone-900 border border-stone-700 p-2.5 text-white"/></label>
