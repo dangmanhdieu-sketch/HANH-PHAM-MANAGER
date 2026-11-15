@@ -972,6 +972,8 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
     }
 
     if (module === 'HOP_DONG') {
+      payload.KhachHang = String(payload.KhachHang || [payload.TenCoDau, payload.TenChuRe].filter(Boolean).join(' & ')).trim();
+      payload.SDT = String(payload.SDT || [payload.SDTCoDau, payload.SDTChuRe].filter(Boolean).join(' / ')).trim();
       if (!['HP_DONG_XOAI', 'HP_BINH_LONG', 'HP_LUMA'].includes(String(payload.ChiNhanh || ''))) return res.status(400).json({ error: 'Vui lòng chọn chi nhánh Đồng Xoài, Bình Long hoặc Luma.' });
       if (!String(payload.KhachHang || '').trim() || !String(payload.SDT || '').trim() ||
           !String(payload.GoiDichVu || '').trim() || !Number.isFinite(Number(payload.TongGiaTri)) ||
