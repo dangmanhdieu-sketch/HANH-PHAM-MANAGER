@@ -1,4 +1,5 @@
 import express from 'express';
+import { GoogleGenAI } from '@google/genai';
 import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -1598,6 +1599,35 @@ app.post('/api/theme/reset', authenticateToken, requireAdmin, (req: AuthRequest,
 });
 
 // ==========================================
+// AI OCR for handwritten Vietnamese wedding contracts. This route only extracts fields; it never writes a contract.
+app.post('/api/contracts/recognize-handwriting', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) return res.status(503).json({ error: 'Render chưa cấu hình GEMINI_API_KEY.' });
+    const images = Array.isArray(req.body?.images) ? req.body.images : [];
+    if (!images.length || images.length > 3) return res.status(400).json({ error: 'Chọn từ 1 đến 3 ảnh hợp đồng.' });
+    const parts: any[] = [];
+    for (const value of images) {
+      const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(value || ''));
+      if (!match) return res.status(400).json({ error: 'Ảnh phải là JPG, PNG hoặc WebP.' });
+      const data = Buffer.from(match[2], 'base64');
+      if (!data.length || data.length > 8 * 1024 * 1024) return res.status(400).json({ error: 'Mỗi ảnh tối đa 8 MB.' });
+      parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+    }
+    const prompt = 'Đọc ảnh hợp đồng cưới viết tay tiếng Việt. Chỉ trích thông tin nhìn thấy, kể cả chữ viết tắt thông dụng, không suy đoán. Trả duy nhất JSON {"fields":{},"warnings":[]}. Chỉ dùng các khóa: KhachHang, SDT, DiaChi, TenCoDau, TenChuRe, SDTCoDau, SDTChuRe, DiaChiNhaGai, DiaChiNhaTrai, NgayCuoiNhaTrai, NgayCuoiNhaGai, LoaiDichVu, GoiDichVu, GhiChu, GiaGoiBanDau, GiamGiaTrucTiep, PhuThuDichVu, TienDatCoc, LichThanhToan. Ngày YYYY-MM-DD khi chắc chắn; tiền số nguyên VND. Không chắc thì để null hoặc chuỗi rỗng và ghi cảnh báo. LichThanhToan là mảng {Dot,TenDot,HanThanhToan,SoTienDuKien,GhiChu}. Không trả ChiNhanh, MaHopDong, NhanVienID, TrangThai, TongGiaTri, DaThu. Không đọc CCCD hoặc giấy tờ tùy thân.';
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({ model: process.env.GEMINI_OCR_MODEL || 'gemini-2.5-flash', contents: [{ role: 'user', parts: [...parts, { text: prompt }] }], config: { responseMimeType: 'application/json', temperature: 0.1 } });
+    const raw = String(response.text || '').trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '');
+    const parsed = JSON.parse(raw);
+    const allowed = new Set(['KhachHang','SDT','DiaChi','TenCoDau','TenChuRe','SDTCoDau','SDTChuRe','DiaChiNhaGai','DiaChiNhaTrai','NgayCuoiNhaTrai','NgayCuoiNhaGai','LoaiDichVu','GoiDichVu','GhiChu','GiaGoiBanDau','GiamGiaTrucTiep','PhuThuDichVu','TienDatCoc','LichThanhToan']);
+    const fields: Record<string, any> = {};
+    for (const [key, value] of Object.entries(parsed?.fields || {})) if (allowed.has(key)) fields[key] = value;
+    return res.json({ fields, warnings: Array.isArray(parsed?.warnings) ? parsed.warnings.slice(0, 20).map((v: unknown) => String(v).slice(0, 250)) : [] });
+  } catch (error: any) {
+    console.error('[CONTRACT OCR] Failed:', error?.message || error);
+    return res.status(502).json({ error: 'Gemini chưa đọc được ảnh. Hãy chụp rõ, đủ sáng rồi thử lại.' });
+  }
+});
 // 8. BACKUP & EXPORT ROUTES
 // ==========================================
 
