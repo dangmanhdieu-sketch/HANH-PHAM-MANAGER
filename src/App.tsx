@@ -29,8 +29,6 @@ import { AttendanceManagement } from './views/admin/AttendanceManagement';
 import { PayrollManagement } from './views/admin/PayrollManagement';
 import { AuditAndAutomation } from './views/admin/AuditAndAutomation';
 import { BusinessModule } from './views/admin/BusinessModule';
-import { WorkHub } from './views/admin/WorkHub';
-import { WeddingDispatch } from './views/admin/WeddingDispatch';
 const BridalInventory = React.lazy(() => import('./views/admin/BridalInventory').then(module => ({ default: module.BridalInventory })));
 
 // Employee Views
@@ -239,10 +237,8 @@ function AppContent() {
         case 'nghiphep':
           await loadNotifications();
           return;
-        case 'congviec':
         case 'hopdong':
         case 'thuchi':
-        case 'lichcuoi':
           setStaffList(await api.staff.getAll());
           return;
         default:
@@ -292,9 +288,6 @@ function AppContent() {
         return;
       case 'thuchi_me':
       case 'hopdong_me':
-      case 'congviec':
-        setStaffList(await api.staff.getAll());
-        return;
       default:
         await loadNotifications();
     }
@@ -558,9 +551,7 @@ function AppContent() {
             )}
 
             {currentTab === 'khovay' && <React.Suspense fallback={<div className="rounded-2xl border border-[#E7DFD5] bg-white p-8 text-center text-sm text-stone-500">Đang mở quản lý kho...</div>}><BridalInventory /></React.Suspense>}
-            {currentTab === 'congviec' && <WorkHub staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
             {currentTab === 'hopdong' && <BusinessModule module="HOP_DONG" staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
-            {currentTab === 'lichcuoi' && <WeddingDispatch staffList={staffList} currentUser={currentUser} />}
             {currentTab === 'thuchi' && <BusinessModule module="THU_CHI" staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
             
             {currentTab === 'thietlap' && (
@@ -624,7 +615,6 @@ function AppContent() {
               />
             )}
 
-            {currentTab === 'congviec' && currentUser.Quyen !== 'Freelancer' && <WorkHub staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />}
 
             {currentTab === 'hopdong_me' && currentUser.Quyen === 'Sale' && (
               <BusinessModule
