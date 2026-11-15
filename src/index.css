@@ -355,3 +355,101 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
   .hp-luxury-app .hp-mobile-shell > div:first-child .hp-mode-toggle { width:34px;height:34px; }
   .hp-luxury-app .hp-mobile-shell > div:first-child .w-10.h-10 { width:36px;height:36px; }
 }
+
+
+/* Mobile dashboard layout tuned to the approved iPhone reference */
+@media (max-width: 767px) {
+  .hp-luxury-app .hp-navbar {
+    position:sticky !important;top:0 !important;z-index:90 !important;
+    background:#fffaf3 !important;backdrop-filter:none !important;
+    border-bottom:1px solid #eadfce !important;box-shadow:0 3px 14px rgba(67,45,23,.06) !important;
+  }
+  .hp-luxury-app .hp-mobile-shell > div:first-child {
+    min-height:68px !important;height:68px !important;
+    padding:7px 12px !important;gap:7px !important;background:#fffaf3 !important;
+  }
+  .hp-luxury-app .hp-mobile-shell > div:first-child .hp-mode-toggle {
+    width:36px !important;height:36px !important;border-radius:50% !important;
+    background:#f7ead4 !important;color:#9b6e2f !important;border:1px solid #ead7b5 !important;
+  }
+  .hp-luxury-app .hp-mobile-shell > div:first-child .w-10.h-10 {
+    width:36px !important;height:36px !important;border-radius:11px !important;
+  }
+  .hp-luxury-app .hp-mobile-shell > div:first-child .font-bridal {
+    font-family:Georgia,'Times New Roman',serif !important;font-size:14px !important;
+    letter-spacing:.06em !important;color:#2b2119 !important;
+  }
+  .hp-luxury-app main {
+    padding:12px 12px calc(82px + env(safe-area-inset-bottom)) !important;
+    background:linear-gradient(180deg,#fffaf3 0%,#f8f1e7 100%) !important;
+  }
+  .hp-admin-dashboard {gap:12px !important;}
+  .hp-admin-dashboard .hp-dashboard-hero {
+    position:relative;overflow:hidden;gap:8px !important;
+    padding:18px 16px 15px !important;border:0 !important;border-radius:18px !important;
+    background:
+      radial-gradient(ellipse at 100% 0%,rgba(221,190,145,.34),transparent 45%),
+      linear-gradient(135deg,#fffdf9 0%,#f7eddf 100%) !important;
+    box-shadow:0 5px 18px rgba(86,57,25,.07) !important;
+  }
+  .hp-admin-dashboard .hp-dashboard-hero p:first-child {
+    font-family:Georgia,'Times New Roman',serif !important;font-size:10px !important;
+    letter-spacing:.19em !important;color:#a17a43 !important;
+  }
+  .hp-admin-dashboard .hp-dashboard-hero h1 {
+    font-family:Georgia,'Times New Roman',serif !important;font-size:26px !important;
+    line-height:1.12 !important;color:#241b14 !important;margin-top:4px !important;
+  }
+  .hp-admin-dashboard .hp-dashboard-hero p:last-child {font-size:12px !important;color:#76695d !important;}
+  .hp-admin-dashboard .hp-dashboard-hero button {
+    width:auto !important;align-self:flex-start !important;min-height:36px !important;
+    padding:8px 12px !important;font-size:11px !important;border-radius:999px !important;
+    background:#f1e4d0 !important;color:#79552b !important;box-shadow:none !important;
+  }
+  .hp-admin-dashboard .hp-pending-approvals {
+    padding:12px !important;border:1px solid #ead8b8 !important;border-radius:17px !important;
+    background:#fff9ed !important;box-shadow:0 4px 14px rgba(86,57,25,.05) !important;
+  }
+  .hp-admin-dashboard .hp-pending-approvals h2 {font-size:13px !important;color:#392718 !important;}
+  .hp-admin-dashboard .hp-pending-approvals > div:first-child {margin-bottom:8px !important;}
+  .hp-admin-dashboard .hp-pending-approvals > div.space-y-2 {display:flex;flex-direction:column;gap:0 !important;}
+  .hp-admin-dashboard .hp-pending-approvals > div.space-y-2 > button {
+    min-height:48px !important;padding:8px 5px !important;border:0 !important;
+    border-top:1px solid #eee3d3 !important;border-radius:0 !important;background:transparent !important;
+    gap:8px !important;
+  }
+  .hp-admin-dashboard .hp-pending-approvals > div.space-y-2 > button:first-child {border-top:0 !important;}
+  .hp-admin-dashboard .hp-pending-approvals > div.space-y-2 > button > span:first-child > span:first-child {font-size:11px !important;}
+  .hp-admin-dashboard .hp-pending-approvals > div.space-y-2 > button > span:first-child > span:last-child {font-size:9px !important;}
+  .hp-admin-dashboard .hp-pending-approvals > div.space-y-2 > button > span:last-child {
+    padding:0 !important;background:transparent !important;color:#80551e !important;font-size:0 !important;
+  }
+  .hp-admin-dashboard .hp-pending-approvals > div.space-y-2 > button > span:last-child:after {content:'›';font-size:22px;line-height:1;}
+  .hp-admin-dashboard section > div.mb-3 h2 {font-size:14px !important;}
+  .hp-admin-dashboard .hp-dashboard-kpis {gap:8px !important;}
+  .hp-admin-dashboard .hp-dashboard-kpis > button {
+    min-height:98px !important;padding:11px !important;border-radius:15px !important;
+    background:linear-gradient(145deg,#fffefa,#f8f0e5) !important;border:1px solid #eadfce !important;
+    box-shadow:0 3px 12px rgba(86,57,25,.055) !important;
+  }
+  .hp-admin-dashboard .hp-dashboard-kpis > button > div:first-child > span:first-child {font-size:10px !important;color:#76695d !important;}
+  .hp-admin-dashboard .hp-dashboard-kpis > button > div:first-child > span:last-child {padding:6px !important;border-radius:50% !important;background:#f5ead8 !important;}
+  .hp-admin-dashboard .hp-dashboard-kpis > button > div:nth-child(2) {font-family:Georgia,'Times New Roman',serif;font-size:21px !important;color:#2b2119 !important;margin-top:7px !important;}
+  .hp-admin-dashboard .hp-dashboard-kpis > button > div:nth-child(3) {font-size:9px !important;min-height:0 !important;}
+  .hp-admin-dashboard h2 {color:#2d2118 !important;}
+  .hp-admin-dashboard > section {min-width:0;}
+  .hp-luxury-app .hp-mobile-tabbar {
+    background:rgba(255,250,243,.98) !important;border-top:1px solid #e8dcc9 !important;
+    box-shadow:0 -5px 20px rgba(55,36,18,.10) !important;
+    padding:4px 7px calc(4px + env(safe-area-inset-bottom)) !important;
+  }
+  .hp-luxury-app .hp-mobile-bottom-inner {min-height:54px !important;gap:3px !important;}
+  .hp-luxury-app .hp-mobile-bottom-inner .hp-bottom-item {
+    min-height:50px !important;padding:5px 2px !important;gap:3px !important;
+    font-size:9px !important;color:#64584d !important;
+  }
+  .hp-luxury-app .hp-mobile-bottom-inner .hp-bottom-item.is-active {
+    background:linear-gradient(135deg,#c99d52,#93672d) !important;color:#fff !important;
+    border-radius:12px !important;
+  }
+}
