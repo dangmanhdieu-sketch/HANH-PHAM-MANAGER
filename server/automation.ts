@@ -32,14 +32,53 @@ class AutomationManager {
     }
   }
 
+  private async checkWeddingReminders() {
+    const now = Date.now();
+    const reminders = [
+      { key: 'Nhac7NgayDaGui', threshold: 7 * 24 * 60, window: 24 * 60, label: '7 ngày' },
+      { key: 'Nhac3NgayDaGui', threshold: 3 * 24 * 60, window: 24 * 60, label: '3 ngày' },
+      { key: 'Nhac1NgayDaGui', threshold: 24 * 60, window: 22 * 60, label: '1 ngày' },
+      { key: 'Nhac2GioDaGui', threshold: 2 * 60, window: 2 * 60, label: '2 giờ' },
+    ];
+    let changed = false;
+    const systemUser = { HoTen: 'Hệ thống nhắc lịch cưới', Email: 'system@hanhphambridal.vn' };
+
+    for (const record of dbService.getQuanLyRecords('LICH_CUOI')) {
+      const data = record.DuLieu || {};
+      if (['Đã hủy', 'Hủy', 'Hoàn thành'].includes(String(data.TrangThai || ''))) continue;
+      const startAt = Date.parse(String(data.Ngay || '') + 'T' + String(data.Gio || '') + ':00+07:00');
+      if (!Number.isFinite(startAt)) continue;
+      const minutesLeft = Math.floor((startAt - now) / 60000);
+      if (minutesLeft <= 0) continue;
+      const reminder = reminders.find(item => !data[item.key] && minutesLeft <= item.threshold && minutesLeft > item.threshold - item.window);
+      if (!reminder) continue;
+
+      const dateText = String(data.Ngay || '') + ' lúc ' + String(data.Gio || '');
+      const placeText = data.DiaDiem ? ' · Địa điểm: ' + data.DiaDiem : '';
+      const message = String(data.DichVu || 'Công việc cưới') + ' – ' + String(data.KhachHang || 'Khách hàng') + ', ' + dateText + placeText + '. Còn khoảng ' + reminder.label + '. Vui lòng kiểm tra lịch và chuẩn bị.';
+      dbService.updateQuanLyRecord(record.QuanLyID, { [reminder.key]: new Date().toISOString() }, systemUser);
+      const assignedIds = Array.from(new Set([data.ThoChupID, data.MakeupID, data.ThoQuayID, data.NguoiPhuTrachID].filter(Boolean).map(String)));
+      for (const staffId of assignedIds) dbService.addNotification('Nhắc lịch cưới trước ' + reminder.label, message, 'warning', staffId);
+      dbService.addNotification('Sắp đến lịch cưới', message, 'warning');
+      changed = true;
+    }
+
+    if (changed) await dbService.saveAndVerify();
+  }
+
   /**
    * Check schedule in GMT+7 (Vietnam Time)
    */
   public async checkScheduledJobs() {
-    const config = dbService.getConfig();
-    if (!config.AutomationEnabled || this.isRunning) {
-      return;
+    if (this.isRunning) return;
+    try {
+      await this.checkWeddingReminders();
+    } catch (err) {
+      console.error('[Automation] Wedding reminder error:', err);
     }
+
+    const config = dbService.getConfig();
+    if (!config.AutomationEnabled) return;
 
     try {
       // Calculate Vietnam Time (UTC+7)
