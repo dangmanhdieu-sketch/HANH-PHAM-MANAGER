@@ -358,12 +358,17 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* MOBILE BOTTOM NAV — primary shortcuts + drawer for remaining modules */}
         <div className="hp-mobile-tabbar">
           <div className="hp-mobile-bottom-inner">
-            {activeTabs.filter((tab) => ['dashboard','home','nhanvien','chamcong','chamcong_me','luong','luong_me','thuchi','thuchi_me'].includes(tab.id)).slice(0,4).map((tab) => {
+            {(isAdmin ? [
+              { id: 'dashboard', label: 'Tổng quan', icon: BarChart3 },
+              { id: 'nhanvien', label: 'Nhân viên', icon: Users },
+              { id: 'chamcong', label: 'Công việc', icon: CalendarDays },
+              { id: 'thuchi', label: 'Thu chi', icon: Wallet },
+            ] : activeTabs.filter((tab) => ['home','luong_me','danhba_me','chamcong_me','thuchi_me'].includes(tab.id)).slice(0,4)).map((tab) => {
               const Icon = tab.icon;
               const active = currentTab === tab.id;
               return <button key={tab.id} type="button" onClick={() => handleTabChange(tab.id)} className={active ? 'hp-bottom-item is-active' : 'hp-bottom-item'}>
                 <Icon className="w-5 h-5"/>
-                <span>{tab.shortLabel}</span>
+                <span>{tab.label}</span>
               </button>;
             })}
             <button type="button" onClick={() => { setMobileMenuOpen(true); setNotifDropdownOpen(false); }} className="hp-bottom-item">
