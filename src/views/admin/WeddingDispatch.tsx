@@ -86,10 +86,11 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
       DiaDiem:d.DiaChiNhaGai || d.DiaChi || old.DiaDiem, GhiChu:d.GhiChu || old.GhiChu,
     }));
   };
-  const assignedStaffIds = (data:any) => [data?.ThoChupID, data?.MakeupID, data?.ThoQuayID, data?.NguoiPhuTrachID].filter((id): id is string => Boolean(id));
+  const assignedStaffIds = (data:any) => Array.from(new Set([data?.ThoChupID, data?.MakeupID, data?.ThoQuayID, data?.NguoiPhuTrachID].filter((id): id is string => Boolean(id))));
   const validateConflict = () => {
+    const roleStaff = [form.ThoChupID, form.MakeupID, form.ThoQuayID].filter(Boolean);
     const selected = assignedStaffIds(form);
-    if (new Set(selected).size !== selected.length) return 'Một nhân viên đang được chọn cho nhiều vai trò trong cùng công việc. Vui lòng chọn lại.';
+    if (new Set(roleStaff).size !== roleStaff.length) return 'Một nhân viên không thể vừa chụp, makeup hoặc quay phim trong cùng một công việc.';
     const start = mins(form.Gio);
     const end = start + Math.max(30, Number(form.ThoiLuong || 180));
     const normalizePlace = (value:string) => String(value || '').trim().toLocaleLowerCase('vi');
