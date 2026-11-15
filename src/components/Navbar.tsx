@@ -355,78 +355,20 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* ====================================================
-            MOBILE SUB TABS
-            Nằm NGAY DƯỚI LOGO
-            Có thể vuốt ngang
-        ==================================================== */}
-        <div
-          className="hp-mobile-tabbar
-            bg-white
-            border-t border-[#F1EBE3]
-            border-b border-[#E7DFD5]
-          "
-        >
-          <div
-            className="
-              flex
-              items-center
-              gap-1.5
-              px-3
-              py-2
-              overflow-x-auto
-              overscroll-x-contain
-            "
-            style={{
-              scrollbarWidth: 'none',
-              WebkitOverflowScrolling: 'touch',
-            }}
-          >
-            {activeTabs.map((tab) => {
+        {/* MOBILE BOTTOM NAV — primary shortcuts + drawer for remaining modules */}
+        <div className="hp-mobile-tabbar">
+          <div className="hp-mobile-bottom-inner">
+            {activeTabs.filter((tab) => ['dashboard','home','nhanvien','chamcong','chamcong_me','luong','luong_me','thuchi','thuchi_me'].includes(tab.id)).slice(0,4).map((tab) => {
               const Icon = tab.icon;
-              const isActive = currentTab === tab.id;
-
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() =>
-                    handleTabChange(tab.id)
-                  }
-                  className={`
-                    flex
-                    items-center
-                    gap-1.5
-                    shrink-0
-                    px-3
-                    py-2
-                    rounded-xl
-                    text-[11px]
-                    font-semibold
-                    whitespace-nowrap
-                    transition-all
-                    ${
-                      isActive
-                        ? 'bg-stone-900 text-white shadow-sm'
-                        : 'bg-[#FAF8F5] text-stone-600 border border-[#EEE7DE]'
-                    }
-                  `}
-                >
-                  <Icon
-                    className={`
-                      w-3.5 h-3.5 shrink-0
-                      ${
-                        isActive
-                          ? 'text-[#dfc79f]'
-                          : 'text-[#a97d3e]'
-                      }
-                    `}
-                  />
-
-                  <span>{tab.shortLabel}</span>
-                </button>
-              );
+              const active = currentTab === tab.id;
+              return <button key={tab.id} type="button" onClick={() => handleTabChange(tab.id)} className={active ? 'hp-bottom-item is-active' : 'hp-bottom-item'}>
+                <Icon className="w-5 h-5"/>
+                <span>{tab.shortLabel}</span>
+              </button>;
             })}
+            <button type="button" onClick={() => { setMobileMenuOpen(true); setNotifDropdownOpen(false); }} className="hp-bottom-item">
+              <Menu className="w-5 h-5"/><span>Thêm</span>
+            </button>
           </div>
         </div>
       </div>
