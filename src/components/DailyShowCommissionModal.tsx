@@ -164,8 +164,8 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in font-sans">
-      <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-[#E7DFD5] overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="hp-daily-claim-overlay fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in font-sans">
+      <div className="hp-daily-claim-panel w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-[#E7DFD5] overflow-hidden flex flex-col max-h-[92dvh] min-h-0">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7DFD5] bg-[#FAF8F5]">
           <div className="flex items-center gap-3">
@@ -191,7 +191,8 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="hp-daily-claim-form flex min-h-0 flex-1 flex-col overflow-hidden text-xs">
+          <div className="hp-daily-claim-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
           {formError && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
@@ -485,8 +486,9 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
             </span>
           </div>
 
-          {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E7DFD5]">
+          </div>
+          {/* Modal Actions stay visible above the iPhone safe area */}
+          <div className="hp-daily-claim-actions sticky bottom-0 z-10 flex shrink-0 items-center justify-end gap-3 border-t border-[#E7DFD5] bg-white px-4 py-3 sm:px-6">
             <button
               type="button"
               onClick={onClose}
