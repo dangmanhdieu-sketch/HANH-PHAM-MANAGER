@@ -874,7 +874,7 @@ app.put('/api/vay-cuoi/:id', authenticateToken, requireAdmin, async (req: AuthRe
 const validateWeddingSchedule = (payload: any, excludeId?: string): string | null => {
   const service = String(payload.DichVu || '').trim();
   if (!service || service.length > 120) return 'Vui lòng nhập tên dịch vụ hợp lệ (tối đa 120 ký tự).';
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(payload.Ngay || '')) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(payload.Gio || ''))) return 'Vui lòng chọn ngày và giờ hợp lệ.';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(payload.Ngay || '')) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(payload.Gio || ''))) return 'Vui lòng chọn ngày và giờ hợp lệ.';
   if (!String(payload.KhachHang || '').trim()) return 'Vui lòng nhập tên khách hàng.';
   if (!['Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'].includes(String(payload.TrangThai || 'Chờ xác nhận'))) return 'Trạng thái lịch không hợp lệ.';
 
