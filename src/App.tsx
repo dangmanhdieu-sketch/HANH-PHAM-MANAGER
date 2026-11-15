@@ -222,7 +222,7 @@ function AppContent() {
           })();
           const [payroll, commission, staff] = await Promise.all([
             api.payroll.getAll(),
-            api.commission.getAll({ month }),
+            api.commission.getAll(), // Admin needs all months so older pending requests remain visible.
             api.staff.getAll(),
           ]);
           setPayrollList(payroll);
