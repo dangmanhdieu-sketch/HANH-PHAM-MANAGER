@@ -206,7 +206,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {/* ACTIONS */}
-          <div className="flex items-center gap-1 shrink-0">\n            {modeToggle}
+          <div className="flex items-center gap-1 shrink-0">
+            {modeToggle}
 
             {/* =================================================
                 NOTIFICATION
@@ -360,7 +361,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             Có thể vuốt ngang
         ==================================================== */}
         <div
-          className="
+          className="hp-mobile-tabbar
             bg-white
             border-t border-[#F1EBE3]
             border-b border-[#E7DFD5]
@@ -464,7 +465,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* ACTIONS */}
-            <div className="flex items-center gap-2 sm:gap-4">\n              {modeToggle}
+            <div className="flex items-center gap-2 sm:gap-4">
+              {modeToggle}
 
               {/* DESKTOP NOTIFICATION */}
               <div className="relative">
