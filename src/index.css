@@ -472,3 +472,80 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
   .hp-admin-dashboard .hp-dashboard-kpis > button { min-height:96px !important; }
   .hp-admin-dashboard .hp-dashboard-hero h1 { font-size:27px !important; }
 }
+
+
+/* iPhone safe-area + larger evenly distributed bottom navigation */
+@media (max-width: 767px) {
+  /* Keep the complete brand/action row below the iOS status bar */
+  .hp-luxury-app > .hp-navbar {
+    box-sizing:border-box !important;
+    padding-top: max(12px, env(safe-area-inset-top)) !important;
+    top:0 !important;
+    z-index:120 !important;
+    overflow:visible !important;
+  }
+  .hp-luxury-app .hp-navbar .hp-mobile-shell > div:first-child {
+    box-sizing:border-box !important;
+    height:68px !important;
+    min-height:68px !important;
+    padding-top:7px !important;
+    padding-bottom:7px !important;
+    padding-left:14px !important;
+    padding-right:14px !important;
+  }
+  .hp-luxury-app .hp-navbar .hp-mobile-shell > div:first-child .font-bridal {
+    font-size:15px !important;
+    letter-spacing:.075em !important;
+  }
+  .hp-luxury-app .hp-navbar .hp-mobile-shell > div:first-child .hp-mode-toggle,
+  .hp-luxury-app .hp-navbar .hp-mobile-shell > div:first-child button[aria-label="Thông báo"],
+  .hp-luxury-app .hp-navbar .hp-mobile-shell > div:first-child button[aria-label="Mở menu"] {
+    width:40px !important;
+    height:40px !important;
+    min-width:40px !important;
+    border-radius:13px !important;
+  }
+
+  /* Five equal-width, more legible navigation targets */
+  .hp-luxury-app .hp-mobile-tabbar {
+    box-sizing:border-box !important;
+    padding:6px 8px calc(7px + env(safe-area-inset-bottom)) !important;
+    min-height:calc(72px + env(safe-area-inset-bottom)) !important;
+  }
+  .hp-luxury-app .hp-mobile-bottom-inner {
+    display:grid !important;
+    grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+    align-items:stretch !important;
+    justify-content:stretch !important;
+    gap:5px !important;
+    width:100% !important;
+    max-width:none !important;
+    min-height:62px !important;
+    margin:0 !important;
+  }
+  .hp-luxury-app .hp-mobile-bottom-inner .hp-bottom-item {
+    width:100% !important;
+    min-width:0 !important;
+    min-height:60px !important;
+    flex:none !important;
+    padding:7px 2px !important;
+    gap:5px !important;
+    border-radius:14px !important;
+    font-size:11px !important;
+    font-weight:650 !important;
+    line-height:1.15 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+  }
+  .hp-luxury-app .hp-mobile-bottom-inner .hp-bottom-item svg {
+    display:block !important;
+    width:22px !important;
+    height:22px !important;
+    min-width:22px !important;
+    min-height:22px !important;
+    stroke-width:1.9 !important;
+  }
+  .hp-luxury-app main {
+    padding-bottom:calc(100px + env(safe-area-inset-bottom)) !important;
+  }
+}
