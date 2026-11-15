@@ -5,6 +5,7 @@ import {
   LogOut,
   User,
   Clock,
+  CalendarDays,
   DollarSign,
   Award,
   Users,
