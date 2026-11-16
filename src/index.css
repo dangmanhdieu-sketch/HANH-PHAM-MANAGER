@@ -130,7 +130,7 @@ body {
 .hp-luxury-app .hp-mobile-tabbar button[class*="bg-stone-900"]{background:linear-gradient(135deg,#c9a15e,#9a6d2d)!important;color:#fff!important}
 .hp-luxury-app .hp-mobile-shell>div:first-child{background:rgba(255,253,249,.97)!important}
 .hp-luxury-app main{padding-top:1.5rem;padding-bottom:6rem}
-.hp-luxury-app .hp-desktop-shell{position:fixed;inset:0 auto 0 0;width:258px;height:100dvh;z-index:70;background:linear-gradient(180deg,#2a2119,#17120f);color:#f8f0e3;border-right:1px solid #8f6b38;box-shadow:8px 0 28px rgba(29,19,10,.12);overflow-y:auto}
+.hp-luxury-app .hp-desktop-shell{position:fixed;inset:0 auto 0 0;width:258px;height:100dvh;z-index:70;background:linear-gradient(180deg,#fffdf8,#f4eadb)!important;color:#3b2b1c!important;border-right:1px solid #e5d5bd;box-shadow:8px 0 28px rgba(29,19,10,.06);overflow-y:auto}
 .hp-luxury-app .hp-desktop-inner{width:100%;max-width:none;padding:24px 16px}
 .hp-luxury-app .hp-desktop-inner>div:first-child{min-height:105px;align-items:flex-start;flex-direction:column;gap:18px}
 .hp-luxury-app .hp-desktop-inner>div:first-child>div:last-child{width:100%;justify-content:space-between}
@@ -148,15 +148,6 @@ body {
 .hp-employee-dashboard button{border-radius:1.1rem}
 .hp-luxury-app footer{background:var(--hp-paper)!important;border-color:var(--hp-line)!important}
 html[data-hp-mode="dark"]{color-scheme:dark}
-html[data-hp-mode="dark"] body{background:#171411!important;color:#f4eadb}
-html[data-hp-mode="dark"] .hp-luxury-app{--hp-ivory:#171411;--hp-paper:#211c17;--hp-ink:#f4eadb;--hp-line:#40352a;background:#171411!important;color:#f4eadb}
-html[data-hp-mode="dark"] .hp-luxury-app :is(.bg-white,.bg-\[\#FAF8F5\],.bg-\[\#faf8f5\]){background-color:#211c17!important}
-html[data-hp-mode="dark"] .hp-luxury-app :is(.text-stone-900,.text-stone-800,.text-stone-700,.text-gray-900){color:#f4eadb!important}
-html[data-hp-mode="dark"] .hp-luxury-app :is(.text-stone-600,.text-stone-500,.text-stone-400){color:#b7a995!important}
-html[data-hp-mode="dark"] .hp-luxury-app :is(.border-stone-100,.border-stone-200){border-color:#40352a!important}
-html[data-hp-mode="dark"] .hp-luxury-app .hp-navbar,html[data-hp-mode="dark"] .hp-luxury-app .hp-mobile-tabbar,html[data-hp-mode="dark"] .hp-luxury-app .hp-mobile-shell>div:first-child{background:rgba(33,28,23,.97)!important}
-html[data-hp-mode="dark"] .hp-luxury-app .hp-mode-toggle{background:#3c3022;color:#f2d49d}
-html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-luxury-app select,html[data-hp-mode="dark"] .hp-luxury-app textarea{background:#211c17!important;color:#f4eadb!important;border-color:#514333!important}
 @media(max-width:1023px){.hp-luxury-app .hp-desktop-shell{display:none!important}.hp-luxury-app .hp-mobile-shell{display:block!important}.hp-luxury-app main{margin-left:0!important;width:100%!important;padding:18px 14px calc(100px + env(safe-area-inset-bottom))!important}.hp-luxury-app footer{margin-left:0!important;margin-bottom:76px!important}.hp-luxury-app .hp-mobile-tabbar{position:fixed!important;display:block!important}.hp-luxury-app .hp-mobile-tabbar>div{overflow-x:auto;scrollbar-width:none}.hp-luxury-app .hp-mobile-tabbar>div::-webkit-scrollbar{display:none}.hp-luxury-app .hp-mobile-tabbar button{min-width:76px}}
 @media(min-width:1024px){.hp-luxury-app .hp-mobile-shell{display:none!important}}
 
@@ -316,11 +307,7 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
   .hp-employee-shell main { margin-left:246px !important; width:calc(100% - 246px) !important; }
   .hp-employee-shell footer { margin-left:246px !important; }
 }
-.hp-luxury-app .hp-desktop-shell {
-  background:
-    radial-gradient(ellipse at 12% 8%,rgba(181,138,69,.22),transparent 35%),
-    linear-gradient(180deg,#2c2118 0%,#1b140f 58%,#2b1d14 100%) !important;
-}
+.hp-luxury-app .hp-desktop-shell { background:linear-gradient(180deg,#fffdf8 0%,#f4eadb 100%) !important; color:#3b2b1c !important; }
 .hp-luxury-app .hp-desktop-shell:after {
   content:"LUXURY BRIDAL";
   display:block;
@@ -827,14 +814,7 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
       linear-gradient(135deg,#f8f2e9 0%,#f2e9dc 48%,#faf7f1 100%) !important;
     min-height:100vh;
   }
-  .hp-luxury-app.hp-admin-shell .hp-desktop-shell {
-    width:252px !important;
-    background:
-      linear-gradient(180deg,rgba(24,18,14,.91),rgba(37,25,16,.96)),
-      radial-gradient(ellipse at 15% 95%,rgba(190,146,78,.24),transparent 42%) !important;
-    border-right:1px solid rgba(196,157,91,.42) !important;
-    box-shadow:8px 0 34px rgba(49,31,14,.18) !important;
-  }
+  .hp-luxury-app.hp-admin-shell .hp-desktop-shell { width:252px !important; background:linear-gradient(180deg,#fffdf8 0%,#f4eadb 100%) !important; color:#3b2b1c !important; border-right:1px solid #e5d5bd !important; box-shadow:8px 0 24px rgba(49,31,14,.06) !important; }
   .hp-luxury-app.hp-admin-shell .hp-desktop-inner {
     padding:28px 15px 26px !important;
   }
@@ -1280,14 +1260,6 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
     color:#827466 !important;
     border-color:#eadbc7 !important;
   }
-  /* Keep the brand sidebar dark, as in the approved reference. */
-  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-desktop-shell {
-    background:
-      radial-gradient(ellipse at 78% 88%,rgba(193,151,83,.28),transparent 38%),
-      radial-gradient(ellipse at 8% 8%,rgba(193,151,83,.15),transparent 34%),
-      linear-gradient(180deg,#21170f 0%,#2b1d13 54%,#1b120d 100%) !important;
-    color:#f4e4c6 !important;
-  }
 }
 
 
@@ -1600,5 +1572,48 @@ html[data-hp-mode="dark"] body .hp-luxury-app :is(.text-white,.text-gray-100,.te
   }
   html body .hp-luxury-app.hp-admin-shell .hp-admin-dashboard :is(.text-stone-500,.text-stone-400) {
     color:#827466 !important;
+  }
+}
+
+
+/* DESKTOP LIGHT THEME — no dark palette or dark sidebar on PC. */
+@media (min-width:1024px) {
+  html body .hp-luxury-app.hp-admin-shell,
+  html body .hp-luxury-app.hp-employee-shell {
+    background:#fbf7f0 !important;
+    background-image:linear-gradient(135deg,#fffaf3 0%,#f3e9dc 55%,#fbf7f0 100%) !important;
+    color:#302419 !important;
+  }
+  html body .hp-luxury-app .hp-desktop-shell {
+    background:#fffdf8 !important;
+    background-image:linear-gradient(180deg,#fffdf8 0%,#f4eadb 100%) !important;
+    color:#3b2b1c !important;
+    border-right:1px solid #e5d5bd !important;
+  }
+  html body .hp-luxury-app .hp-desktop-shell :is(.font-bridal,button,span,p,svg) {
+    color:#594632 !important;
+  }
+  html body .hp-luxury-app .hp-desktop-nav button[class*="bg-stone-900"] {
+    background:linear-gradient(110deg,#c9a15e,#9a6d2d) !important;
+    color:#fff !important;
+  }
+  html body .hp-luxury-app .hp-admin-dashboard :is(.hp-dashboard-hero,.hp-dashboard-kpis > button,.hp-pending-approvals),
+  html body .hp-luxury-app .hp-admin-dashboard > section,
+  html body .hp-luxury-app .hp-admin-dashboard > section > *,
+  html body .hp-luxury-app .hp-admin-dashboard > div,
+  html body .hp-luxury-app .hp-admin-dashboard > div > * {
+    background-color:#fffefa !important;
+    background-image:linear-gradient(145deg,#fffefa 0%,#f7efe3 100%) !important;
+    color:#302419 !important;
+    border-color:#e8dac5 !important;
+  }
+  html body .hp-luxury-app :is(input,select,textarea) {
+    background:#fffefa !important;
+    color:#302419 !important;
+    border-color:#dfd0ba !important;
+    color-scheme:light !important;
+  }
+  html body .hp-luxury-app :is(.text-white,.text-gray-100,.text-gray-200,.text-stone-100,.text-stone-200,.text-slate-100,.text-slate-200) {
+    color:#514233 !important;
   }
 }
