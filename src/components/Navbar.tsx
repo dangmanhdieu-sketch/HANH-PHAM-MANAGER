@@ -47,14 +47,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    try { return localStorage.getItem('hp-ui-mode') === 'dark'; } catch { return false; }
-  });
+  // HẠNH PHẠM MANAGER now uses one consistent light ivory/champagne theme.
+  // Force the document preference to light so old saved dark-mode settings cannot
+  // reintroduce dark surfaces in individual modules.
   React.useEffect(() => {
-    document.documentElement.dataset.hpMode = isDarkMode ? 'dark' : 'light';
-    try { localStorage.setItem('hp-ui-mode', isDarkMode ? 'dark' : 'light'); } catch {}
-  }, [isDarkMode]);
-  const modeToggle = <button type="button" onClick={() => setIsDarkMode((value) => !value)} className="hp-mode-toggle" aria-label="Chuyển chế độ sáng tối" title="Chuyển chế độ sáng tối">{isDarkMode ? <Sun className="w-4 h-4"/> : <Moon className="w-4 h-4"/>}</button>;
+    document.documentElement.dataset.hpMode = 'light';
+    try { localStorage.setItem('hp-ui-mode', 'light'); } catch {}
+  }, []);
+  const modeToggle = null;
   void onQuickSwitchUser;
 
   const unreadCount = notifications.filter((n) => !n.DaDoc).length;
