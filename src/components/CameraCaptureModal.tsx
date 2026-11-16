@@ -326,7 +326,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
       <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-[#E7DFD5] overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7DFD5] bg-[#FAF8F5]">
@@ -358,7 +358,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
         </div>
 
         {/* Content body */}
-        <div className="p-6 overflow-y-auto space-y-4">
+        <div className="min-h-0 flex-1 p-6 overflow-y-auto overscroll-contain space-y-4">
           {/* Time & Security Banner */}
           <div className="flex items-center justify-between p-3 bg-[#FAF8F5] rounded-xl border border-[#E7DFD5]">
             <div className="flex items-center gap-2">
@@ -530,7 +530,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
         </div>
 
         {/* Footer actions */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#E7DFD5] bg-[#FAF8F5]">
+        <div className="flex shrink-0 items-center justify-end gap-3 px-6 py-4 border-t border-[#E7DFD5] bg-[#FAF8F5] pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={onClose}
