@@ -1032,3 +1032,36 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
   .hp-luxury-app.hp-admin-shell main { padding-left:42px !important;padding-right:42px !important; }
   .hp-luxury-app.hp-admin-shell .hp-admin-dashboard { gap:18px !important; }
 }
+
+/* Final desktop composition: explicit dashboard regions and branded bridal artwork */
+@media (min-width: 1024px) {
+  .hp-luxury-app.hp-admin-shell .hp-admin-dashboard {
+    grid-template-areas:
+      "hero hero"
+      "kpis kpis"
+      "approvals analytics"
+      "operations operations"
+      "finance finance"
+      "footer footer" !important;
+    grid-template-columns:minmax(0,1.12fr) minmax(400px,.88fr) !important;
+  }
+  .hp-luxury-app.hp-admin-shell .hp-dashboard-hero { grid-area:hero !important; }
+  .hp-luxury-app.hp-admin-shell .hp-pending-approvals { grid-area:approvals !important; }
+  .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(2) { grid-area:kpis !important; }
+  .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(3) { grid-area:analytics !important; }
+  .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(4) { grid-area:operations !important; }
+  .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(5) { grid-area:finance !important; }
+  .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > div:last-child { grid-area:footer !important; }
+  .hp-luxury-app.hp-admin-shell .hp-desktop-shell {
+    background-image:
+      linear-gradient(180deg,rgba(24,17,12,.93) 0%,rgba(28,19,13,.82) 54%,rgba(24,16,11,.35) 100%),
+      url('DATA_URI_HERE') !important;
+    background-size:cover !important;
+    background-position:center bottom !important;
+  }
+  .hp-luxury-app.hp-admin-shell .hp-desktop-inner > div:first-child > div:first-child .font-bridal {
+    white-space:normal !important;
+    text-align:center !important;
+    line-height:1.1 !important;
+  }
+}
