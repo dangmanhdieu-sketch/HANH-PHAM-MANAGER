@@ -199,7 +199,7 @@ function AppContent() {
             const data = record.DuLieu || {};
             const status = String(record.Module === 'THU_CHI' ? data.TrangThaiDuyet || '' : data.TrangThai || '').trim().toLocaleLowerCase('vi-VN');
             // Only show explicitly pending records from the requested approval modules.
-            if (record.Module === 'THU_CHI') return (status.includes('chờ') || status.includes('chua')) && status.includes('duyệt');
+            if (record.Module === 'THU_CHI') return (status.includes('chờ') || status.includes('chưa')) && status.includes('duyệt');
             if (record.Module === 'HOP_DONG') return status.includes('chờ') && status.includes('duyệt');
             if (record.Module === 'NGHI_PHEP') return ['chờ duyệt','chờ admin duyệt'].includes(status);
             return false;
