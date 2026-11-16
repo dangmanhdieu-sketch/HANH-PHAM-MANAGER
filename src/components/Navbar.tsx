@@ -387,7 +387,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* ======================================================
           DESKTOP HEADER
       ====================================================== */}
-      <div className="hp-desktop-shell hidden lg:block">
+      <div className="hp-desktop-shell hidden lg:block" style={{ background: "linear-gradient(180deg,#fffdf8 0%,#f4eadb 100%)", color: "#3b2b1c", borderRight: "1px solid #e5d5bd" }}>
         <div className="hp-desktop-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <div className="flex items-center justify-between h-16">
