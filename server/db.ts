@@ -633,8 +633,6 @@ class DatabaseService {
           CHAMCONG: typeof tableSnaps[this.firestoreTables.indexOf('CHAMCONG')]?.data()?.deltaCheckpoint === 'string'
             ? String(tableSnaps[this.firestoreTables.indexOf('CHAMCONG')].data()?.deltaCheckpoint) : undefined,
         };
-        const needsDeltaCompaction = (['HOAHONG', 'QUAN_LY', 'CHAMCONG'] as const)
-          .some((table) => !deltaCheckpoints[table]);
         this.firestoreDeltaCheckpoints = { ...deltaCheckpoints };
 
         // Schema v2 is only valid when every expected table document exists
