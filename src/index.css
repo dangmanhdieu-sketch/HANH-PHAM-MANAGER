@@ -1372,3 +1372,146 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
     color:#f4e4c6 !important;
   }
 }
+
+
+/* =========================================================
+   APP-WIDE LIGHT THEME — HẠNH PHẠM MANAGER
+   One palette for every role, tab, form, table, modal and menu.
+   No dark surfaces remain in the application.
+   ========================================================= */
+:root {
+  color-scheme:light !important;
+  --hp-ivory:#fbf7f0;
+  --hp-paper:#fffefa;
+  --hp-ink:#302419;
+  --hp-line:#e8dac5;
+  --hp-gold:#b58a45;
+  --hp-gold-deep:#956a32;
+}
+html, html[data-hp-mode="dark"], html[data-hp-mode="light"] {
+  color-scheme:light !important;
+  background:#fbf7f0 !important;
+}
+html body {
+  background:#fbf7f0 !important;
+  color:#302419 !important;
+}
+html body .hp-luxury-app {
+  --hp-ivory:#fbf7f0 !important;
+  --hp-paper:#fffefa !important;
+  --hp-ink:#302419 !important;
+  --hp-line:#e8dac5 !important;
+  background:linear-gradient(135deg,#fffaf3 0%,#f5ecdf 52%,#fbf7f0 100%) !important;
+  color:#302419 !important;
+}
+html body .hp-luxury-app :is(main,section,article,aside,header,footer,nav,form) {
+  color:#302419;
+}
+/* Common Tailwind dark background utilities used throughout legacy modules. */
+html body .hp-luxury-app :is(
+  [class~="bg-black"],[class~="bg-stone-950"],[class~="bg-stone-900"],[class~="bg-stone-800"],
+  [class~="bg-gray-950"],[class~="bg-gray-900"],[class~="bg-gray-800"],
+  [class~="bg-slate-950"],[class~="bg-slate-900"],[class~="bg-slate-800"],
+  [class~="bg-zinc-950"],[class~="bg-zinc-900"],[class~="bg-zinc-800"],
+  [class~="bg-neutral-950"],[class~="bg-neutral-900"],[class~="bg-neutral-800"],
+  [class*="bg-[#0"],[class*="bg-[#1"],[class*="bg-[#2"]
+) {
+  background-color:#fffefa !important;
+  background-image:none !important;
+  color:#302419 !important;
+  border-color:#e8dac5 !important;
+}
+/* Legacy dark gradient panels, including arbitrary Tailwind gradient classes. */
+html body .hp-luxury-app :is(
+  [class*="from-stone-9"],[class*="to-stone-9"],[class*="via-stone-9"],
+  [class*="from-gray-9"],[class*="to-gray-9"],[class*="via-gray-9"],
+  [class*="from-slate-9"],[class*="to-slate-9"],[class*="via-slate-9"],
+  [class*="from-[#0"],[class*="to-[#0"],[class*="from-[#1"],[class*="to-[#1"]
+) {
+  --tw-gradient-from:#fffefa !important;
+  --tw-gradient-to:#f6ecde !important;
+  --tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to) !important;
+  color:#302419 !important;
+}
+/* Dark buttons become consistent champagne action buttons. */
+html body .hp-luxury-app button:is(
+  [class~="bg-black"],[class~="bg-stone-950"],[class~="bg-stone-900"],[class~="bg-stone-800"],
+  [class~="bg-gray-950"],[class~="bg-gray-900"],[class~="bg-gray-800"],
+  [class~="bg-slate-950"],[class~="bg-slate-900"],[class~="bg-slate-800"],
+  [class~="bg-zinc-950"],[class~="bg-zinc-900"],[class~="bg-zinc-800"],
+  [class~="bg-neutral-950"],[class~="bg-neutral-900"],[class~="bg-neutral-800"]
+) {
+  background:linear-gradient(120deg,#c9a15e,#9a6d2d) !important;
+  color:#fff !important;
+  border-color:#b58a45 !important;
+}
+html body .hp-luxury-app :is(.text-white,.text-gray-100,.text-gray-200,.text-stone-100,.text-stone-200,.text-slate-100,.text-slate-200) {
+  color:#514233 !important;
+}
+html body .hp-luxury-app :is(input,select,textarea) {
+  color:#302419 !important;
+  background:#fffefa !important;
+  border-color:#dfd0ba !important;
+  color-scheme:light !important;
+}
+html body .hp-luxury-app :is(input,select,textarea)::placeholder {
+  color:#9a8a78 !important;
+}
+html body .hp-luxury-app :is(table,thead,tbody,tr,td,th) {
+  border-color:#e8dac5;
+}
+html body .hp-luxury-app :is(.bg-white,.bg-stone-50,.bg-gray-50,.bg-slate-50) {
+  background-color:#fffefa !important;
+}
+html body .hp-luxury-app :is(.border-stone-100,.border-stone-200,.border-gray-100,.border-gray-200,.border-slate-100,.border-slate-200) {
+  border-color:#e8dac5 !important;
+}
+/* Sidebar and all navigation surfaces are light as requested. */
+html body .hp-luxury-app .hp-desktop-shell {
+  background:linear-gradient(180deg,#fffdf8 0%,#f4eadb 100%) !important;
+  color:#3b2b1c !important;
+  border-right:1px solid #e5d5bd !important;
+  box-shadow:5px 0 22px rgba(82,57,29,.07) !important;
+}
+html body .hp-luxury-app .hp-desktop-shell :is(.font-bridal,button,span,p,svg) {
+  color:#6d4d27;
+}
+html body .hp-luxury-app .hp-desktop-nav button {
+  color:#594632 !important;
+  background:transparent !important;
+}
+html body .hp-luxury-app .hp-desktop-nav button[class*="bg-stone-900"],
+html body .hp-luxury-app .hp-desktop-nav button[aria-current="page"] {
+  background:linear-gradient(110deg,#c9a15e,#9a6d2d) !important;
+  color:#fff !important;
+}
+html body .hp-luxury-app .hp-navbar,
+html body .hp-luxury-app .hp-mobile-shell>div:first-child,
+html body .hp-luxury-app .hp-mobile-tabbar {
+  background:rgba(255,253,248,.98) !important;
+  color:#302419 !important;
+  border-color:#e8dac5 !important;
+}
+html body .hp-luxury-app .hp-mode-toggle {
+  display:none !important;
+}
+/* Modals, popovers, dropdowns and review panels must use the same light palette. */
+html body .hp-luxury-app [role="dialog"],
+html body .hp-luxury-app [role="menu"],
+html body .hp-luxury-app [data-radix-popper-content-wrapper] > *,
+html body .hp-luxury-app .fixed.inset-0 > :is(div,form) {
+  background-color:#fffefa;
+  color:#302419;
+}
+html body .hp-luxury-app footer {
+  background:#fffefa !important;
+  color:#766653 !important;
+  border-color:#e8dac5 !important;
+}
+/* Remove dark-mode overrides inherited from the old toggle implementation. */
+html[data-hp-mode="dark"] body,
+html[data-hp-mode="dark"] body .hp-luxury-app,
+html[data-hp-mode="dark"] body .hp-luxury-app main {
+  background-color:#fbf7f0 !important;
+  color:#302419 !important;
+}
