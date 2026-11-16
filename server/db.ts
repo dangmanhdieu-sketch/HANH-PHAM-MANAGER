@@ -587,9 +587,9 @@ class DatabaseService {
     if (!this.firestoreEnabled || !this.firestore) return;
 
     try {
-      // Claim before loading. If Render overlaps old/new instances during deploy,
-      // only the newest claimant is allowed to write Firestore.
-      await this.claimFirestoreWriterLease();
+      // Read and validate the existing cloud snapshot before claiming the writer
+      // lease. If Firestore rejects startup reads (for example RESOURCE_EXHAUSTED),
+      // a failed replacement instance must not fence the still-live instance out.
       const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
       const rootSnap = await rootRef.get();
 
@@ -600,6 +600,7 @@ class DatabaseService {
           throw new Error('[Firebase] New Firestore is empty. Set FIREBASE_ALLOW_EMPTY_INIT=true for the one-time empty initialization.');
         }
         this.db = getFreshEmptyData();
+        await this.claimFirestoreWriterLease();
         await this.persistToFirestoreNow();
         console.log('[Firebase] Initialized new Firestore with one admin account and empty business tables.');
         return;
@@ -769,6 +770,10 @@ class DatabaseService {
           this.quanLyDeletedIds.clear();
           this.captureFirestoreSnapshots();
 
+          // Claim only after all required startup reads and integrity checks succeed.
+          // A quota/read failure above must leave the current live writer lease intact.
+          await this.claimFirestoreWriterLease();
+
           // Upgrade any legacy table document that is already too large for
           // Firestore before the next user mutation. This migrates the current
           // employee data in place without deleting or resetting any records.
@@ -828,6 +833,7 @@ class DatabaseService {
       const migrated = this.applyMigrations();
       this.refreshKPIs();
       this.saveSync();
+      await this.claimFirestoreWriterLease();
       await this.persistToFirestoreNow();
       if (migrated) console.log('[Firebase] Đã áp dụng migration username/ngân hàng.');
       console.log('[Firebase] Đã đọc database Firestore cũ và nâng cấp sang schema persistent v2.');
