@@ -1574,3 +1574,43 @@ html[data-hp-mode="dark"] body .hp-luxury-app :is(input,select,textarea) {
 html[data-hp-mode="dark"] body .hp-luxury-app :is(.text-white,.text-gray-100,.text-gray-200,.text-stone-100,.text-stone-200,.text-slate-100,.text-slate-200) {
   color:#514233 !important;
 }
+
+
+/* FINAL VERIFIED OVERRIDE — LIGHT IVORY ONLY.
+   Remove the contradictory legacy dark-sidebar and dark-dashboard declarations above. */
+@media (min-width: 1024px) {
+  html body .hp-luxury-app.hp-admin-shell,
+  html[data-hp-mode="dark"] body .hp-luxury-app.hp-admin-shell {
+    background:linear-gradient(135deg,#fffaf3 0%,#f3e9dc 55%,#fbf7f0 100%) !important;
+    color:#302419 !important;
+  }
+  html body .hp-luxury-app.hp-admin-shell .hp-desktop-shell,
+  html[data-hp-mode="dark"] body .hp-luxury-app.hp-admin-shell .hp-desktop-shell {
+    background:linear-gradient(180deg,#fffdf8 0%,#f4eadb 100%) !important;
+    background-image:linear-gradient(180deg,#fffdf8 0%,#f4eadb 100%) !important;
+    color:#3b2b1c !important;
+    border-right:1px solid #e5d5bd !important;
+    box-shadow:5px 0 22px rgba(82,57,29,.07) !important;
+  }
+  html body .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-dashboard-kpis > button,
+  html body .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-pending-approvals,
+  html body .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section,
+  html body .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section > section,
+  html body .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section > div,
+  html body .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > div {
+    background:#fffefa !important;
+    background-image:linear-gradient(145deg,#fffefa 0%,#f7efe3 100%) !important;
+    color:#302419 !important;
+    border-color:#e8dac5 !important;
+    box-shadow:0 6px 20px rgba(77,52,24,.07) !important;
+  }
+  html body .hp-luxury-app.hp-admin-shell .hp-admin-dashboard :is(h1,h2,h3,p,span,b,strong,label,small) {
+    color:#514233;
+  }
+  html body .hp-luxury-app.hp-admin-shell .hp-admin-dashboard :is(.text-stone-900,.text-stone-800,.text-stone-700,.text-stone-600) {
+    color:#35291f !important;
+  }
+  html body .hp-luxury-app.hp-admin-shell .hp-admin-dashboard :is(.text-stone-500,.text-stone-400) {
+    color:#827466 !important;
+  }
+}
