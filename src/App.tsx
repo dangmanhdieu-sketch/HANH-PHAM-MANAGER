@@ -12,6 +12,7 @@ import type {
   ThongKeKPI,
   ThongBao,
   QuanLyRecord,
+  TamUng,
 } from './types';
 import { api, authStorage } from './api';
 
@@ -99,6 +100,7 @@ function AppContent() {
   const [notifications, setNotifications] = useState<ThongBao[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<QuanLyRecord[]>([]);
   const [pendingCommissionApprovals, setPendingCommissionApprovals] = useState<HoaHong[]>([]);
+  const [pendingAdvanceApprovals, setPendingAdvanceApprovals] = useState<TamUng[]>([]);
   const [automationStatus, setAutomationStatus] = useState<any>(null);
   const [dashboardFinanceSummary, setDashboardFinanceSummary] = useState({
     approvedCommissionTotal: 0,
@@ -178,8 +180,9 @@ function AppContent() {
             api.dashboard.getNotifications(),
             api.quanLy.getAll(),
             api.commission.getAll({ trangThai: 'Chờ duyệt' }),
+            api.tamUng.getAll(),
           ]);
-          const [stats, staff, notice, businessRecords, pendingCommissions] = results;
+          const [stats, staff, notice, businessRecords, pendingCommissions, advances] = results;
           if (stats.status === 'fulfilled') {
             setKpis(stats.value.kpis || []);
             setAttendanceList(stats.value.todayChamCong || []);
@@ -194,12 +197,15 @@ function AppContent() {
           if (notice.status === 'fulfilled') setNotifications(notice.value);
           if (businessRecords.status === 'fulfilled') setPendingApprovals(businessRecords.value.filter((record) => {
             const data = record.DuLieu || {};
-            if (record.Module === 'THU_CHI') return !['Đã duyệt','Đã thanh toán và duyệt'].includes(String(data.TrangThaiDuyet || ''));
-            if (record.Module === 'HOP_DONG') return String(data.TrangThai || '').toLowerCase().includes('chờ') && String(data.TrangThai || '').toLowerCase().includes('duyệt');
-            if (record.Module === 'NGHI_PHEP') return ['Chờ duyệt','Chờ Admin duyệt'].includes(String(data.TrangThai || ''));
+            const status = String(record.Module === 'THU_CHI' ? data.TrangThaiDuyet || '' : data.TrangThai || '').trim().toLocaleLowerCase('vi-VN');
+            // Only show explicitly pending records from the requested approval modules.
+            if (record.Module === 'THU_CHI') return (status.includes('chờ') || status.includes('chưa')) && status.includes('duyệt');
+            if (record.Module === 'HOP_DONG') return status.includes('chờ') && status.includes('duyệt');
+            if (record.Module === 'NGHI_PHEP') return ['chờ duyệt','chờ admin duyệt'].includes(status);
             return false;
           }));
-          if (pendingCommissions.status === 'fulfilled') setPendingCommissionApprovals(pendingCommissions.value);
+          if (pendingCommissions.status === 'fulfilled') setPendingCommissionApprovals(pendingCommissions.value.filter((item) => item.TrangThai === 'Chờ duyệt'));
+          if (advances.status === 'fulfilled') setPendingAdvanceApprovals(advances.value.filter((item) => item.TrangThai === 'Chờ duyệt'));
           results.forEach((result, index) => {
             if (result.status === 'rejected') console.error('Lỗi tải Dashboard mục #' + index, result.reason);
           });
@@ -529,6 +535,7 @@ function AppContent() {
                 onNavigateToTab={setCurrentTab}
                 pendingApprovals={pendingApprovals}
                 pendingCommissionApprovals={pendingCommissionApprovals}
+                pendingAdvanceApprovals={pendingAdvanceApprovals}
               />
             )}
 
