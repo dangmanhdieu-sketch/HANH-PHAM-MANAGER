@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle, HelpCircle, CheckCircle, ShieldAlert } from 'lucide-react';
 
@@ -29,6 +29,41 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   errorMessage = null,
   fullScreen = false,
 }) => {
+  useEffect(() => {
+    if (!isOpen || !fullScreen || typeof document === 'undefined') return;
+
+    // Freeze the page at its current scroll position while the approval
+    // confirmation is open. This prevents iOS Safari from placing the dialog
+    // at the document's previous scroll offset.
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const previous = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+    body.style.overflow = 'hidden';
+
+    return () => {
+      body.style.position = previous.position;
+      body.style.top = previous.top;
+      body.style.left = previous.left;
+      body.style.right = previous.right;
+      body.style.width = previous.width;
+      body.style.overflow = previous.overflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen, fullScreen]);
+
   if (!isOpen) return null;
 
   const iconMap = {
@@ -46,9 +81,24 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   };
 
   const modalContent = (
-    <div className={fullScreen
-      ? "fixed inset-0 z-[10000] flex h-[100dvh] min-h-[100svh] w-screen items-stretch justify-center overflow-hidden bg-[#F8F5EF] animate-fade-in"
-      : "fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"}>
+    <div
+      className={fullScreen
+        ? "fixed inset-0 z-[2147483647] flex w-screen items-stretch justify-center overflow-hidden bg-[#F8F5EF]"
+        : "fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"}
+      style={fullScreen ? {
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        width: '100vw',
+        height: '100dvh',
+        minHeight: 0,
+        zIndex: 2147483647,
+        transform: 'none',
+        margin: 0,
+      } : undefined}
+    >
       <div className={fullScreen
         ? "flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden bg-[#F8F5EF] px-5 pt-[max(24px,env(safe-area-inset-top))] pb-0"
         : "w-full max-w-md bg-white rounded-2xl shadow-2xl border border-[#E7DFD5] overflow-hidden p-6 space-y-4"}>
