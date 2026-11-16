@@ -369,7 +369,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               : isFreelancer
                 ? ['luong_me','chamcong_me','danhba_me']
                 : ['home','chamcong_me','luong_me','thuchi_me']
-            ).map((id) => activeTabs.find((tab) => tab.id === id)).filter(Boolean).map((tab) => {
+            ).flatMap((id) => {
+              const tab = activeTabs.find((item) => item.id === id);
+              return tab ? [tab] : [];
+            }).map((tab) => {
               const Icon = tab.icon;
               const active = currentTab === tab.id;
               return <button key={tab.id} type="button" onClick={() => handleTabChange(tab.id)} className={active ? 'hp-bottom-item is-active' : 'hp-bottom-item'}>

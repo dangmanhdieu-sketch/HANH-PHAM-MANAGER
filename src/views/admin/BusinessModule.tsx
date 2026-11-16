@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import html2canvas from 'html2canvas';
 import { Plus, Search, Trash2, Edit3, Save, X, FileText, CheckSquare, Wallet, Upload, Camera, Calendar } from 'lucide-react';
 import { HanhPhamLogo } from '../../components/HanhPhamLogo';
@@ -1057,8 +1058,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
         </div>;
       })()}
 
-      {formOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/60 overflow-y-auto overscroll-contain">
+      {formOpen && createPortal(<div className="hp-business-modal-overlay fixed inset-0 z-[10000] overflow-x-hidden overflow-y-auto overscroll-contain">
           <div className="min-h-full flex items-start sm:items-center justify-center p-2 sm:p-4">
           <form
             onSubmit={handleSubmit}
@@ -1306,8 +1306,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
             </div>
           </form>
           </div>
-        </div>
-      )}
+        </div>, document.body)}
     </div>
   );
 };
