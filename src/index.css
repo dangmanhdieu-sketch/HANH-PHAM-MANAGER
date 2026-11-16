@@ -744,3 +744,19 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
     white-space: nowrap !important;
   }
 }
+
+
+/* Employee check-in shortcut: lift clear of the fixed mobile bottom navigation */
+@media (max-width: 767px) {
+  .hp-luxury-app .hp-checkin-action {
+    position: relative !important;
+    z-index: 45 !important;
+    transform: translateY(-24px) !important;
+    margin-bottom: 0 !important;
+    min-height: 112px !important;
+    scroll-margin-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+  }
+  .hp-luxury-app .hp-checkin-action:active {
+    transform: translateY(-22px) scale(.99) !important;
+  }
+}
