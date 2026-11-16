@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useTheme, THEME_PRESETS } from '../../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 import {
   Settings,
   AlertTriangle,
@@ -28,7 +28,7 @@ interface AuditAndAutomationProps {
 }
 
 export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefreshAll, onNavigateToTab }) => {
-  const { previewTheme, setPreviewTheme, applyPreset, saveTheme, isSaving } = useTheme();
+  const { previewTheme, setPreviewTheme, saveTheme, isSaving } = useTheme();
   const [logoPreview, setLogoPreview] = useState<string>('');
 
   const handleLogoFile = (file?: File) => {
@@ -237,7 +237,6 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
             <div><label className="block text-xs font-semibold mb-1">Màu chủ đạo</label><div className="flex gap-2"><input type="color" value={previewTheme.primaryColor} onChange={e=>setPreviewTheme(p=>({...p,primaryColor:e.target.value}))} className="h-10 w-14 border rounded"/><input value={previewTheme.primaryColor} onChange={e=>setPreviewTheme(p=>({...p,primaryColor:e.target.value}))} className="flex-1 border rounded-lg p-2 text-sm"/></div></div>
             <div><label className="block text-xs font-semibold mb-1">Dòng mô tả thương hiệu</label><input value={previewTheme.brandSubtitle} onChange={e=>setPreviewTheme(p=>({...p,brandSubtitle:e.target.value}))} className="w-full border border-stone-300 rounded-lg p-2.5 text-sm" placeholder="Ví dụ: Luxury Bridal Studio"/></div>
             <div><label className="block text-xs font-semibold mb-1">Màu nền ứng dụng</label><div className="flex gap-2"><input type="color" value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="h-10 w-14 border rounded"/><input value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="flex-1 border rounded-lg p-2 text-sm"/></div></div>
-            <div><label className="block text-xs font-semibold mb-1">Mẫu giao diện</label><select onChange={e=>applyPreset(e.target.value)} defaultValue="" className="w-full border border-stone-300 rounded-lg p-2.5 text-sm"><option value="" disabled>Chọn giao diện có sẵn</option>{THEME_PRESETS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
           </div>
           <div className="rounded-xl border border-dashed border-stone-300 p-4 space-y-3">
             <p className="font-semibold text-sm">Logo thương hiệu</p>
