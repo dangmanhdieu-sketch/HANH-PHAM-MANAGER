@@ -1645,3 +1645,91 @@ html[data-hp-mode="dark"] body .hp-luxury-app :is(.text-white,.text-gray-100,.te
     color:#fff!important;
   }
 }
+
+
+/* iPhone modal layout: keep dialogs above the fixed header/navigation and
+   prevent form content from creating a horizontal page scroll. */
+.hp-luxury-app .hp-daily-claim-overlay,
+.hp-luxury-app .hp-business-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+}
+.hp-luxury-app .hp-daily-claim-overlay {
+  background: rgba(24, 18, 12, .58) !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+}
+.hp-luxury-app .hp-daily-claim-panel,
+.hp-luxury-app .hp-daily-claim-form,
+.hp-luxury-app .hp-daily-claim-scroll {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+.hp-luxury-app .hp-business-modal-overlay {
+  background: rgba(24, 18, 12, .58) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+.hp-luxury-app .hp-business-modal-overlay > div {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.hp-luxury-app .hp-business-modal-overlay form {
+  box-sizing: border-box !important;
+  width: min(100%, 680px) !important;
+  min-width: 0 !important;
+  max-width: 680px !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+}
+.hp-luxury-app .hp-business-modal-overlay form > * {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+@media (max-width: 767px) {
+  .hp-luxury-app .hp-daily-claim-overlay {
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: env(safe-area-inset-top) 0 0 !important;
+  }
+  .hp-luxury-app .hp-daily-claim-panel {
+    width: 100% !important;
+    max-width: 560px !important;
+    max-height: calc(100dvh - env(safe-area-inset-top)) !important;
+    border-radius: 22px 22px 0 0 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+  .hp-luxury-app .hp-daily-claim-scroll {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+  .hp-luxury-app .hp-daily-claim-scroll .flex.items-center.justify-between {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  .hp-luxury-app .hp-business-modal-overlay > div {
+    min-height: 100dvh !important;
+    align-items: flex-start !important;
+    padding: max(12px, env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom)) !important;
+  }
+  .hp-luxury-app .hp-business-modal-overlay form {
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px) !important;
+    margin: 0 auto !important;
+    border-radius: 18px !important;
+    padding: 14px !important;
+  }
+  .hp-luxury-app .hp-business-modal-overlay form :is(input, select, textarea) {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+}
