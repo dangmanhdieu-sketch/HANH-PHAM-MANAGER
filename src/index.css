@@ -645,3 +645,82 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
   }
   .hp-daily-claim-actions button[type="button"] { min-height:44px !important; }
 }
+
+
+/* Mobile form and review-dialog hardening — safe-area aware, scrollable, reachable actions */
+.hp-luxury-app {
+  --hp-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+.hp-luxury-app :is(input, select, textarea, button) {
+  scroll-margin-block: 88px;
+}
+.hp-luxury-app :is(input, select, textarea) {
+  min-width: 0;
+}
+.hp-luxury-app button:not(.hp-bottom-item) {
+  touch-action: manipulation;
+}
+@media (max-width: 767px) {
+  /* Dialogs that contain a form or a bounded content panel can scroll as a whole.
+     This prevents the bottom action row from being trapped below the visible viewport. */
+  .hp-luxury-app .fixed.inset-0:has(> form),
+  .hp-luxury-app .fixed.inset-0:has(> div[class*="max-h-"]) {
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    padding: max(12px, env(safe-area-inset-top)) 10px calc(12px + var(--hp-safe-bottom)) !important;
+  }
+  .hp-luxury-app .fixed.inset-0:has(> form) > form,
+  .hp-luxury-app .fixed.inset-0:has(> div[class*="max-h-"]) > div[class*="max-h-"] {
+    box-sizing: border-box !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: min(100%, 680px) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top) - var(--hp-safe-bottom) - 24px) !important;
+    margin-block: auto !important;
+    min-height: 0 !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .hp-luxury-app :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    min-height: 44px !important;
+    font-size: 16px !important;
+    line-height: 1.35 !important;
+  }
+  .hp-luxury-app textarea {
+    min-height: 92px !important;
+  }
+  .hp-luxury-app main button,
+  .hp-luxury-app .fixed.inset-0 button {
+    min-height: 42px;
+  }
+  .hp-luxury-app .fixed.inset-0 button:disabled {
+    opacity: .55;
+  }
+  /* Keep multi-column data-entry layouts from squeezing labels and controls. */
+  .hp-luxury-app .fixed.inset-0 form :is(.grid-cols-2, .grid-cols-3, .grid-cols-4) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .hp-luxury-app .fixed.inset-0 form :is(.col-span-2, .col-span-3, .col-span-4) {
+    grid-column: auto !important;
+  }
+  .hp-luxury-app .fixed.inset-0 form > :last-child {
+    scroll-margin-bottom: calc(20px + var(--hp-safe-bottom));
+  }
+  /* Table action controls stay tappable and can be reached by horizontal scrolling. */
+  .hp-luxury-app main :is(table, [role="table"]) {
+    min-width: 620px;
+  }
+  .hp-luxury-app main :is(.overflow-x-auto, [class*="overflow-x-auto"]) {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+@media (max-width: 380px) {
+  .hp-luxury-app main { padding-left: 10px !important; padding-right: 10px !important; }
+  .hp-luxury-app .fixed.inset-0 { padding-left: 8px !important; padding-right: 8px !important; }
+  .hp-luxury-app .fixed.inset-0 form { padding-left: 13px !important; padding-right: 13px !important; }
+}
