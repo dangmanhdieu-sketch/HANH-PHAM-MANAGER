@@ -1052,14 +1052,6 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
   .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(4) { grid-area:operations !important; }
   .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(5) { grid-area:finance !important; }
   .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > div:last-child { grid-area:footer !important; }
-  .hp-luxury-app.hp-admin-shell .hp-desktop-shell {
-    background-image:
-      radial-gradient(ellipse at 78% 88%,rgba(193,151,83,.28),transparent 38%),
-      radial-gradient(ellipse at 8% 8%,rgba(193,151,83,.15),transparent 34%),
-      linear-gradient(180deg,rgba(24,17,12,.98) 0%,rgba(28,19,13,.94) 54%,rgba(24,16,11,.98) 100%) !important;
-    background-size:cover !important;
-    background-position:center bottom !important;
-  }
   .hp-luxury-app.hp-admin-shell .hp-desktop-inner > div:first-child > div:first-child .font-bridal {
     white-space:normal !important;
     text-align:center !important;
