@@ -461,6 +461,16 @@ function AppContent() {
 
   return (
     <div className={`hp-luxury-app min-h-screen bg-[#FAF8F5] text-stone-900 flex flex-col font-sans selection:bg-[#E2D4BA] ${isAdmin ? "hp-admin-shell" : "hp-employee-shell"}`} style={{ background: "linear-gradient(135deg,#fffaf3 0%,#f3e9dc 55%,#fbf7f0 100%)", color: "#302419", colorScheme: "light" }}>
+      <style>{`
+        html, body { background:#fbf7f0 !important; color:#302419 !important; color-scheme:light !important; }
+        .hp-luxury-app, .hp-luxury-app.hp-admin-shell, .hp-luxury-app.hp-employee-shell { background:#fbf7f0 !important; background-image:linear-gradient(135deg,#fffaf3 0%,#f3e9dc 55%,#fbf7f0 100%) !important; color:#302419 !important; }
+        .hp-luxury-app .hp-desktop-shell, .hp-luxury-app .hp-navbar, .hp-luxury-app .hp-mobile-shell, .hp-luxury-app .hp-mobile-tabbar { background:#fffdf8 !important; background-image:linear-gradient(180deg,#fffdf8 0%,#f4eadb 100%) !important; color:#3b2b1c !important; border-color:#e5d5bd !important; }
+        .hp-luxury-app [class~="bg-black"], .hp-luxury-app [class~="bg-stone-950"], .hp-luxury-app [class~="bg-stone-900"], .hp-luxury-app [class~="bg-stone-800"], .hp-luxury-app [class~="bg-gray-950"], .hp-luxury-app [class~="bg-gray-900"], .hp-luxury-app [class~="bg-gray-800"], .hp-luxury-app [class~="bg-slate-950"], .hp-luxury-app [class~="bg-slate-900"], .hp-luxury-app [class~="bg-slate-800"], .hp-luxury-app [class~="bg-zinc-950"], .hp-luxury-app [class~="bg-zinc-900"], .hp-luxury-app [class~="bg-zinc-800"], .hp-luxury-app [class~="bg-neutral-950"], .hp-luxury-app [class~="bg-neutral-900"], .hp-luxury-app [class~="bg-neutral-800"], .hp-luxury-app [class*="bg-[#0"], .hp-luxury-app [class*="bg-[#1"], .hp-luxury-app [class*="bg-[#2"] { background:#fffefa !important; background-image:none !important; color:#302419 !important; border-color:#e8dac5 !important; }
+        .hp-luxury-app .hp-admin-dashboard > *, .hp-luxury-app .hp-admin-dashboard > * > *, .hp-luxury-app .hp-admin-dashboard .hp-dashboard-kpis > button, .hp-luxury-app .hp-admin-dashboard .hp-pending-approvals { background-color:#fffefa !important; background-image:linear-gradient(145deg,#fffefa 0%,#f7efe3 100%) !important; color:#302419 !important; border-color:#e8dac5 !important; }
+        .hp-luxury-app :is(input,select,textarea) { background:#fffefa !important; color:#302419 !important; border-color:#dfd0ba !important; color-scheme:light !important; }
+        .hp-luxury-app :is(h1,h2,h3,h4,p,label,small,th,td) { color:#514233; }
+        .hp-luxury-app .hp-desktop-nav button { color:#594632 !important; }
+      `}</style>
       {/* Top Navbar */}
       <Navbar
         currentUser={currentUser}
