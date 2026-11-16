@@ -315,6 +315,7 @@ function AppContent() {
         api.dashboard.getStats(), api.staff.getAll(), api.attendance.getAll(),
         api.payroll.getAll(), api.commission.getAll(), api.dashboard.getNotifications(),
         api.quanLy.getAll(), api.commission.getAll({ trangThai: 'Chờ duyệt' }),
+        api.payroll.getAll(),
       ]);
       setKpis(stats.kpis || []);
       setAttendanceList(attendance);
@@ -365,6 +366,7 @@ function AppContent() {
         return false;
       }));
       if (results[3].status === 'fulfilled') setPendingCommissionApprovals(results[3].value);
+      if (results[4].status === 'fulfilled') setPayrollList(results[4].value);
     }, 60_000);
     return () => window.clearInterval(timer);
   }, [currentUser, currentTab]);
