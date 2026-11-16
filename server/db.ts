@@ -288,6 +288,7 @@ class DatabaseService {
   private quanLyDirtyIds = new Set<string>();
   private quanLyDeletedIds = new Set<string>();
   private hoaHongRecordStorageEnabled = false;
+  private firestoreDeltaCheckpoints: Partial<Record<'HOAHONG' | 'QUAN_LY' | 'CHAMCONG', string>> = {};
   private firestore: Firestore | null = null;
   private firestoreEnabled = false;
   private readonly firestoreCollection = process.env.FIREBASE_COLLECTION || 'hanh_pham_manager';
@@ -634,6 +635,7 @@ class DatabaseService {
         };
         const needsDeltaCompaction = (['HOAHONG', 'QUAN_LY', 'CHAMCONG'] as const)
           .some((table) => !deltaCheckpoints[table]);
+        this.firestoreDeltaCheckpoints = { ...deltaCheckpoints };
 
         // Schema v2 is only valid when every expected table document exists
         // and contains its data field. Missing documents must never be treated
@@ -792,6 +794,7 @@ class DatabaseService {
           for (const table of ['HOAHONG', 'QUAN_LY', 'CHAMCONG'] as const) {
             if (!deltaCheckpoints[table]) checkpointsToWrite[table] = deltaCompactionCutoff;
           }
+          this.firestoreDeltaCheckpoints = { ...this.firestoreDeltaCheckpoints, ...checkpointsToWrite };
           if (Object.keys(checkpointsToWrite).length > 0) {
             await this.persistToFirestoreNow(
               Object.keys(checkpointsToWrite) as FirestoreTableName[],
@@ -1267,8 +1270,8 @@ class DatabaseService {
                 storage: 'json-string',
                 dataJson: item.data,
                 updatedAt: committedAt,
-                ...(deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG']
-                  ? { deltaCheckpoint: deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] } : {}),
+                ...((deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] || this.firestoreDeltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'])
+                  ? { deltaCheckpoint: (deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] || this.firestoreDeltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG']) } : {}),
               }, { merge: false });
             } else {
               transaction.set(
@@ -1276,8 +1279,8 @@ class DatabaseService {
                 {
                   data: item.data,
                   updatedAt: committedAt,
-                  ...(deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG']
-                    ? { deltaCheckpoint: deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] } : {}),
+                  ...((deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] || this.firestoreDeltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'])
+                    ? { deltaCheckpoint: (deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] || this.firestoreDeltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG']) } : {}),
                 },
                 { merge: false }
               );
@@ -1345,8 +1348,8 @@ class DatabaseService {
             revision,
             chunkCount: parts.length,
             updatedAt: committedAt,
-            ...(deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG']
-              ? { deltaCheckpoint: deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] } : {}),
+            ...((deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] || this.firestoreDeltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'])
+              ? { deltaCheckpoint: (deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] || this.firestoreDeltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG']) } : {}),
           }, { merge: false });
         });
 
