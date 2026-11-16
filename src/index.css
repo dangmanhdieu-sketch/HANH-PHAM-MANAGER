@@ -760,3 +760,61 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
     transform: translateY(-22px) scale(.99) !important;
   }
 }
+
+
+/* Attendance camera modal: keep confirmation actions fully above iPhone home/nav area */
+@media (max-width: 767px) {
+  .hp-attendance-modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) !important;
+    isolation: isolate !important;
+  }
+  .hp-attendance-modal-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 520px !important;
+    height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px) !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+  .hp-attendance-modal-header {
+    flex: 0 0 auto !important;
+    padding: 10px 14px !important;
+  }
+  .hp-attendance-modal-body {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+    padding: 12px 14px !important;
+  }
+  .hp-attendance-modal-footer {
+    position: relative !important;
+    z-index: 10 !important;
+    display: flex !important;
+    flex: 0 0 auto !important;
+    min-height: 76px !important;
+    padding: 10px 14px max(12px, env(safe-area-inset-bottom)) !important;
+    background: #FAF8F5 !important;
+    box-shadow: 0 -6px 18px rgba(39,29,18,.12) !important;
+    border-top: 1px solid #E7DFD5 !important;
+  }
+  .hp-attendance-modal-footer button {
+    min-height: 48px !important;
+    position: relative !important;
+    z-index: 11 !important;
+    touch-action: manipulation !important;
+  }
+}
