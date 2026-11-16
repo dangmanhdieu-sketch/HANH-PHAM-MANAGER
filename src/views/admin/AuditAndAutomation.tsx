@@ -183,9 +183,9 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
   });
 
   return (
-    <div className="space-y-8 animate-fade-in pb-12">
+    <div className="space-y-8 animate-fade-in pb-12" style={{ color: "#302419" }}>
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-[#E7DFD5] shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-[#E7DFD5] shadow-sm" style={{ background: "#fffefa", color: "#302419", borderColor: "#e8dac5" }}>
         <div>
           <h1 className="text-2xl font-bold font-bridal text-stone-900 flex items-center gap-2">
             <Settings className="w-6 h-6 text-[#bf954f]" />
@@ -209,13 +209,13 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
       </div>
 
       <section className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <button type="button" onClick={()=>onNavigateToTab('nhanvien')} className="text-left bg-white border border-[#E7DFD5] rounded-xl p-4 hover:border-[#c5a059]"><Shield className="w-5 h-5 text-[#bf954f]"/><p className="font-bold text-sm mt-2">Phân quyền nhân viên</p><p className="text-xs text-stone-500 mt-1">Quản lý tài khoản, vai trò và trạng thái nhân viên.</p></button>
+        <button type="button" onClick={()=>onNavigateToTab('nhanvien')} className="text-left bg-white border border-[#E7DFD5] rounded-xl p-4 hover:border-[#c5a059]" style={{ background: "#fffefa", color: "#302419", borderColor: "#e8dac5" }}><Shield className="w-5 h-5 text-[#bf954f]"/><p className="font-bold text-sm mt-2">Phân quyền nhân viên</p><p className="text-xs text-stone-500 mt-1">Quản lý tài khoản, vai trò và trạng thái nhân viên.</p></button>
         <button type="button" onClick={handleDownloadBackup} className="text-left bg-white border border-[#E7DFD5] rounded-xl p-4 hover:border-[#c5a059]"><Download className="w-5 h-5 text-[#bf954f]"/><p className="font-bold text-sm mt-2">Sao chép dữ liệu</p><p className="text-xs text-stone-500 mt-1">Tải bản sao lưu dữ liệu để lưu trữ an toàn.</p></button>
         <button type="button" onClick={()=>document.getElementById('backup-restore-section')?.scrollIntoView({behavior:'smooth',block:'start'})} className="text-left bg-white border border-[#E7DFD5] rounded-xl p-4 hover:border-[#c5a059]"><Database className="w-5 h-5 text-[#bf954f]"/><p className="font-bold text-sm mt-2">Khôi phục dữ liệu</p><p className="text-xs text-stone-500 mt-1">Khôi phục dữ liệu từ tệp sao lưu an toàn.</p></button>
       </section>
 
       {/* BRAND & APP APPEARANCE SETTINGS */}
-      <section className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-6 space-y-5">
+      <section className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-6 space-y-5" style={{ background: "#fffefa", color: "#302419", borderColor: "#e8dac5" }}>
         <div className="flex items-center gap-3 border-b border-stone-100 pb-4">
           <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#E7DFD5]"><Palette className="w-5 h-5 text-[#bf954f]" /></div>
           <div><h2 className="font-bold text-stone-900">Giao diện ứng dụng & thương hiệu</h2><p className="text-xs text-stone-500 mt-1">Tùy chỉnh màu sắc, tên thương hiệu và logo hiển thị trên ứng dụng.</p></div>
@@ -238,7 +238,7 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
             <div><label className="block text-xs font-semibold mb-1">Dòng mô tả thương hiệu</label><input value={previewTheme.brandSubtitle} onChange={e=>setPreviewTheme(p=>({...p,brandSubtitle:e.target.value}))} className="w-full border border-stone-300 rounded-lg p-2.5 text-sm" placeholder="Ví dụ: Luxury Bridal Studio"/></div>
             <div><label className="block text-xs font-semibold mb-1">Màu nền ứng dụng</label><div className="flex gap-2"><input type="color" value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="h-10 w-14 border rounded"/><input value={previewTheme.appBgColor} onChange={e=>setPreviewTheme(p=>({...p,appBgColor:e.target.value}))} className="flex-1 border rounded-lg p-2 text-sm"/></div></div>
           </div>
-          <div className="rounded-xl border border-dashed border-stone-300 p-4 space-y-3">
+          <div className="rounded-xl border border-dashed border-stone-300 p-4 space-y-3" style={{ background: "#fffefa", color: "#302419", borderColor: "#e8dac5" }}>
             <p className="font-semibold text-sm">Logo thương hiệu</p>
             <div className={`w-full ${previewTheme.logoSize === "sm" ? "h-24" : previewTheme.logoSize === "md" ? "h-32" : previewTheme.logoSize === "lg" ? "h-44" : "h-56"} rounded-lg border border-stone-200 bg-white flex items-center justify-center overflow-hidden p-3 transition-all`}>
               {(logoPreview || previewTheme.customLogoUrl) ? <img src={logoPreview || previewTheme.customLogoUrl} alt="Logo thương hiệu" className="max-w-full max-h-full object-contain"/> : <ImagePlus className="w-10 h-10 text-[#bf954f]"/>}
@@ -251,7 +251,7 @@ export const AuditAndAutomation: React.FC<AuditAndAutomationProps> = ({ onRefres
       </section>
 
       {/* AUTOMATION ENGINE CARD */}
-      <div id="backup-restore-section" className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-6 space-y-4">
+      <div id="backup-restore-section" className="bg-white rounded-2xl border border-[#E7DFD5] shadow-sm p-6 space-y-4" style={{ background: "#fffefa", color: "#302419", borderColor: "#e8dac5" }}>
         <div className="flex items-center justify-between pb-4 border-b border-stone-100">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-stone-900 text-[#dfc79f]">
