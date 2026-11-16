@@ -98,6 +98,7 @@ function AppContent() {
   const [commissionList, setCommissionList] = useState<HoaHong[]>([]);
   const [notifications, setNotifications] = useState<ThongBao[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<QuanLyRecord[]>([]);
+  const [pendingCommissionApprovals, setPendingCommissionApprovals] = useState<HoaHong[]>([]);
   const [automationStatus, setAutomationStatus] = useState<any>(null);
   const [dashboardFinanceSummary, setDashboardFinanceSummary] = useState({
     approvedCommissionTotal: 0,
@@ -176,8 +177,9 @@ function AppContent() {
             api.staff.getAll(),
             api.dashboard.getNotifications(),
             api.quanLy.getAll(),
+            api.commission.getAll({ trangThai: 'Chờ duyệt' }),
           ]);
-          const [stats, staff, notice, businessRecords] = results;
+          const [stats, staff, notice, businessRecords, pendingCommissions] = results;
           if (stats.status === 'fulfilled') {
             setKpis(stats.value.kpis || []);
             setAttendanceList(stats.value.todayChamCong || []);
@@ -197,6 +199,7 @@ function AppContent() {
             if (record.Module === 'NGHI_PHEP') return ['Chờ duyệt','Chờ Admin duyệt'].includes(String(data.TrangThai || ''));
             return false;
           }));
+          if (pendingCommissions.status === 'fulfilled') setPendingCommissionApprovals(pendingCommissions.value);
           results.forEach((result, index) => {
             if (result.status === 'rejected') console.error('Lỗi tải Dashboard mục #' + index, result.reason);
           });
@@ -311,6 +314,7 @@ function AppContent() {
       const [stats, staff, attendance, payroll, commission, notice] = await Promise.all([
         api.dashboard.getStats(), api.staff.getAll(), api.attendance.getAll(),
         api.payroll.getAll(), api.commission.getAll(), api.dashboard.getNotifications(),
+        api.quanLy.getAll(), api.commission.getAll({ trangThai: 'Chờ duyệt' }),
       ]);
       setKpis(stats.kpis || []);
       setAttendanceList(attendance);
@@ -318,6 +322,14 @@ function AppContent() {
       setCommissionList(commission);
       setStaffList(staff);
       setNotifications(notice);
+      setPendingApprovals(businessRecords.filter((record) => {
+        const data = record.DuLieu || {};
+        if (record.Module === 'THU_CHI') return !['Đã duyệt','Đã thanh toán và duyệt'].includes(String(data.TrangThaiDuyet || ''));
+        if (record.Module === 'HOP_DONG') return String(data.TrangThai || '').toLowerCase().includes('chờ') && String(data.TrangThai || '').toLowerCase().includes('duyệt');
+        if (record.Module === 'NGHI_PHEP') return ['Chờ duyệt','Chờ Admin duyệt'].includes(String(data.TrangThai || ''));
+        return false;
+      }));
+      setPendingCommissionApprovals(pendingCommissions);
       setAutomationStatus(stats.automation || null);
     } else {
       await refreshTabData(tab);
@@ -336,6 +348,8 @@ function AppContent() {
       const results = await Promise.allSettled([
         api.dashboard.getStats(),
         api.dashboard.getNotifications(),
+        api.quanLy.getAll(),
+        api.commission.getAll({ trangThai: 'Chờ duyệt' }),
       ]);
       if (results[0].status === 'fulfilled') {
         setKpis(results[0].value.kpis || []);
@@ -343,6 +357,14 @@ function AppContent() {
         setAutomationStatus(results[0].value.automation || null);
       }
       if (results[1].status === 'fulfilled') setNotifications(results[1].value);
+      if (results[2].status === 'fulfilled') setPendingApprovals(results[2].value.filter((record) => {
+        const data = record.DuLieu || {};
+        if (record.Module === 'THU_CHI') return !['Đã duyệt','Đã thanh toán và duyệt'].includes(String(data.TrangThaiDuyet || ''));
+        if (record.Module === 'HOP_DONG') return String(data.TrangThai || '').toLowerCase().includes('chờ') && String(data.TrangThai || '').toLowerCase().includes('duyệt');
+        if (record.Module === 'NGHI_PHEP') return ['Chờ duyệt','Chờ Admin duyệt'].includes(String(data.TrangThai || ''));
+        return false;
+      }));
+      if (results[3].status === 'fulfilled') setPendingCommissionApprovals(results[3].value);
     }, 60_000);
     return () => window.clearInterval(timer);
   }, [currentUser, currentTab]);
@@ -504,6 +526,7 @@ function AppContent() {
                 onTriggerAutomation={handleTriggerAutomation}
                 onNavigateToTab={setCurrentTab}
                 pendingApprovals={pendingApprovals}
+                pendingCommissionApprovals={pendingCommissionApprovals}
               />
             )}
 
