@@ -12,7 +12,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { uploadInventoryImage, uploadAttendancePhoto, getAttendancePhotoDataUrl, createGoogleDriveAuthorizationUrl, exchangeGoogleDriveCode } from './server/drive.ts';
 import { automationManager } from './server/automation.ts';
 import { startDailyDriveBackup } from './server/driveBackup.ts';
-import type { NhanVien } from './src/types.ts';
+import type { NhanVien, QuanLyModule } from './src/types.ts';
 
 dotenv.config();
 
@@ -930,7 +930,8 @@ app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => 
     return res.status(400).json({ error: 'Vui lòng chọn phân hệ dữ liệu hợp lệ.' });
   }
 
-  let records = dbService.getQuanLyRecords(module || undefined);
+  const moduleFilter: QuanLyModule | undefined = module ? (module as QuanLyModule) : undefined;
+  let records = dbService.getQuanLyRecords(moduleFilter);
   if (req.user!.Quyen !== 'Admin') {
     if (module === 'THU_VAY') return res.status(403).json({ error: 'Chỉ Admin được xem hồ sơ thử và chọn váy.' });
     if (module === 'LICH_CUOI' && req.user!.Quyen === 'Freelancer') return res.status(403).json({ error: 'Tài khoản Freelancer không có quyền xem lịch điều phối.' });
