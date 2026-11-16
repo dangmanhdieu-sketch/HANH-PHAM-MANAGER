@@ -1127,3 +1127,47 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
     gap:8px !important;
   }
 }
+
+
+/* Match the supplied light ivory/champagne reference on desktop dashboard,
+   even when the user's global dark-mode preference is enabled. */
+@media (min-width: 1024px) {
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard {
+    color:#2b2119 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-dashboard-hero,
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-dashboard-kpis button,
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(3) > section,
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(4) > div:last-child > div,
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(5) > div {
+    background:linear-gradient(145deg,#fffefa 0%,#f7efe3 100%) !important;
+    color:#2b2119 !important;
+    border-color:#eadbc7 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-pending-approvals {
+    background:linear-gradient(145deg,#fffefa 0%,#f8f0e4 100%) !important;
+    color:#2b2119 !important;
+    border-color:#eadbc7 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard :is(h1,h2,h3,p,span,b,strong,small) {
+    color:inherit;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard :is(.text-stone-900,.text-stone-800,.text-stone-700,.text-stone-600) {
+    color:#35291f !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard :is(.text-stone-500,.text-stone-400) {
+    color:#827466 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-pending-approvals button {
+    background:#fffdf9 !important;
+    border-color:#eee2d1 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-pending-approvals button > span:last-child {
+    background:linear-gradient(120deg,#c79a51,#94672e) !important;
+    color:#fff !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(3) .bg-gradient-to-r {
+    background:linear-gradient(100deg,#211a14,#3b2c1d) !important;
+    color:#fff !important;
+  }
+}
