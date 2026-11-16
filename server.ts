@@ -918,13 +918,19 @@ const validateWeddingSchedule = (payload: any, excludeId?: string): string | nul
 };
 
 app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => {
-  const module = req.query.module as any;
-  let records = dbService.getQuanLyRecords(module || undefined);
+  const module = typeof req.query.module === 'string' ? req.query.module : '';
+  const allowedModules = ['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'THU_VAY', 'LICH_CUOI'];
 
-  // Employees must request a specific module and may only read their own permitted records.
-  if (!module || !['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'THU_VAY', 'LICH_CUOI'].includes(module)) {
+  // Admin dashboard may fetch the combined approval inbox across modules.
+  // Non-admin users must always request one explicitly permitted module.
+  if (module && !allowedModules.includes(module)) {
     return res.status(400).json({ error: 'Vui lòng chọn phân hệ dữ liệu hợp lệ.' });
   }
+  if (!module && req.user!.Quyen !== 'Admin') {
+    return res.status(400).json({ error: 'Vui lòng chọn phân hệ dữ liệu hợp lệ.' });
+  }
+
+  let records = dbService.getQuanLyRecords(module || undefined);
   if (req.user!.Quyen !== 'Admin') {
     if (module === 'THU_VAY') return res.status(403).json({ error: 'Chỉ Admin được xem hồ sơ thử và chọn váy.' });
     if (module === 'LICH_CUOI' && req.user!.Quyen === 'Freelancer') return res.status(403).json({ error: 'Tài khoản Freelancer không có quyền xem lịch điều phối.' });
