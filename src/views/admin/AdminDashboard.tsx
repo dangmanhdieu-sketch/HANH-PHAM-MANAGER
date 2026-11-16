@@ -79,38 +79,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </header>
 
       <section className="hp-pending-approvals rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <div><h2 className="text-base font-bold text-amber-950">Cần bạn duyệt</h2><p className="mt-1 text-xs text-amber-800">Chỉ hiển thị hoa hồng, nghỉ phép, ứng lương, thu chi và hợp đồng đang chờ duyệt.</p></div>
-          <span className="rounded-full bg-amber-200 px-3 py-1 text-sm font-bold text-amber-950">{pendingApprovals.length + pendingCommissionApprovals.length + pendingAdvanceApprovals.length}</span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-amber-950">Cần bạn duyệt</h2>
+            <p className="mt-1 text-xs text-amber-800">Tổng số yêu cầu đang chờ xử lý</p>
+          </div>
+          <span
+            aria-label={`${pendingApprovals.length + pendingCommissionApprovals.length + pendingAdvanceApprovals.length} yêu cầu chờ duyệt`}
+            className="flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full bg-amber-200 px-3 text-lg font-bold tabular-nums text-amber-950"
+          >
+            {pendingApprovals.length + pendingCommissionApprovals.length + pendingAdvanceApprovals.length}
+          </span>
         </div>
-        {pendingApprovals.length === 0 && pendingCommissionApprovals.length === 0 && pendingAdvanceApprovals.length === 0 ? (
-          <p className="rounded-xl bg-white/70 p-3 text-sm text-stone-600">Hiện không có yêu cầu nào chờ duyệt.</p>
-        ) : <div className="space-y-2">
-          {pendingApprovals.map((record) => {
-            const data = record.DuLieu || {};
-            const target = record.Module === 'THU_CHI' ? 'thuchi' : record.Module === 'HOP_DONG' ? 'hopdong' : 'chamcong';
-            const title = record.Module === 'THU_CHI'
-              ? (String(data.Loai || '').toUpperCase() === 'CHI' ? 'Phiếu chi chờ duyệt' : 'Phiếu thu chờ duyệt')
-              : record.Module === 'HOP_DONG' ? 'Hợp đồng chờ duyệt' : 'Đơn nghỉ phép chờ duyệt';
-            const detail = [data.NguoiTao || data.NguoiLap || data.NhanVien || data.KhachHang, data.NoiDung || data.LyDo || data.DichVu, Number(data.SoTien || 0) > 0 ? money(Number(data.SoTien)) : ''].filter(Boolean).join(' · ');
-            return <button key={record.QuanLyID} type="button" onClick={() => onNavigateToTab(target)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-100 bg-white px-3 py-3 text-left hover:border-amber-300 hover:bg-amber-50">
-              <span className="min-w-0"><span className="block text-sm font-bold text-stone-900">{title}</span><span className="mt-1 block truncate text-xs text-stone-600">{detail || `Mã: ${record.QuanLyID}`}</span></span>
-              <span className="shrink-0 rounded-lg bg-stone-900 px-3 py-2 text-xs font-bold text-white">Mở duyệt</span>
-            </button>;
-          })}
-          {pendingCommissionApprovals.map((item) => (
-            <button key={item.HoaHongID} type="button" onClick={() => onNavigateToTab('luong')} className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-100 bg-white px-3 py-3 text-left hover:border-amber-300 hover:bg-amber-50">
-              <span className="min-w-0"><span className="block text-sm font-bold text-stone-900">Hoa hồng chờ duyệt</span><span className="mt-1 block truncate text-xs text-stone-600">{item.HoTen || item.NhanVienID} · {item.NoiDung} · {money(Number(item.SoTienHoaHong || 0))}</span></span>
-              <span className="shrink-0 rounded-lg bg-stone-900 px-3 py-2 text-xs font-bold text-white">Mở duyệt</span>
-            </button>
-          ))}
-          {pendingAdvanceApprovals.map((item) => (
-            <button key={item.TamUngID} type="button" onClick={() => onNavigateToTab('luong')} className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-100 bg-white px-3 py-3 text-left hover:border-amber-300 hover:bg-amber-50">
-              <span className="min-w-0"><span className="block text-sm font-bold text-stone-900">Ứng lương chờ duyệt</span><span className="mt-1 block truncate text-xs text-stone-600">{item.HoTen || item.NhanVienID} · {item.LyDo || 'Yêu cầu ứng lương'} · {money(Number(item.SoTien || 0))}</span></span>
-              <span className="shrink-0 rounded-lg bg-stone-900 px-3 py-2 text-xs font-bold text-white">Mở duyệt</span>
-            </button>
-          ))}
-        </div>}
       </section>
 
       <section>
