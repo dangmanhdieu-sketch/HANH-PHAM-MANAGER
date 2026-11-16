@@ -17,8 +17,6 @@ import {
   FileText,
   Wallet,
   Shirt,
-  Sun,
-  Moon,
 } from 'lucide-react';
 
 import type { NhanVien, ThongBao } from '../types';
