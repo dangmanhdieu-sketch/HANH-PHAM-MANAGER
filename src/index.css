@@ -1171,3 +1171,129 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
     color:#fff !important;
   }
 }
+
+
+/* FINAL DESKTOP LIGHT BRAND OVERRIDE.
+   The desktop reference is always ivory/champagne; the dark sidebar is intentional.
+   This override is scoped to the admin desktop dashboard so other theme preferences
+   and employee screens remain unchanged. */
+@media (min-width: 1024px) {
+  html[data-hp-mode="dark"] body {
+    background:#f7f1e8 !important;
+    color:#302419 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell {
+    --hp-ivory:#f7f1e8 !important;
+    --hp-paper:#fffdf8 !important;
+    --hp-ink:#302419 !important;
+    --hp-line:#e8dac5 !important;
+    background:
+      radial-gradient(ellipse at 82% 4%,rgba(212,180,126,.22),transparent 30%),
+      linear-gradient(135deg,#fbf7f0 0%,#f2e8da 52%,#faf6ef 100%) !important;
+    color:#302419 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell main {
+    background:transparent !important;
+    color:#302419 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-navbar {
+    background:rgba(255,252,246,.97) !important;
+    color:#302419 !important;
+    border-color:#e8dac5 !important;
+    box-shadow:0 3px 18px rgba(78,53,25,.07) !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard {
+    color:#302419 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-dashboard-hero {
+    background:
+      linear-gradient(90deg,rgba(255,253,248,.99) 0%,rgba(255,253,248,.94) 48%,rgba(255,253,248,.58) 100%),
+      radial-gradient(ellipse at 82% 15%,rgba(209,174,116,.3),transparent 48%),
+      linear-gradient(135deg,#fffdf8,#f1e3cf) !important;
+    border-color:#eadbc7 !important;
+    color:#302419 !important;
+    box-shadow:0 8px 26px rgba(83,57,27,.07) !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-dashboard-hero :is(h1,p,span) {
+    color:#302419 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-dashboard-kpis > button {
+    background:linear-gradient(145deg,#fffefa,#f7efe3) !important;
+    border-color:#eadbc7 !important;
+    color:#302419 !important;
+    box-shadow:0 6px 18px rgba(77,52,24,.07) !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-pending-approvals {
+    background:linear-gradient(145deg,#fffefa,#f8f0e4) !important;
+    border-color:#eadbc7 !important;
+    color:#302419 !important;
+    box-shadow:0 6px 20px rgba(77,52,24,.07) !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-pending-approvals > div > div > h2,
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-pending-approvals h2 {
+    color:#35261a !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-pending-approvals > p {
+    background:#fffdf9 !important;
+    color:#786b5d !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard .hp-pending-approvals button {
+    background:#fffdf9 !important;
+    border-color:#eee2d1 !important;
+    color:#35291f !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(3) > section {
+    background:#fffdf9 !important;
+    border-color:#eadbc7 !important;
+    color:#302419 !important;
+    box-shadow:0 6px 20px rgba(77,52,24,.07) !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(3) > section > div:first-child {
+    background:linear-gradient(110deg,#fffdf8,#f5ead9) !important;
+    color:#302419 !important;
+    border-bottom-color:#eadbc7 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(3) > section > div:first-child :is(h2,p) {
+    color:#302419 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(3) > section :is(.bg-white,.bg-\[\#FFFEFC\]) {
+    background:#fffdf9 !important;
+    color:#302419 !important;
+    border-color:#eadbc7 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(3) > section :is(h2,h3,p,span,b,strong,label) {
+    color:inherit;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(3) > section :is(.text-stone-900,.text-stone-800,.text-stone-700,.text-stone-600) {
+    color:#35291f !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(3) > section :is(.text-stone-500,.text-stone-400) {
+    color:#827466 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(4) > div:last-child > div,
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > section:nth-of-type(5) > div,
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > div:last-child {
+    background:linear-gradient(145deg,#fffefa,#f7efe3) !important;
+    border-color:#eadbc7 !important;
+    color:#302419 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard :is(.text-stone-900,.text-stone-800,.text-stone-700,.text-stone-600) {
+    color:#35291f !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-admin-dashboard :is(.text-stone-500,.text-stone-400) {
+    color:#827466 !important;
+  }
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell footer {
+    background:#fffdf8 !important;
+    color:#827466 !important;
+    border-color:#eadbc7 !important;
+  }
+  /* Keep the brand sidebar dark, as in the approved reference. */
+  html[data-hp-mode="dark"] .hp-luxury-app.hp-admin-shell .hp-desktop-shell {
+    background:
+      radial-gradient(ellipse at 78% 88%,rgba(193,151,83,.28),transparent 38%),
+      radial-gradient(ellipse at 8% 8%,rgba(193,151,83,.15),transparent 34%),
+      linear-gradient(180deg,#21170f 0%,#2b1d13 54%,#1b120d 100%) !important;
+    color:#f4e4c6 !important;
+  }
+}
