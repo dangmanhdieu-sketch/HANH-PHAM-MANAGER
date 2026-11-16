@@ -2,6 +2,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { AppDesignTheme } from '../types';
 import { api } from '../api';
 
+const forceLightTheme = (value: AppDesignTheme): AppDesignTheme => ({
+  ...value,
+  navbarBgColor: '#fffdf8',
+  navbarTextColor: '#302419',
+  appBgColor: '#fbf7f0',
+});
+
 export const DEFAULT_THEME_CLIENT: AppDesignTheme = {
   brandName: 'HẠNH PHẠM MANAGER',
   brandSubtitle: '',
@@ -12,9 +19,9 @@ export const DEFAULT_THEME_CLIENT: AppDesignTheme = {
   primaryColor: '#c5a059',
   primaryHoverColor: '#a97d3e',
   accentColor: '#dfc79f',
-  navbarBgColor: '#0c0a09',
-  navbarTextColor: '#ffffff',
-  appBgColor: '#FAF8F5',
+  navbarBgColor: '#fffdf8',
+  navbarTextColor: '#302419',
+  appBgColor: '#FBF7F0',
   cardBorderRadius: '2xl',
   fontFamily: 'serif',
   buttonStyle: 'rounded',
@@ -41,9 +48,9 @@ export const THEME_PRESETS: ThemePreset[] = [
       primaryColor: '#c5a059',
       primaryHoverColor: '#a97d3e',
       accentColor: '#dfc79f',
-      navbarBgColor: '#0c0a09',
-      navbarTextColor: '#ffffff',
-      appBgColor: '#FAF8F5',
+      navbarBgColor: '#fffdf8',
+      navbarTextColor: '#302419',
+      appBgColor: '#FBF7F0',
       fontFamily: 'serif',
       cardBorderRadius: '2xl',
       buttonStyle: 'rounded',
@@ -60,9 +67,9 @@ export const THEME_PRESETS: ThemePreset[] = [
       primaryColor: '#c48b9f',
       primaryHoverColor: '#aa7085',
       accentColor: '#f3d5df',
-      navbarBgColor: '#2b1b22',
-      navbarTextColor: '#ffffff',
-      appBgColor: '#FDF8F9',
+      navbarBgColor: '#fffdf8',
+      navbarTextColor: '#302419',
+      appBgColor: '#FBF7F0',
       fontFamily: 'serif',
       cardBorderRadius: '2xl',
       buttonStyle: 'pill',
@@ -79,9 +86,9 @@ export const THEME_PRESETS: ThemePreset[] = [
       primaryColor: '#44403c',
       primaryHoverColor: '#1c1917',
       accentColor: '#d6d3d1',
-      navbarBgColor: '#ffffff',
-      navbarTextColor: '#1c1917',
-      appBgColor: '#F9FAFB',
+      navbarBgColor: '#fffdf8',
+      navbarTextColor: '#302419',
+      appBgColor: '#FBF7F0',
       fontFamily: 'sans',
       cardBorderRadius: 'xl',
       buttonStyle: 'square',
@@ -98,9 +105,9 @@ export const THEME_PRESETS: ThemePreset[] = [
       primaryColor: '#047857',
       primaryHoverColor: '#065f46',
       accentColor: '#d1fae5',
-      navbarBgColor: '#022c22',
-      navbarTextColor: '#ffffff',
-      appBgColor: '#F2F9F6',
+      navbarBgColor: '#fffdf8',
+      navbarTextColor: '#302419',
+      appBgColor: '#FBF7F0',
       fontFamily: 'playfair',
       cardBorderRadius: '2xl',
       buttonStyle: 'rounded',
@@ -117,9 +124,9 @@ export const THEME_PRESETS: ThemePreset[] = [
       primaryColor: '#e0a96d',
       primaryHoverColor: '#c59155',
       accentColor: '#f7e1d7',
-      navbarBgColor: '#1c1917',
-      navbarTextColor: '#ffffff',
-      appBgColor: '#141211',
+      navbarBgColor: '#fffdf8',
+      navbarTextColor: '#302419',
+      appBgColor: '#FBF7F0',
       fontFamily: 'serif',
       cardBorderRadius: '2xl',
       buttonStyle: 'rounded',
@@ -157,7 +164,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       .get()
       .then((data) => {
         if (mounted && data) {
-          const merged = { ...DEFAULT_THEME_CLIENT, ...data };
+          const merged = forceLightTheme({ ...DEFAULT_THEME_CLIENT, ...data });
           setTheme(merged);
           setPreviewTheme(merged);
         }
@@ -176,12 +183,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--color-primary', previewTheme.primaryColor);
     root.style.setProperty('--color-primary-hover', previewTheme.primaryHoverColor);
     root.style.setProperty('--color-accent', previewTheme.accentColor);
-    root.style.setProperty('--color-navbar-bg', previewTheme.navbarBgColor);
-    root.style.setProperty('--color-navbar-text', previewTheme.navbarTextColor);
-    root.style.setProperty('--color-app-bg', previewTheme.appBgColor);
+    root.style.setProperty('--color-navbar-bg', '#fffdf8');
+    root.style.setProperty('--color-navbar-text', '#302419');
+    root.style.setProperty('--color-app-bg', '#fbf7f0');
+    root.style.setProperty('color-scheme', 'light');
 
-    // Apply background color to body
-    document.body.style.backgroundColor = previewTheme.appBgColor;
+    // App-wide light theme must override legacy dark theme values stored in Firestore.
+    document.body.style.backgroundColor = '#fbf7f0';
+    document.body.style.color = '#302419';
 
     // Apply font family class
     document.body.classList.remove('font-serif-theme', 'font-sans-theme', 'font-playfair-theme', 'font-montserrat-theme');
@@ -193,7 +202,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const applyPreset = (presetId: string) => {
     const preset = THEME_PRESETS.find((p) => p.id === presetId);
     if (preset) {
-      setPreviewTheme((prev) => ({
+      setPreviewTheme((prev) => forceLightTheme({
         ...prev,
         ...preset.theme,
       }));
@@ -203,9 +212,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const saveTheme = async () => {
     setIsSaving(true);
     try {
-      const saved = await api.theme.update(previewTheme);
-      setTheme(saved);
-      setPreviewTheme(saved);
+      const saved = await api.theme.update(forceLightTheme(previewTheme));
+      setTheme(forceLightTheme(saved));
+      setPreviewTheme(forceLightTheme(saved));
       alert('✨ Đã lưu và áp dụng thiết kế giao diện toàn hệ thống thành công!');
     } catch (err: any) {
       alert(err.message || 'Lỗi khi lưu thiết kế giao diện');
@@ -220,7 +229,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     setIsSaving(true);
     try {
-      const reset = await api.theme.reset();
+      const reset = forceLightTheme(await api.theme.reset());
       setTheme(reset);
       setPreviewTheme(reset);
       alert('Đã khôi phục thiết kế mặc định!');
