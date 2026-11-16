@@ -1058,7 +1058,7 @@ export const BusinessModule: React.FC<Props> = ({ module, staffList, currentUser
       })()}
 
       {formOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/60 overflow-y-auto overscroll-contain">
+        <div className="hp-business-modal-overlay fixed inset-0 z-[10000] overflow-x-hidden overflow-y-auto overscroll-contain">
           <div className="min-h-full flex items-start sm:items-center justify-center p-2 sm:p-4">
           <form
             onSubmit={handleSubmit}
