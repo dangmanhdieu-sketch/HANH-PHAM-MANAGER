@@ -587,9 +587,8 @@ class DatabaseService {
     if (!this.firestoreEnabled || !this.firestore) return;
 
     try {
-      // Claim before loading. If Render overlaps old/new instances during deploy,
-      // only the newest claimant is allowed to write Firestore.
-      await this.claimFirestoreWriterLease();
+      // Read and validate first. A replacement instance that hits a Firestore
+      // quota/read failure must not fence the currently-live writer out.
       const rootRef = this.firestore.collection(this.firestoreCollection).doc(this.firestoreDocument);
       const rootSnap = await rootRef.get();
 
@@ -600,6 +599,7 @@ class DatabaseService {
           throw new Error('[Firebase] New Firestore is empty. Set FIREBASE_ALLOW_EMPTY_INIT=true for the one-time empty initialization.');
         }
         this.db = getFreshEmptyData();
+        await this.claimFirestoreWriterLease();
         await this.persistToFirestoreNow();
         console.log('[Firebase] Initialized new Firestore with one admin account and empty business tables.');
         return;
@@ -621,6 +621,19 @@ class DatabaseService {
             rootRef.collection('tables').doc(table).get()
           )
         );
+        // One-time compaction cut-off: mutations committed after this instant
+        // remain queryable as deltas on the next boot, even if they race this snapshot.
+        const deltaCompactionCutoff = new Date().toISOString();
+        const deltaCheckpoints: Partial<Record<'HOAHONG' | 'QUAN_LY' | 'CHAMCONG', string>> = {
+          HOAHONG: typeof tableSnaps[this.firestoreTables.indexOf('HOAHONG')]?.data()?.deltaCheckpoint === 'string'
+            ? String(tableSnaps[this.firestoreTables.indexOf('HOAHONG')].data()?.deltaCheckpoint) : undefined,
+          QUAN_LY: typeof tableSnaps[this.firestoreTables.indexOf('QUAN_LY')]?.data()?.deltaCheckpoint === 'string'
+            ? String(tableSnaps[this.firestoreTables.indexOf('QUAN_LY')].data()?.deltaCheckpoint) : undefined,
+          CHAMCONG: typeof tableSnaps[this.firestoreTables.indexOf('CHAMCONG')]?.data()?.deltaCheckpoint === 'string'
+            ? String(tableSnaps[this.firestoreTables.indexOf('CHAMCONG')].data()?.deltaCheckpoint) : undefined,
+        };
+        const needsDeltaCompaction = (['HOAHONG', 'QUAN_LY', 'CHAMCONG'] as const)
+          .some((table) => !deltaCheckpoints[table]);
 
         // Schema v2 is only valid when every expected table document exists
         // and contains its data field. Missing documents must never be treated
@@ -636,9 +649,9 @@ class DatabaseService {
             continue;
           }
           const tableMeta = snap.data() || {};
-          if (table === 'HOAHONG' && hasVerifiedHoaHongRecords) {
-            // The verified hoaHongRecords collection replaces this legacy
-            // table for reads. Do not fetch/decompress its large chunk payload.
+          if (table === 'HOAHONG' && hasVerifiedHoaHongRecords && !deltaCheckpoints.HOAHONG) {
+            // First compaction boot: load the verified record collection once,
+            // then persist it as a chunked table snapshot with a delta checkpoint.
             (loaded as any).HOAHONG = [];
             continue;
           }
@@ -734,7 +747,7 @@ class DatabaseService {
           // legacy table is intentionally skipped above. Load its authoritative
           // hoaHongRecords collection here (paged to avoid a single unbounded scan),
           // then overlay subsequent creates/updates/deletes from hoaHongMutations.
-          if (hasVerifiedHoaHongRecords) {
+          if (hasVerifiedHoaHongRecords && !deltaCheckpoints.HOAHONG) {
             const recordsRef = rootRef.collection('hoaHongRecords');
             const loadedRecords: HoaHong[] = [];
             let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined;
@@ -757,17 +770,35 @@ class DatabaseService {
             console.info('[Firebase] Loaded verified HOAHONG records:', loadedRecords.length);
           }
           // Overlay incremental changes/deletes on top of the authoritative record set.
-          await this.loadHoaHongMutationDeltas(rootRef);
-          console.info('[Firebase] Loaded incremental HOAHONG deltas:', this.hoaHongDirtyIds.size);
+          await this.loadHoaHongMutationDeltas(rootRef, deltaCheckpoints.HOAHONG);
+          console.info('[Firebase] Loaded incremental HOAHONG deltas.');
           this.db.AUDIT_LOG = await this.loadRecordMutationDeltas(rootRef, 'auditLogMutations', this.db.AUDIT_LOG || [], 'LogID', 800);
-          this.db.QUAN_LY = await this.loadRecordMutationDeltas(rootRef, 'quanLyMutations', this.db.QUAN_LY || [], 'QuanLyID');
-          this.db.CHAMCONG = await this.loadRecordMutationDeltas(rootRef, 'chamCongMutations', (this.db.CHAMCONG || []) as any, 'ChamCongID') as any;
+          this.db.QUAN_LY = await this.loadRecordMutationDeltas(rootRef, 'quanLyMutations', this.db.QUAN_LY || [], 'QuanLyID', undefined, deltaCheckpoints.QUAN_LY);
+          this.db.CHAMCONG = await this.loadRecordMutationDeltas(rootRef, 'chamCongMutations', (this.db.CHAMCONG || []) as any, 'ChamCongID', undefined, deltaCheckpoints.CHAMCONG) as any;
           this.chamCongDirtyIds.clear();
           this.chamCongDeletedIds.clear();
           this.auditDirtyIds.clear();
           this.quanLyDirtyIds.clear();
           this.quanLyDeletedIds.clear();
           this.captureFirestoreSnapshots();
+
+          // A read/quota failure above must not steal the active writer lease.
+          await this.claimFirestoreWriterLease();
+
+          // Persist a verified base snapshot for high-churn collections once.
+          // Old mutation documents are retained (no destructive cleanup); future
+          // boots query only updatedAt > checkpoint, reducing reads dramatically.
+          const checkpointsToWrite: Partial<Record<'HOAHONG' | 'QUAN_LY' | 'CHAMCONG', string>> = {};
+          for (const table of ['HOAHONG', 'QUAN_LY', 'CHAMCONG'] as const) {
+            if (!deltaCheckpoints[table]) checkpointsToWrite[table] = deltaCompactionCutoff;
+          }
+          if (Object.keys(checkpointsToWrite).length > 0) {
+            await this.persistToFirestoreNow(
+              Object.keys(checkpointsToWrite) as FirestoreTableName[],
+              checkpointsToWrite
+            );
+            console.info('[Firebase] Compacted mutation deltas into verified table snapshots:', Object.keys(checkpointsToWrite));
+          }
 
           // Upgrade any legacy table document that is already too large for
           // Firestore before the next user mutation. This migrates the current
@@ -828,6 +859,7 @@ class DatabaseService {
       const migrated = this.applyMigrations();
       this.refreshKPIs();
       this.saveSync();
+      await this.claimFirestoreWriterLease();
       await this.persistToFirestoreNow();
       if (migrated) console.log('[Firebase] Đã áp dụng migration username/ngân hàng.');
       console.log('[Firebase] Đã đọc database Firestore cũ và nâng cấp sang schema persistent v2.');
@@ -999,8 +1031,10 @@ class DatabaseService {
     console.log('[Firebase] HOAHONG record changes committed:', writes.length);
   }
 
-  private async loadHoaHongMutationDeltas(rootRef: FirebaseFirestore.DocumentReference): Promise<void> {
-    const snapshot = await rootRef.collection('hoaHongMutations').get();
+  private async loadHoaHongMutationDeltas(rootRef: FirebaseFirestore.DocumentReference, checkpoint?: string): Promise<void> {
+    let query: FirebaseFirestore.Query = rootRef.collection('hoaHongMutations');
+    if (checkpoint) query = query.where('updatedAt', '>', checkpoint);
+    const snapshot = await query.get();
     if (snapshot.empty) return;
     const byId = new Map((this.db.HOAHONG || []).map((record) => [String(record.HoaHongID), record]));
     for (const doc of snapshot.docs) {
@@ -1063,9 +1097,11 @@ class DatabaseService {
     collectionName: string,
     baseRecords: T[],
     idField: string,
-    limit?: number
+    limit?: number,
+    checkpoint?: string
   ): Promise<T[]> {
     let query: FirebaseFirestore.Query = rootRef.collection(collectionName);
+    if (checkpoint) query = query.where('updatedAt', '>', checkpoint);
     if (limit) query = query.orderBy('updatedAt', 'desc').limit(limit);
     const snapshot = await query.get();
     const byId = new Map(baseRecords.map((record) => [String(record[idField]), record]));
@@ -1167,7 +1203,8 @@ class DatabaseService {
   }
 
   private async persistToFirestoreNow(
-    tablesToWrite: readonly (typeof this.firestoreTables)[number][] = this.firestoreTables
+    tablesToWrite: readonly (typeof this.firestoreTables)[number][] = this.firestoreTables,
+    deltaCheckpoints: Partial<Record<'HOAHONG' | 'QUAN_LY' | 'CHAMCONG', string>> = {}
   ): Promise<void> {
     if (!this.firestoreEnabled || !this.firestore || tablesToWrite.length === 0) return;
 
@@ -1230,11 +1267,18 @@ class DatabaseService {
                 storage: 'json-string',
                 dataJson: item.data,
                 updatedAt: committedAt,
+                ...(deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG']
+                  ? { deltaCheckpoint: deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] } : {}),
               }, { merge: false });
             } else {
               transaction.set(
                 tableRef,
-                { data: item.data, updatedAt: committedAt },
+                {
+                  data: item.data,
+                  updatedAt: committedAt,
+                  ...(deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG']
+                    ? { deltaCheckpoint: deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] } : {}),
+                },
                 { merge: false }
               );
             }
@@ -1301,6 +1345,8 @@ class DatabaseService {
             revision,
             chunkCount: parts.length,
             updatedAt: committedAt,
+            ...(deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG']
+              ? { deltaCheckpoint: deltaCheckpoints[item.table as 'HOAHONG' | 'QUAN_LY' | 'CHAMCONG'] } : {}),
           }, { merge: false });
         });
 
