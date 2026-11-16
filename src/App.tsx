@@ -311,7 +311,7 @@ function AppContent() {
     if (!currentUser) return;
     const tab = currentTab;
     if (currentUser.Quyen === 'Admin') {
-      const [stats, staff, attendance, payroll, commission, notice] = await Promise.all([
+      const [stats, staff, attendance, payroll, commission, notice, businessRecords, pendingCommissions] = await Promise.all([
         api.dashboard.getStats(), api.staff.getAll(), api.attendance.getAll(),
         api.payroll.getAll(), api.commission.getAll(), api.dashboard.getNotifications(),
         api.quanLy.getAll(), api.commission.getAll({ trangThai: 'Chờ duyệt' }),
