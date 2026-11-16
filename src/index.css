@@ -724,3 +724,23 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
   .hp-luxury-app .fixed.inset-0 { padding-left: 8px !important; padding-right: 8px !important; }
   .hp-luxury-app .fixed.inset-0 form { padding-left: 13px !important; padding-right: 13px !important; }
 }
+
+@media (max-width: 767px) {
+  .hp-luxury-app .fixed.inset-0 form > div:last-child:has(button[type="submit"]) {
+    position: sticky !important;
+    bottom: calc(-1 * (12px + var(--hp-safe-bottom))) !important;
+    z-index: 5 !important;
+    margin: 0 -13px calc(-13px - var(--hp-safe-bottom)) !important;
+    padding: 12px 13px calc(12px + var(--hp-safe-bottom)) !important;
+    background: rgba(255,253,249,.98) !important;
+    border-top: 1px solid var(--hp-line) !important;
+    box-shadow: 0 -8px 18px rgba(39,29,18,.06) !important;
+  }
+  .hp-luxury-app .fixed.inset-0 form > div:last-child:has(button[type="submit"]) button {
+    min-height: 46px !important;
+  }
+  .hp-luxury-app .fixed.inset-0 table td button {
+    min-height: 40px !important;
+    white-space: nowrap !important;
+  }
+}
