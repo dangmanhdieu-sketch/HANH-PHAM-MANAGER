@@ -1054,8 +1054,9 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
   .hp-luxury-app.hp-admin-shell .hp-admin-dashboard > div:last-child { grid-area:footer !important; }
   .hp-luxury-app.hp-admin-shell .hp-desktop-shell {
     background-image:
-      linear-gradient(180deg,rgba(24,17,12,.93) 0%,rgba(28,19,13,.82) 54%,rgba(24,16,11,.35) 100%),
-      url('data:image/webp;base64,REPLACE_BASE64') !important;
+      radial-gradient(ellipse at 78% 88%,rgba(193,151,83,.28),transparent 38%),
+      radial-gradient(ellipse at 8% 8%,rgba(193,151,83,.15),transparent 34%),
+      linear-gradient(180deg,rgba(24,17,12,.98) 0%,rgba(28,19,13,.94) 54%,rgba(24,16,11,.98) 100%) !important;
     background-size:cover !important;
     background-position:center bottom !important;
   }
