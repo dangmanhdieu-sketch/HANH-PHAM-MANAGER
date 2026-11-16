@@ -1358,11 +1358,7 @@ html[data-hp-mode="dark"] .hp-luxury-app input,html[data-hp-mode="dark"] .hp-lux
     color:#827466 !important;
     border-color:#eadbc7 !important;
   }
-  /* Sidebar deliberately remains dark brown with gold branding. */
-  html body .hp-luxury-app.hp-admin-shell .hp-desktop-shell {
-    background:radial-gradient(ellipse at 78% 88%,rgba(193,151,83,.28),transparent 38%),linear-gradient(180deg,#21170f 0%,#2b1d13 54%,#1b120d 100%) !important;
-    color:#f4e4c6 !important;
-  }
+  /* Removed legacy dark desktop sidebar override; ivory sidebar is enforced below. */
 }
 
 
