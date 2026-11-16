@@ -135,9 +135,9 @@ body {
 .hp-luxury-app .hp-desktop-inner>div:first-child{min-height:105px;align-items:flex-start;flex-direction:column;gap:18px}
 .hp-luxury-app .hp-desktop-inner>div:first-child>div:last-child{width:100%;justify-content:space-between}
 .hp-luxury-app .hp-desktop-nav{display:flex;flex-direction:column;gap:7px;border-top:1px solid rgba(234,217,185,.2);padding-top:18px;overflow:visible}
-.hp-luxury-app .hp-desktop-nav button{width:100%;justify-content:flex-start;padding:13px 14px;border-radius:12px;color:#e7dac7}
+.hp-luxury-app .hp-desktop-nav button{width:100%;justify-content:flex-start;padding:13px 14px;border-radius:12px;color:#594632!important}
 .hp-luxury-app .hp-desktop-nav button[class*="bg-stone-900"]{background:linear-gradient(110deg,#b68a43,#8e652e)!important;color:#fff!important}
-.hp-luxury-app .hp-desktop-inner .font-bridal{color:#f5e5c8!important}
+.hp-luxury-app .hp-desktop-inner .font-bridal{color:#3b2b1c!important}
 .hp-admin-shell main{margin-left:258px;max-width:none;width:calc(100% - 258px);padding:28px clamp(20px,3vw,48px) 56px}
 .hp-admin-shell footer{margin-left:258px}
 .hp-admin-shell .hp-navbar{position:static}
@@ -147,7 +147,7 @@ body {
 .hp-employee-dashboard{max-width:1200px;margin:0 auto}
 .hp-employee-dashboard button{border-radius:1.1rem}
 .hp-luxury-app footer{background:var(--hp-paper)!important;border-color:var(--hp-line)!important}
-html[data-hp-mode="dark"]{color-scheme:dark}
+html[data-hp-mode="dark"]{color-scheme:light!important}
 @media(max-width:1023px){.hp-luxury-app .hp-desktop-shell{display:none!important}.hp-luxury-app .hp-mobile-shell{display:block!important}.hp-luxury-app main{margin-left:0!important;width:100%!important;padding:18px 14px calc(100px + env(safe-area-inset-bottom))!important}.hp-luxury-app footer{margin-left:0!important;margin-bottom:76px!important}.hp-luxury-app .hp-mobile-tabbar{position:fixed!important;display:block!important}.hp-luxury-app .hp-mobile-tabbar>div{overflow-x:auto;scrollbar-width:none}.hp-luxury-app .hp-mobile-tabbar>div::-webkit-scrollbar{display:none}.hp-luxury-app .hp-mobile-tabbar button{min-width:76px}}
 @media(min-width:1024px){.hp-luxury-app .hp-mobile-shell{display:none!important}}
 
@@ -314,7 +314,7 @@ html[data-hp-mode="dark"]{color-scheme:dark}
   margin:22px 18px 0;
   padding-top:14px;
   border-top:1px solid rgba(234,217,185,.18);
-  color:rgba(232,207,160,.65);
+  color:#8b6a3d;
   font-family:Georgia,serif;
   font-size:10px;
   letter-spacing:.3em;
@@ -1616,4 +1616,13 @@ html[data-hp-mode="dark"] body .hp-luxury-app :is(.text-white,.text-gray-100,.te
   html body .hp-luxury-app :is(.text-white,.text-gray-100,.text-gray-200,.text-stone-100,.text-stone-200,.text-slate-100,.text-slate-200) {
     color:#514233 !important;
   }
+}
+
+
+/* PC LIGHT THEME ROOT FIX: set by main.tsx before React mounts. */
+@media (min-width:1024px) {
+  html, html body, html body #root, html body #root .hp-luxury-app { color-scheme:light!important; }
+  html body #root .hp-luxury-app .hp-desktop-shell { background:#fffdf8!important; background-image:linear-gradient(180deg,#fffdf8 0%,#f4eadb 100%)!important; color:#3b2b1c!important; }
+  html body #root .hp-luxury-app .hp-desktop-shell :is(.font-bridal,button,span,p,svg) { color:#594632!important; }
+  html body #root .hp-luxury-app .hp-desktop-nav button[class*="bg-stone-900"] { background:linear-gradient(110deg,#c79b52,#95682e)!important;color:#fff!important; }
 }
