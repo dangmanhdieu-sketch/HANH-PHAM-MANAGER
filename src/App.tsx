@@ -460,7 +460,7 @@ function AppContent() {
   const todayStr = new Date().toISOString().split('T')[0];
 
   return (
-    <div className={`hp-luxury-app min-h-screen bg-[#FAF8F5] text-stone-900 flex flex-col font-sans selection:bg-[#E2D4BA] ${isAdmin ? "hp-admin-shell" : "hp-employee-shell"}`}>
+    <div className={`hp-luxury-app min-h-screen bg-[#FAF8F5] text-stone-900 flex flex-col font-sans selection:bg-[#E2D4BA] ${isAdmin ? "hp-admin-shell" : "hp-employee-shell"}`} style={{ background: "linear-gradient(135deg,#fffaf3 0%,#f3e9dc 55%,#fbf7f0 100%)", color: "#302419", colorScheme: "light" }}>
       {/* Top Navbar */}
       <Navbar
         currentUser={currentUser}
@@ -473,7 +473,7 @@ function AppContent() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-24 lg:pb-12">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-24 lg:pb-12" style={{ background: "transparent", color: "#302419" }}>
         {/* =========================================
             ADMIN VIEWS
            ========================================= */}
