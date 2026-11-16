@@ -57,7 +57,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   ];
 
   return (
-    <div className="hp-admin-dashboard mx-auto w-full max-w-7xl space-y-4 overflow-x-hidden px-0 pb-6 animate-fade-in sm:space-y-5">
+    <div className="hp-admin-dashboard mx-auto w-full max-w-7xl space-y-4 overflow-x-hidden px-0 pb-6 animate-fade-in sm:space-y-5" style={{ background: "transparent", color: "#302419", colorScheme: "light" }}>
       <header className="hp-dashboard-hero flex flex-col gap-3 rounded-2xl border border-[#e9e1d5] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a88752]">HẠNH PHẠM LUXURY BRIDAL</p>
