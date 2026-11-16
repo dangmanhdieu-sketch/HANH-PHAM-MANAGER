@@ -108,7 +108,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           type="button"
           onClick={onOpenCheckIn}
           disabled={isCheckedIn}
-          className={`group p-6 rounded-2xl border transition-all text-left flex items-center justify-between ${
+          className={`hp-checkin-action group p-6 rounded-2xl border transition-all text-left flex items-center justify-between ${
             isCheckedIn
               ? 'bg-stone-100 border-stone-200 opacity-70 cursor-not-allowed'
               : 'bg-white hover:bg-[#FAF8F5] border-[#E7DFD5] hover:border-[#c5a059] shadow-md hover:shadow-xl'
