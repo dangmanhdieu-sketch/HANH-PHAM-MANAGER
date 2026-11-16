@@ -315,7 +315,6 @@ function AppContent() {
         api.dashboard.getStats(), api.staff.getAll(), api.attendance.getAll(),
         api.payroll.getAll(), api.commission.getAll(), api.dashboard.getNotifications(),
         api.quanLy.getAll(), api.commission.getAll({ trangThai: 'Chờ duyệt' }),
-        api.payroll.getAll(),
       ]);
       setKpis(stats.kpis || []);
       setAttendanceList(attendance);
@@ -351,6 +350,7 @@ function AppContent() {
         api.dashboard.getNotifications(),
         api.quanLy.getAll(),
         api.commission.getAll({ trangThai: 'Chờ duyệt' }),
+        api.payroll.getAll(),
       ]);
       if (results[0].status === 'fulfilled') {
         setKpis(results[0].value.kpis || []);
