@@ -834,7 +834,7 @@ html[data-hp-mode="dark"]{color-scheme:light!important}
     text-align:center !important;
   }
   .hp-luxury-app.hp-admin-shell .hp-desktop-inner > div:first-child > div:first-child .font-bridal {
-    color:#f4e4c6 !important;
+    color:#3b2b1c !important;
     font-size:18px !important;
     letter-spacing:.15em !important;
   }
@@ -857,7 +857,7 @@ html[data-hp-mode="dark"]{color-scheme:light!important}
     border:1px solid transparent !important;
     border-radius:12px !important;
     padding:10px 13px !important;
-    color:#eee1cf !important;
+    color:#594632 !important;
     font-size:12px !important;
     letter-spacing:.01em !important;
   }
@@ -1625,4 +1625,23 @@ html[data-hp-mode="dark"] body .hp-luxury-app :is(.text-white,.text-gray-100,.te
   html body #root .hp-luxury-app .hp-desktop-shell { background:#fffdf8!important; background-image:linear-gradient(180deg,#fffdf8 0%,#f4eadb 100%)!important; color:#3b2b1c!important; }
   html body #root .hp-luxury-app .hp-desktop-shell :is(.font-bridal,button,span,p,svg) { color:#594632!important; }
   html body #root .hp-luxury-app .hp-desktop-nav button[class*="bg-stone-900"] { background:linear-gradient(110deg,#c79b52,#95682e)!important;color:#fff!important; }
+}
+
+
+/* FINAL PC LIGHT SIDEBAR: override historical desktop palette declarations. */
+@media (min-width:1024px) {
+  html body #root .hp-luxury-app.hp-admin-shell .hp-desktop-shell,
+  html body #root .hp-luxury-app.hp-employee-shell .hp-desktop-shell {
+    background:#fffdf8!important;
+    background-image:linear-gradient(180deg,#fffdf8 0%,#f4eadb 100%)!important;
+    color:#3b2b1c!important;
+  }
+  html body #root .hp-luxury-app .hp-desktop-shell .hp-desktop-inner .font-bridal,
+  html body #root .hp-luxury-app .hp-desktop-shell .hp-desktop-inner .hp-desktop-nav button:not([class*="bg-stone-900"]) {
+    color:#594632!important;
+  }
+  html body #root .hp-luxury-app .hp-desktop-shell .hp-desktop-nav button[class*="bg-stone-900"] {
+    background:linear-gradient(110deg,#c79b52,#95682e)!important;
+    color:#fff!important;
+  }
 }
