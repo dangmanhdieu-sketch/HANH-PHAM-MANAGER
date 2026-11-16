@@ -1733,3 +1733,89 @@ html[data-hp-mode="dark"] body .hp-luxury-app :is(.text-white,.text-gray-100,.te
     min-width: 0 !important;
   }
 }
+
+
+/* Portaled mobile dialogs: escape app stacking contexts (fixed header/tabbar),
+   use one viewport-sized scroll container and keep the form itself scrollable. */
+.hp-business-modal-overlay,
+.hp-daily-claim-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483000 !important;
+  width: 100% !important;
+  height: 100% !important;
+  height: 100dvh !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+}
+.hp-business-modal-overlay {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)) !important;
+  background: rgba(28,22,16,.58) !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+.hp-business-modal-overlay > div {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+  padding: 0 !important;
+}
+.hp-business-modal-overlay form {
+  width: min(100%, 680px) !important;
+  max-width: 680px !important;
+  min-width: 0 !important;
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px) !important;
+  margin: 0 auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  box-sizing: border-box !important;
+}
+.hp-business-modal-overlay form > * { min-width: 0 !important; max-width: 100% !important; }
+.hp-business-modal-overlay form :is(input,select,textarea) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+.hp-daily-claim-overlay {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)) !important;
+  background: rgba(28,22,16,.58) !important;
+}
+.hp-daily-claim-panel {
+  width: min(100%, 560px) !important;
+  max-width: 560px !important;
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px) !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+}
+.hp-daily-claim-scroll { min-width: 0 !important; overflow-x: hidden !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; }
+@media (max-width: 767px) {
+  .hp-business-modal-overlay { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) !important; }
+  .hp-business-modal-overlay > div { min-height: 0 !important; }
+  .hp-business-modal-overlay form {
+    width: 100% !important;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px) !important;
+    padding: 14px !important;
+    border-radius: 18px !important;
+  }
+  .hp-daily-claim-overlay { align-items: flex-end !important; padding: env(safe-area-inset-top) 0 0 !important; }
+  .hp-daily-claim-panel {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: calc(100dvh - env(safe-area-inset-top)) !important;
+    border-radius: 22px 22px 0 0 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+}
