@@ -910,6 +910,7 @@ export const CommissionManagement: React.FC<CommissionManagementProps> = ({
         }
         confirmText={approveConfirmHH?.dongY ? 'DUYỆT & CỘNG LƯƠNG' : 'TỪ CHỐI'}
         type={approveConfirmHH?.dongY ? 'success' : 'warning'}
+        fullScreen
       />
     </div>
   );
