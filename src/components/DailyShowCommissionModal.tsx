@@ -164,8 +164,7 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
     });
   };
 
-  return (
-    {createPortal(<div className="hp-daily-claim-overlay fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in font-sans" style={{ backgroundColor: "rgba(24,18,12,.58)" }}>
+  return createPortal(<div className="hp-daily-claim-overlay fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in font-sans" style={{ backgroundColor: "rgba(24,18,12,.58)" }}>
       <div className="hp-daily-claim-panel w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-[#E7DFD5] overflow-hidden flex flex-col max-h-[92dvh] min-h-0">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7DFD5] bg-[#FAF8F5]">
@@ -508,6 +507,5 @@ export const DailyShowCommissionModal: React.FC<DailyShowCommissionModalProps> =
           </div>
         </form>
       </div>
-    </div>, document.body)}
-  );
+    </div>, document.body);
 };
