@@ -180,6 +180,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Apply CSS custom properties dynamically to DOM
   useEffect(() => {
     const root = document.documentElement;
+    root.dataset.hpMode = 'light';
+    root.style.colorScheme = 'light';
+    try { localStorage.setItem('hp-ui-mode', 'light'); } catch {}
     root.style.setProperty('--color-primary', previewTheme.primaryColor);
     root.style.setProperty('--color-primary-hover', previewTheme.primaryHoverColor);
     root.style.setProperty('--color-accent', previewTheme.accentColor);
