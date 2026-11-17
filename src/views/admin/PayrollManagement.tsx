@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { formatMoney, formatMoneyInput, parseMoneyInput } from '../../utils/format';
 import {
   DollarSign,
@@ -71,6 +72,17 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
   }, []);
 
   const [showTamUngModal, setShowTamUngModal] = useState(false);
+
+  // Keep the advance-management dialog attached to the viewport and prevent
+  // the page behind it from scrolling while the dialog is open.
+  useEffect(() => {
+    if (!showTamUngModal) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [showTamUngModal]);
   const [tamUngList, setTamUngList] = useState<TamUng[]>([]);
   const [tamUngLoading, setTamUngLoading] = useState(false);
   const [savingTamUng, setSavingTamUng] = useState(false);
@@ -559,7 +571,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
       {editingLuong && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-[#E7DFD5] overflow-hidden flex flex-col max-h-[92vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7DFD5] bg-[#FAF8F5]">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#E7DFD5] bg-[#FAF8F5] shrink-0">
               <div>
                 <h3 className="text-base font-bold font-bridal text-stone-900 uppercase">
                   ĐIỀU CHỈNH PHIẾU LƯƠNG: {editingLuong.HoTen}
@@ -681,12 +693,25 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
       )}
 
       {/* Modal: Quản lý Tạm ứng lương */}
-      {showTamUngModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-[#E7DFD5] overflow-hidden flex flex-col max-h-[92vh]">
+      {showTamUngModal && createPortal(
+        <div
+          role="presentation"
+          className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto bg-black/60 backdrop-blur-sm p-3 sm:p-4 overscroll-contain"
+          style={{
+            paddingTop: 'max(12px, env(safe-area-inset-top))',
+            paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tam-ung-modal-title"
+            className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-[#E7DFD5] overflow-hidden flex flex-col min-h-0"
+            style={{ maxHeight: 'calc(100dvh - max(24px, env(safe-area-inset-top) + 12px) - max(24px, env(safe-area-inset-bottom) + 12px))' }}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E7DFD5] bg-[#FAF8F5]">
               <div>
-                <h3 className="text-base font-bold font-bridal text-stone-900 uppercase flex items-center gap-2">
+                <h3 id="tam-ung-modal-title" className="text-base font-bold font-bridal text-stone-900 uppercase flex items-center gap-2">
                   <Wallet className="w-5 h-5 text-[#a97d3e]" /> QUẢN LÝ TẠM ỨNG LƯƠNG
                 </h3>
                 <p className="text-xs text-stone-500 mt-1">Có thể nhập nhiều khoản tạm ứng cho cùng một nhân viên trong cùng một tháng.</p>
@@ -695,7 +720,7 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto space-y-5">
+            <div className="min-h-0 p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-5">
               <form onSubmit={handleCreateTamUng} className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-[#FAF8F5] rounded-xl border border-[#E7DFD5]">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">Nhân viên</label>
@@ -770,7 +795,8 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* Modal: Detailed Luxury Payslip View & Print */}
       {previewPayslip && (
