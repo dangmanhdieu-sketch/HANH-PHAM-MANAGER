@@ -93,6 +93,10 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     LyDo: '',
     GhiChu: '',
   });
+  const [reviewingTamUng, setReviewingTamUng] = useState<TamUng | null>(null);
+  const [reviewTamUngApprove, setReviewTamUngApprove] = useState(true);
+  const [reviewingTamUngLoading, setReviewingTamUngLoading] = useState(false);
+  const [reviewingTamUngError, setReviewingTamUngError] = useState<string | null>(null);
 
   const loadTamUng = async () => {
     setTamUngLoading(true);
@@ -143,14 +147,29 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
     }
   };
 
-  const handleReviewTamUng = async (item: TamUng, approve: boolean) => {
-    const action = approve ? 'duyệt' : 'từ chối';
-    if (!window.confirm('Bạn có chắc chắn muốn ' + action + ' yêu cầu ứng ' + Number(item.SoTien).toLocaleString('vi-VN') + ' đ của ' + item.HoTen + '?')) return;
+  const handleReviewTamUng = (item: TamUng, approve: boolean) => {
+    setReviewingTamUng(item);
+    setReviewTamUngApprove(approve);
+    setReviewingTamUngError(null);
+  };
+
+  const confirmReviewTamUng = async () => {
+    if (!reviewingTamUng || reviewingTamUngLoading) return;
+    setReviewingTamUngLoading(true);
+    setReviewingTamUngError(null);
     try {
-      await api.tamUng.review(item.TamUngID, approve);
-      await loadTamUng(); onRefresh(selectedMonth);
-      alert(approve ? 'Đã duyệt ứng lương. Khoản ứng sẽ được khấu trừ vào bảng lương kỳ tương ứng.' : 'Đã từ chối yêu cầu ứng lương.');
-    } catch (err: any) { alert(err.message || 'Không thể xử lý yêu cầu ứng lương.'); }
+      await api.tamUng.review(reviewingTamUng.TamUngID, reviewTamUngApprove);
+      await loadTamUng();
+      onRefresh(selectedMonth);
+      setReviewingTamUng(null);
+      alert(reviewTamUngApprove
+        ? 'Đã duyệt ứng lương. Khoản ứng sẽ được khấu trừ vào bảng lương kỳ tương ứng.'
+        : 'Đã từ chối yêu cầu ứng lương.');
+    } catch (err: any) {
+      setReviewingTamUngError(err.message || 'Không thể xử lý yêu cầu ứng lương.');
+    } finally {
+      setReviewingTamUngLoading(false);
+    }
   };
 
   const handleDeleteTamUng = async (item: TamUng) => {
@@ -939,6 +958,28 @@ export const PayrollManagement: React.FC<PayrollManagementProps> = ({
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal for Ứng Lương - rendered at viewport level */}
+      <ConfirmationModal
+        isOpen={Boolean(reviewingTamUng)}
+        onClose={() => {
+          if (!reviewingTamUngLoading) {
+            setReviewingTamUng(null);
+            setReviewingTamUngError(null);
+          }
+        }}
+        onConfirm={confirmReviewTamUng}
+        title={reviewTamUngApprove ? "XÁC NHẬN DUYỆT ỨNG LƯƠNG" : "XÁC NHẬN TỪ CHỐI ỨNG LƯƠNG"}
+        message={reviewingTamUng
+          ? `Bạn có chắc chắn muốn ${reviewTamUngApprove ? 'duyệt' : 'từ chối'} yêu cầu ứng ${Number(reviewingTamUng.SoTien || 0).toLocaleString('vi-VN')} đ của ${reviewingTamUng.HoTen}? ${reviewTamUngApprove ? 'Khoản ứng sẽ được khấu trừ vào bảng lương kỳ tương ứng sau khi duyệt.' : 'Yêu cầu này sẽ không được khấu trừ vào lương.'}`
+          : ''}
+        confirmText={reviewTamUngApprove ? "XÁC NHẬN DUYỆT" : "XÁC NHẬN TỪ CHỐI"}
+        cancelText="QUAY LẠI"
+        type={reviewTamUngApprove ? "success" : "danger"}
+        loading={reviewingTamUngLoading}
+        errorMessage={reviewingTamUngError}
+        fullScreen
+      />
 
       {/* Confirmation Modal for Duyệt Lương */}
       <ConfirmationModal
