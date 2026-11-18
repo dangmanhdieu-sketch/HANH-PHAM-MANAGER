@@ -531,7 +531,7 @@ app.post('/api/chamcong/migrate-photos', authenticateToken, requireAdmin, async 
         scanned++;
         try {
           const date = String(item.Ngay || new Date().toISOString().slice(0, 10));
-          const uploaded = await uploadAttendancePhoto(value, `${field.toLowerCase()}-${item.NhanVienID}-${item.ChamCongID}.jpg`, date);
+          const uploaded = await uploadAttendancePhoto(value, `${date}-${field.toLowerCase()}-${item.NhanVienID}-${item.ChamCongID}.jpg`, date, item.NhanVienID, item.HoTen);
           const updated = dbService.updateChamCongPhotos(item.ChamCongID, { [field]: uploaded.photoRef });
           if (!updated) throw new Error('Không tìm thấy bản ghi chấm công sau khi upload.');
           await dbService.saveAndVerify();
@@ -615,7 +615,7 @@ app.post('/api/chamcong/checkin', authenticateToken, async (req: AuthRequest, re
     const attendanceDate = deviceTime && !Number.isNaN(new Date(deviceTime).getTime())
       ? new Intl.DateTimeFormat('en-CA', { timeZone: deviceTimeZone || process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(deviceTime))
       : new Intl.DateTimeFormat('en-CA', { timeZone: process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    const storedPhoto = await uploadAttendancePhoto(String(anh), `checkin-${req.user!.NhanVienID}-${attendanceDate}.jpg`, attendanceDate);
+    const storedPhoto = await uploadAttendancePhoto(String(anh), `${attendanceDate}-checkin-${req.user!.NhanVienID}.jpg`, attendanceDate, req.user!.NhanVienID, req.user!.HoTen);
     const record = dbService.checkIn(req.user!, {
       anh: storedPhoto.photoRef,
       gps,
@@ -646,7 +646,7 @@ app.post('/api/chamcong/checkout', authenticateToken, async (req: AuthRequest, r
     const attendanceDate = deviceTime && !Number.isNaN(new Date(deviceTime).getTime())
       ? new Intl.DateTimeFormat('en-CA', { timeZone: deviceTimeZone || process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(deviceTime))
       : new Intl.DateTimeFormat('en-CA', { timeZone: process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    const storedPhoto = await uploadAttendancePhoto(String(anh), `checkout-${req.user!.NhanVienID}-${attendanceDate}.jpg`, attendanceDate);
+    const storedPhoto = await uploadAttendancePhoto(String(anh), `${attendanceDate}-checkout-${req.user!.NhanVienID}.jpg`, attendanceDate, req.user!.NhanVienID, req.user!.HoTen);
     const record = dbService.checkOut(req.user!, {
       anh: storedPhoto.photoRef,
       gps,
