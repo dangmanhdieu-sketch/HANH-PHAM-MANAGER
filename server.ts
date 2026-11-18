@@ -21,6 +21,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+const STATUSES_TASK = ['Chờ phân công', 'Đã giao', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'];
 
 // Always derive the attendance day in the studio timezone, never UTC.
 // This prevents the dashboard from showing yesterday's unfinished session
@@ -935,10 +936,12 @@ app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => 
   if (req.user!.Quyen !== 'Admin') {
     if (module === 'THU_VAY') return res.status(403).json({ error: 'Chỉ Admin được xem hồ sơ thử và chọn váy.' });
     if (module === 'LICH_CUOI' && req.user!.Quyen === 'Freelancer') return res.status(403).json({ error: 'Tài khoản Freelancer không có quyền xem lịch điều phối.' });
-    if (!['THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'LICH_CUOI'].includes(module)) {
+    if (!['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'LICH_CUOI'].includes(module)) {
       return res.status(403).json({ error: 'Bạn không có quyền xem phân hệ dữ liệu này.' });
     }
-    if (module !== 'LICH_CUOI') records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
+    // Công việc là bảng chung của studio: mọi nhân viên được xem toàn bộ,
+    // nhưng chỉ Admin được tạo/giao/sửa nội dung công việc.
+    if (module !== 'LICH_CUOI' && module !== 'CONG_VIEC') records = records.filter((record) => record.DuLieu?.NhanVienID === req.user!.NhanVienID);
   }
 
   return res.json(records);
@@ -952,12 +955,33 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       return res.status(400).json({ error: 'Loại dữ liệu không hợp lệ.' });
     }
     if (module === 'THU_VAY' && req.user!.Quyen !== 'Admin') return res.status(403).json({ error: 'Chỉ Admin được tạo hồ sơ thử và chọn váy.' });
-    if (module === 'LICH_CUOI' && req.user!.Quyen === 'Freelancer') return res.status(403).json({ error: 'Tài khoản Freelancer không có quyền tạo lịch điều phối.' });
-    if (req.user!.Quyen !== 'Admin' && !['THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'LICH_CUOI'].includes(module)) {
+    if (module === 'LICH_CUOI' && req.user!.Quyen !== 'Admin') return res.status(403).json({ error: 'Chỉ Admin được tạo và phân công lịch điều phối.' });
+    if (req.user!.Quyen !== 'Admin' && !['THU_CHI', 'HOP_DONG', 'NGHI_PHEP'].includes(module)) {
       return res.status(403).json({ error: 'Bạn không có quyền tạo dữ liệu nghiệp vụ này.' });
     }
 
     const payload = { ...(data || {}) };
+
+    if (module === 'CONG_VIEC') {
+      const title = String(payload.TieuDe || '').trim();
+      const startDate = String(payload.NgayBatDau || '');
+      const dueDate = String(payload.Han || '');
+      const priority = String(payload.MucDo || 'Trung bình');
+      const assigneeId = String(payload.NhanVienID || '');
+      if (!title) return res.status(400).json({ error: 'Vui lòng nhập tên công việc.' });
+      if (startDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate)) return res.status(400).json({ error: 'Ngày bắt đầu không hợp lệ.' });
+      if (dueDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDate)) return res.status(400).json({ error: 'Hạn hoàn thành không hợp lệ.' });
+      if (startDate && dueDate && dueDate < startDate) return res.status(400).json({ error: 'Hạn hoàn thành không được trước ngày bắt đầu.' });
+      if (!['Thấp', 'Trung bình', 'Cao', 'Khẩn cấp'].includes(priority)) return res.status(400).json({ error: 'Mức độ ưu tiên không hợp lệ.' });
+      if (assigneeId && !dbService.findNhanVienById(assigneeId)) return res.status(400).json({ error: 'Không tìm thấy nhân viên được phân công.' });
+      payload.TieuDe = title;
+      payload.MucDo = priority;
+      payload.TrangThai = assigneeId ? 'Đã giao' : 'Chờ phân công';
+      payload.NhanVien = assigneeId ? (dbService.findNhanVienById(assigneeId)?.HoTen || '') : '';
+      payload.NguoiTaoID = req.user!.NhanVienID;
+      payload.NguoiTao = req.user!.HoTen;
+      payload.LichSu = [{ TrangThai: payload.TrangThai, HanhDong: assigneeId ? 'Tạo và giao công việc' : 'Tạo công việc, chờ phân công', ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen }];
+    }
 
     if (module === 'NGHI_PHEP') {
       const from = String(payload.TuNgay || '');
@@ -1067,6 +1091,9 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       for (const staffId of assignedIds) dbService.addNotification('Lịch cưới mới được phân công', `${payload.DichVu} – ${payload.KhachHang}, ngày ${payload.Ngay} lúc ${payload.Gio}. Vui lòng mở Lịch cưới & Điều phối để xác nhận.`, 'info', staffId);
       dbService.addNotification('Lịch cưới vừa được tạo', `${payload.DichVu} – ${payload.KhachHang}, ngày ${payload.Ngay} lúc ${payload.Gio}.`, 'info');
     }
+    if (module === 'CONG_VIEC' && payload.NhanVienID) {
+      dbService.addNotification('Bạn được giao công việc mới', `${payload.TieuDe}. Hạn hoàn thành: ${payload.Han || 'Chưa đặt hạn'}. Vui lòng mở mục Công việc để xác nhận nhận việc.`, 'info', String(payload.NhanVienID));
+    }
     return res.status(201).json(record);
   } catch (err: any) {
     return res.status(400).json({ error: err.message || 'Không thể tạo dữ liệu.' });
@@ -1085,6 +1112,65 @@ app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response)
         : requestBody;
     const current = dbService.getQuanLyRecords().find((x) => x.QuanLyID === req.params.id);
     if (!current) return res.status(404).json({ error: 'Không tìm thấy dữ liệu.' });
+
+    if (current.Module === 'CONG_VIEC') {
+      const currentData = current.DuLieu || {};
+      if (req.user!.Quyen === 'Admin') {
+        const merged = { ...currentData, ...changes };
+        const title = String(merged.TieuDe || '').trim();
+        const startDate = String(merged.NgayBatDau || '');
+        const dueDate = String(merged.Han || '');
+        const priority = String(merged.MucDo || 'Trung bình');
+        const assigneeId = String(merged.NhanVienID || '');
+        if (!title) return res.status(400).json({ error: 'Vui lòng nhập tên công việc.' });
+        if (startDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate)) return res.status(400).json({ error: 'Ngày bắt đầu không hợp lệ.' });
+        if (dueDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDate)) return res.status(400).json({ error: 'Hạn hoàn thành không hợp lệ.' });
+        if (startDate && dueDate && dueDate < startDate) return res.status(400).json({ error: 'Hạn hoàn thành không được trước ngày bắt đầu.' });
+        if (!['Thấp', 'Trung bình', 'Cao', 'Khẩn cấp'].includes(priority)) return res.status(400).json({ error: 'Mức độ ưu tiên không hợp lệ.' });
+        const assignee = assigneeId ? dbService.findNhanVienById(assigneeId) : null;
+        if (assigneeId && !assignee) return res.status(400).json({ error: 'Không tìm thấy nhân viên được phân công.' });
+        changes.TieuDe = title;
+        changes.MucDo = priority;
+        if (changes.NhanVienID !== undefined) changes.NhanVien = assignee?.HoTen || '';
+        const nextStatus = assigneeId ? (String(merged.TrangThai || '') === 'Chờ phân công' ? 'Đã giao' : String(merged.TrangThai || 'Đã giao')) : 'Chờ phân công';
+        if (!STATUSES_TASK.includes(nextStatus)) return res.status(400).json({ error: 'Trạng thái công việc không hợp lệ.' });
+        changes.TrangThai = nextStatus;
+        const changedAssignment = String(currentData.NhanVienID || '') !== assigneeId;
+        const changedStatus = String(currentData.TrangThai || 'Chờ phân công') !== nextStatus;
+        if (changedAssignment || changedStatus) {
+          changes.LichSu = [
+            ...(Array.isArray(currentData.LichSu) ? currentData.LichSu : []),
+            { TrangThai: nextStatus, HanhDong: changedAssignment ? (assigneeId ? 'Thay đổi người được giao' : 'Gỡ phân công') : 'Cập nhật trạng thái', ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen },
+          ];
+        }
+        if (changedAssignment && assigneeId) dbService.addNotification('Bạn được giao công việc mới', `${title}. Hạn hoàn thành: ${dueDate || 'Chưa đặt hạn'}. Vui lòng mở mục Công việc để xác nhận nhận việc.`, 'info', assigneeId);
+      } else {
+        if (String(currentData.NhanVienID || '') !== String(req.user!.NhanVienID)) return res.status(403).json({ error: 'Bạn chỉ được cập nhật công việc được giao cho mình.' });
+        const allowedNext: Record<string, string> = { 'Đã giao': 'Đã xác nhận', 'Đã xác nhận': 'Đang thực hiện', 'Đang thực hiện': 'Hoàn thành' };
+        const nextStatus = String(changes.TrangThai || '');
+        const expected = allowedNext[String(currentData.TrangThai || 'Đã giao')];
+        if (!expected || nextStatus !== expected) return res.status(409).json({ error: 'Trạng thái không hợp lệ hoặc công việc đã được cập nhật. Hãy tải lại danh sách.' });
+        for (const key of Object.keys(changes)) delete changes[key];
+        changes.TrangThai = nextStatus;
+        changes.LichSu = [
+          ...(Array.isArray(currentData.LichSu) ? currentData.LichSu : []),
+          { TrangThai: nextStatus, HanhDong: nextStatus === 'Đã xác nhận' ? 'Nhân viên xác nhận nhận việc' : nextStatus === 'Đang thực hiện' ? 'Bắt đầu thực hiện' : 'Báo hoàn thành', ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen },
+        ];
+        dbService.addNotification('Nhân viên cập nhật công việc', `${req.user!.HoTen} đã chuyển công việc "${currentData.TieuDe || 'Công việc'}" sang trạng thái ${nextStatus}.`, 'info');
+      }
+    }
+
+    if (current.Module === 'LICH_CUOI' && req.user!.Quyen !== 'Admin') {
+      const currentData = current.DuLieu || {};
+      const assignedIds = [currentData.ThoChupID, currentData.MakeupID, currentData.ThoQuayID, currentData.NguoiPhuTrachID].filter(Boolean).map(String);
+      if (!assignedIds.includes(String(req.user!.NhanVienID))) return res.status(403).json({ error: 'Bạn không được phân công lịch này.' });
+      const allowedNext: Record<string, string> = { 'Chờ xác nhận': 'Đã xác nhận', 'Đã xác nhận': 'Đang thực hiện', 'Đang thực hiện': 'Hoàn thành' };
+      const nextStatus = String(changes.TrangThai || '');
+      if (Object.keys(changes).some(key => key !== 'TrangThai') || allowedNext[String(currentData.TrangThai || 'Chờ xác nhận')] !== nextStatus) {
+        return res.status(403).json({ error: 'Nhân viên chỉ được xác nhận hoặc cập nhật tiến độ lịch đã được phân công.' });
+      }
+    }
+
     if (current.Module === 'LICH_CUOI') {
       const merged = { ...current.DuLieu, ...changes };
       const duration = Math.max(30, Math.min(1440, Number(merged.ThoiLuong || 180)));
