@@ -947,7 +947,7 @@ function syncWeddingSchedulesFromContract(contract: QuanLyRecord, actor: { HoTen
     desired.push({ key: 'AUTO:' + contract.QuanLyID + ':' + key, service, date, address });
   };
   if (activeContract) {
-    if (serviceType.includes('chụp ảnh cưới') || packageName.includes('chụp ảnh cưới')) {
+    if (serviceType.includes('chụp ảnh cưới') || packageName.includes('chụp ảnh cưới') || photoGate.some((x: unknown) => String(x).toLocaleLowerCase('vi').includes('album'))) {
       add('chup-anh-cuoi', 'Chụp ảnh cưới', String(data.NgayChupAnhCuoi || data.NgayChup || ''), String(data.DiaChi || ''));
     }
     if (photoGate.length) {
@@ -1000,13 +1000,13 @@ function syncWeddingSchedulesFromContract(contract: QuanLyRecord, actor: { HoTen
       Gio: String(old?.DuLieu?.Gio || ''),
       ThoiLuong: Number(old?.DuLieu?.ThoiLuong || 180),
       DiaDiem: item.address,
-      TrangThai: item.date ? 'Chờ xác nhận' : 'Chờ xác định ngày',
+      TrangThai: item.date && old?.DuLieu?.Gio ? 'Chờ xác nhận' : 'Chờ xác định ngày',
       GhiChu: String(data.GhiChu || ''),
-      NguoiTaoID: actor.HoTen,
+      NguoiTaoID: String(data.NhanVienID || ''),
       NguoiTao: actor.HoTen,
       CapNhatBoi: actor.HoTen,
       CapNhatLuc: new Date().toISOString(),
-      LichSu: old?.DuLieu?.LichSu || [{ TrangThai: item.date ? 'Chờ xác nhận' : 'Chờ xác định ngày', HanhDong: 'Tự động tạo từ hợp đồng ' + String(data.MaHopDong || ''), ThoiGian: new Date().toISOString(), NguoiThucHien: actor.HoTen }],
+      LichSu: old?.DuLieu?.LichSu || [{ TrangThai: item.date && old?.DuLieu?.Gio ? 'Chờ xác nhận' : 'Chờ xác định ngày', HanhDong: 'Tự động tạo từ hợp đồng ' + String(data.MaHopDong || ''), ThoiGian: new Date().toISOString(), NguoiThucHien: actor.HoTen }],
     };
     if (old) dbService.updateQuanLyRecord(old.QuanLyID, next, actor);
     else dbService.createQuanLyRecord('LICH_CUOI', next, actor);
