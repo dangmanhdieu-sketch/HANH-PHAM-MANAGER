@@ -1132,10 +1132,10 @@ app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response)
         changes.TieuDe = title;
         changes.MucDo = priority;
         if (changes.NhanVienID !== undefined) changes.NhanVien = assignee?.HoTen || '';
-        const nextStatus = assigneeId ? (String(merged.TrangThai || '') === 'Chờ phân công' ? 'Đã giao' : String(merged.TrangThai || 'Đã giao')) : 'Chờ phân công';
+        const changedAssignment = String(currentData.NhanVienID || '') !== assigneeId;
+        const nextStatus = !assigneeId ? 'Chờ phân công' : changedAssignment ? 'Đã giao' : (String(merged.TrangThai || 'Đã giao'));
         if (!STATUSES_TASK.includes(nextStatus)) return res.status(400).json({ error: 'Trạng thái công việc không hợp lệ.' });
         changes.TrangThai = nextStatus;
-        const changedAssignment = String(currentData.NhanVienID || '') !== assigneeId;
         const changedStatus = String(currentData.TrangThai || 'Chờ phân công') !== nextStatus;
         changes.LichSu = [
           ...(Array.isArray(currentData.LichSu) ? currentData.LichSu : []),
