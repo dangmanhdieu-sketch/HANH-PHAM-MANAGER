@@ -1146,7 +1146,9 @@ app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response)
         if (String(currentData.NhanVienID || '') !== String(req.user!.NhanVienID)) return res.status(403).json({ error: 'Bạn chỉ được cập nhật công việc được giao cho mình.' });
         const allowedNext: Record<string, string> = { 'Đã giao': 'Đã xác nhận', 'Đã xác nhận': 'Đang thực hiện', 'Đang thực hiện': 'Hoàn thành' };
         const nextStatus = String(changes.TrangThai || '');
-        const expected = allowedNext[String(currentData.TrangThai || 'Đã giao')];
+        const rawPreviousStatus = String(currentData.TrangThai || 'Đã giao');
+        const previousStatus = ['Chưa làm', 'Chưa thực hiện', 'Chưa bắt đầu'].includes(rawPreviousStatus) ? 'Đã giao' : ['Đang làm', 'Đang tiến hành'].includes(rawPreviousStatus) ? 'Đang thực hiện' : rawPreviousStatus;
+        const expected = allowedNext[previousStatus];
         if (!expected || nextStatus !== expected) return res.status(409).json({ error: 'Trạng thái không hợp lệ hoặc công việc đã được cập nhật. Hãy tải lại danh sách.' });
         for (const key of Object.keys(changes)) delete changes[key];
         changes.TrangThai = nextStatus;
