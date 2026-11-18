@@ -31,6 +31,7 @@ import { AttendanceManagement } from './views/admin/AttendanceManagement';
 import { PayrollManagement } from './views/admin/PayrollManagement';
 import { AuditAndAutomation } from './views/admin/AuditAndAutomation';
 import { BusinessModule } from './views/admin/BusinessModule';
+import { WorkHub } from './views/admin/WorkHub';
 const BridalInventory = React.lazy(() => import('./views/admin/BridalInventory').then(module => ({ default: module.BridalInventory })));
 
 // Employee Views
@@ -256,6 +257,9 @@ function AppContent() {
         case 'nghiphep':
           await loadNotifications();
           return;
+        case 'congviec':
+          setStaffList(await api.staff.getAll());
+          return;
         case 'hopdong':
         case 'thuchi':
           setStaffList(await api.staff.getAll());
@@ -304,6 +308,9 @@ function AppContent() {
         return;
       case 'nghiphep_me':
         await loadNotifications();
+        return;
+      case 'congviec':
+        setStaffList(await api.staff.getAll());
         return;
       case 'thuchi_me':
       case 'hopdong_me':
@@ -612,6 +619,10 @@ function AppContent() {
             )}
 
           </>
+        )}
+
+        {currentTab === 'congviec' && (
+          <WorkHub staffList={staffList} currentUser={currentUser} onRefresh={() => refreshTabData(currentTab)} />
         )}
 
         {/* =========================================
