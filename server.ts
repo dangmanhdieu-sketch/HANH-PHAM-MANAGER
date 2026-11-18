@@ -12,7 +12,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { uploadInventoryImage, uploadAttendancePhoto, getAttendancePhotoDataUrl, createGoogleDriveAuthorizationUrl, exchangeGoogleDriveCode } from './server/drive.ts';
 import { automationManager } from './server/automation.ts';
 import { startDailyDriveBackup } from './server/driveBackup.ts';
-import type { NhanVien, QuanLyModule } from './src/types.ts';
+import type { NhanVien, QuanLyModule, QuanLyRecord } from './src/types.ts';
 
 dotenv.config();
 
