@@ -969,8 +969,8 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       const priority = String(payload.MucDo || 'Trung bình');
       const assigneeId = String(payload.NhanVienID || '');
       if (!title) return res.status(400).json({ error: 'Vui lòng nhập tên công việc.' });
-      if (startDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate)) return res.status(400).json({ error: 'Ngày bắt đầu không hợp lệ.' });
-      if (dueDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDate)) return res.status(400).json({ error: 'Hạn hoàn thành không hợp lệ.' });
+      if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return res.status(400).json({ error: 'Ngày bắt đầu không hợp lệ.' });
+      if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return res.status(400).json({ error: 'Hạn hoàn thành không hợp lệ.' });
       if (startDate && dueDate && dueDate < startDate) return res.status(400).json({ error: 'Hạn hoàn thành không được trước ngày bắt đầu.' });
       if (!['Thấp', 'Trung bình', 'Cao', 'Khẩn cấp'].includes(priority)) return res.status(400).json({ error: 'Mức độ ưu tiên không hợp lệ.' });
       if (assigneeId && !dbService.findNhanVienById(assigneeId)) return res.status(400).json({ error: 'Không tìm thấy nhân viên được phân công.' });
@@ -1123,8 +1123,8 @@ app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response)
         const priority = String(merged.MucDo || 'Trung bình');
         const assigneeId = String(merged.NhanVienID || '');
         if (!title) return res.status(400).json({ error: 'Vui lòng nhập tên công việc.' });
-        if (startDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate)) return res.status(400).json({ error: 'Ngày bắt đầu không hợp lệ.' });
-        if (dueDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDate)) return res.status(400).json({ error: 'Hạn hoàn thành không hợp lệ.' });
+        if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return res.status(400).json({ error: 'Ngày bắt đầu không hợp lệ.' });
+        if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return res.status(400).json({ error: 'Hạn hoàn thành không hợp lệ.' });
         if (startDate && dueDate && dueDate < startDate) return res.status(400).json({ error: 'Hạn hoàn thành không được trước ngày bắt đầu.' });
         if (!['Thấp', 'Trung bình', 'Cao', 'Khẩn cấp'].includes(priority)) return res.status(400).json({ error: 'Mức độ ưu tiên không hợp lệ.' });
         const assignee = assigneeId ? dbService.findNhanVienById(assigneeId) : null;
@@ -1137,12 +1137,10 @@ app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response)
         changes.TrangThai = nextStatus;
         const changedAssignment = String(currentData.NhanVienID || '') !== assigneeId;
         const changedStatus = String(currentData.TrangThai || 'Chờ phân công') !== nextStatus;
-        if (changedAssignment || changedStatus) {
-          changes.LichSu = [
-            ...(Array.isArray(currentData.LichSu) ? currentData.LichSu : []),
-            { TrangThai: nextStatus, HanhDong: changedAssignment ? (assigneeId ? 'Thay đổi người được giao' : 'Gỡ phân công') : 'Cập nhật trạng thái', ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen },
-          ];
-        }
+        changes.LichSu = [
+          ...(Array.isArray(currentData.LichSu) ? currentData.LichSu : []),
+          { TrangThai: nextStatus, HanhDong: changedAssignment ? (assigneeId ? 'Thay đổi người được giao' : 'Gỡ phân công') : changedStatus ? 'Cập nhật trạng thái' : 'Cập nhật nội dung công việc', ThoiGian: new Date().toISOString(), NguoiThucHien: req.user!.HoTen },
+        ];
         if (changedAssignment && assigneeId) dbService.addNotification('Bạn được giao công việc mới', `${title}. Hạn hoàn thành: ${dueDate || 'Chưa đặt hạn'}. Vui lòng mở mục Công việc để xác nhận nhận việc.`, 'info', assigneeId);
       } else {
         if (String(currentData.NhanVienID || '') !== String(req.user!.NhanVienID)) return res.status(403).json({ error: 'Bạn chỉ được cập nhật công việc được giao cho mình.' });
