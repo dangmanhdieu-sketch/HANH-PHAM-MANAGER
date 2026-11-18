@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Plus, Search, Clock, Camera, Palette, AlertTriangle, Users, RefreshCw, X, Bell, PackageCheck, ChevronLeft, ChevronRight, Video } from 'lucide-react';
+import { CalendarDays, Plus, Search, Clock, Camera, Palette, AlertTriangle, Users, RefreshCw, X, Bell, PackageCheck, ChevronLeft, ChevronRight, Video, Trash2 } from 'lucide-react';
 import type { NhanVien, QuanLyRecord } from '../../types';
 import { api } from '../../api';
 
@@ -20,6 +20,7 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
   const [contracts,setContracts] = useState<QuanLyRecord[]>([]);
   const [loading,setLoading] = useState(true);
   const [saving,setSaving] = useState(false);
+  const [deletingId,setDeletingId] = useState<string|null>(null);
   const [showForm,setShowForm] = useState(false);
   const [editing,setEditing] = useState<QuanLyRecord|null>(null);
   const [form,setForm] = useState<any>(emptyForm());
@@ -128,6 +129,21 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
     } catch(e:any) { setError(e?.message || 'Không lưu được lịch.'); }
     finally { setSaving(false); }
   };
+  const deleteSchedule = async (r:QuanLyRecord) => {
+    const customer = String(r.DuLieu?.KhachHang || 'khách hàng');
+    const service = String(r.DuLieu?.DichVu || 'lịch dịch vụ');
+    if (!window.confirm(`Bạn có chắc muốn xóa lịch "${service}" của ${customer}? Thao tác này không thể hoàn tác.`)) return;
+    setDeletingId(r.QuanLyID);
+    try {
+      await api.quanLy.delete(r.QuanLyID);
+      await load();
+      window.dispatchEvent(new Event('hp:notifications-refresh'));
+    } catch (e:any) {
+      alert(e?.message || 'Không xóa được lịch. Vui lòng thử lại.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
   const updateStatus = async (r:QuanLyRecord, status:string) => {
     try { await api.quanLy.update(r.QuanLyID,{TrangThai:status,CapNhatBoi:currentUser.HoTen,CapNhatLuc:new Date().toISOString()}); await load(); window.dispatchEvent(new Event('hp:notifications-refresh')); }
     catch(e:any) { alert(e?.message || 'Không cập nhật được trạng thái.'); }
@@ -176,7 +192,7 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
         <div className="text-sm text-stone-700"><div className="font-semibold">{dateLabel(d.Ngay)} · {d.Gio || 'Chưa có giờ'}</div><div className="text-xs text-stone-500 mt-1">{d.DiaDiem || 'Chưa nhập địa điểm'} · {d.ThoiLuong||180} phút</div></div>
         <div className="text-xs text-stone-700 space-y-1"><div className="flex gap-1 items-center"><Camera size={13} className="text-stone-500"/> Chụp: {staffName(staffList,d.ThoChupID)}</div><div className="flex gap-1 items-center"><Palette size={13} className="text-stone-500"/> Makeup: {staffName(staffList,d.MakeupID)}</div><div className="flex gap-1 items-center"><Video size={13} className="text-stone-500"/> Quay: {staffName(staffList,d.ThoQuayID)}</div></div>
         <div><div className="text-xs text-stone-500">Phụ trách: {staffName(staffList,d.NguoiPhuTrachID)}</div><span className={`inline-flex mt-1 rounded-full px-2 py-1 text-[10px] font-bold ${d.TrangThai==='Hoàn thành'?'bg-emerald-900 text-emerald-300':d.TrangThai==='Đã xác nhận'?'bg-sky-900 text-sky-300':d.TrangThai==='Đã hủy'?'bg-rose-900 text-rose-300':'bg-amber-900 text-amber-200'}`}>{d.TrangThai === 'Chờ xác định ngày' && d.Ngay ? 'Chờ bổ sung giờ' : d.TrangThai}</span></div>
-        <div className="flex lg:flex-col gap-2">{currentUser.Quyen === 'Admin' ? <><button onClick={()=>openEdit(r)} className="rounded-lg border border-stone-300 px-3 py-2 text-xs text-stone-800 hover:border-[#c5a059]">Sửa</button><select value={d.TrangThai||'Chờ xác nhận'} onChange={e=>void updateStatus(r,e.target.value)} className="rounded-lg bg-white border border-[#E7DFD5] text-xs text-stone-900 px-2 py-2">{STATUSES.map(s=><option key={s}>{s}</option>)}</select></> : [d.ThoChupID,d.MakeupID,d.ThoQuayID,d.NguoiPhuTrachID].map(String).includes(currentUser.NhanVienID) && nextStaffStatus(String(d.TrangThai||'Chờ xác nhận')) ? <button onClick={()=>void updateStatus(r,nextStaffStatus(String(d.TrangThai||'Chờ xác nhận')))} className="rounded-lg bg-[#c5a059] px-3 py-2 text-xs font-bold text-stone-950">{d.TrangThai==='Chờ xác nhận'?'Xác nhận lịch':d.TrangThai==='Đã xác nhận'?'Bắt đầu thực hiện':'Báo hoàn thành'}</button> : <span className="text-[11px] text-stone-400">Chỉ xem</span>}</div>
+        <div className="flex lg:flex-col gap-2">{currentUser.Quyen === 'Admin' ? <><button onClick={()=>openEdit(r)} className="rounded-lg border border-stone-300 px-3 py-2 text-xs text-stone-800 hover:border-[#c5a059]">Sửa</button><select value={d.TrangThai||'Chờ xác nhận'} onChange={e=>void updateStatus(r,e.target.value)} className="rounded-lg bg-white border border-[#E7DFD5] text-xs text-stone-900 px-2 py-2">{STATUSES.map(s=><option key={s}>{s}</option>)}</select><button onClick={()=>void deleteSchedule(r)} disabled={deletingId===r.QuanLyID} className="inline-flex items-center justify-center gap-1 rounded-lg border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50" title="Xóa lịch"><Trash2 size={14}/>{deletingId===r.QuanLyID?'Đang xóa':'Xóa'}</button></> : [d.ThoChupID,d.MakeupID,d.ThoQuayID,d.NguoiPhuTrachID].map(String).includes(currentUser.NhanVienID) && nextStaffStatus(String(d.TrangThai||'Chờ xác nhận')) ? <button onClick={()=>void updateStatus(r,nextStaffStatus(String(d.TrangThai||'Chờ xác nhận')))} className="rounded-lg bg-[#c5a059] px-3 py-2 text-xs font-bold text-stone-950">{d.TrangThai==='Chờ xác nhận'?'Xác nhận lịch':d.TrangThai==='Đã xác nhận'?'Bắt đầu thực hiện':'Báo hoàn thành'}</button> : <span className="text-[11px] text-stone-400">Chỉ xem</span>}</div>
       </div>})}</div>}
     </div>
     <div className="rounded-xl border border-[#E7DFD5] bg-white p-4 text-xs text-stone-500 flex gap-2"><PackageCheck size={16} className="text-[#c5a059] shrink-0"/><span>Lịch Giao album có thể nhập ngày hẹn trong trường Ngày và theo dõi trạng thái riêng. Hệ thống lưu chung với dữ liệu nghiệp vụ, không sửa hoặc thay thế hợp đồng/nhân viên hiện tại. Thông báo trong ứng dụng hoạt động; gửi Zalo cần cấu hình Zalo Official Account và quyền gửi tin phù hợp.</span></div>
