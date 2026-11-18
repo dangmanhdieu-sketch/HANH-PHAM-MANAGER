@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckSquare, Plus, Search, CalendarDays, UserRound, Clock3, Pencil, X, FileText, CheckCircle2, Play, CircleCheck, RefreshCw } from 'lucide-react';
+import { CheckSquare, Plus, Search, CalendarDays, UserRound, Pencil, X } from 'lucide-react';
 import type { NhanVien, QuanLyRecord } from '../../types';
 import { api } from '../../api';
 
@@ -76,8 +76,7 @@ export const TaskManagement: React.FC<Props> = ({ staffList, currentUser, onRefr
         MoTa:String(form.MoTa||'').trim(),
         NhanVien:employee?.HoTen||'',
         MaHopDong:String(linked?.DuLieu?.MaHopDong||''),
-        NguoiTaoID:currentUser.NhanVienID,
-        NguoiTao:currentUser.HoTen,
+        ...(editing ? {} : { NguoiTaoID:currentUser.NhanVienID, NguoiTao:currentUser.HoTen }),
         CapNhatBoi:currentUser.HoTen,
         CapNhatLuc:new Date().toISOString(),
         TrangThai:form.NhanVienID ? (form.TrangThai==='Chờ phân công'?'Đã giao':form.TrangThai) : 'Chờ phân công',
