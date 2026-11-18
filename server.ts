@@ -1022,6 +1022,31 @@ function syncWeddingSchedulesFromContract(contract: QuanLyRecord, actor: { HoTen
   }
 }
 
+
+/**
+ * Backfill schedules for contracts that were created before automatic wedding
+ * schedule synchronization was introduced. This is safe to run on every boot:
+ * each generated row has a stable AutoSyncKey, so existing rows are updated
+ * rather than duplicated. Wedding dates come only from the two date fields on
+ * the contract; contract creation/signing timestamps are never used as dates.
+ */
+function backfillWeddingSchedulesFromExistingContracts() {
+  const actor = { HoTen: 'Hệ thống đồng bộ lịch', Email: 'system@hanhpham.local' };
+  const contracts = dbService.getQuanLyRecords('HOP_DONG');
+  let processed = 0;
+  let failed = 0;
+  for (const contract of contracts) {
+    try {
+      syncWeddingSchedulesFromContract(contract, actor);
+      processed += 1;
+    } catch (error: any) {
+      failed += 1;
+      console.error('[Wedding Schedule Backfill] Contract failed:', contract.QuanLyID, error?.message || error);
+    }
+  }
+  console.log(`[Wedding Schedule Backfill] Processed ${processed}/${contracts.length} old and current contracts; failures: ${failed}.`);
+}
+
 app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => {
   const module = typeof req.query.module === 'string' ? req.query.module : '';
   const allowedModules = ['CONG_VIEC', 'THU_CHI', 'HOP_DONG', 'NGHI_PHEP', 'THU_VAY', 'LICH_CUOI'];
@@ -1966,6 +1991,8 @@ app.get('/google-drive/callback', async (req: Request, res: Response) => {
 async function startServer() {
   // Wait for Firestore to load its authoritative data before starting the daily Drive backup worker.
   await dbService.waitUntilReady();
+  // Reconcile old contracts on startup; stable keys make this idempotent.
+  backfillWeddingSchedulesFromExistingContracts();
   startDailyDriveBackup();
   const isProd = process.env.NODE_ENV === 'production';
 
