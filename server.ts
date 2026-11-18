@@ -876,9 +876,12 @@ app.put('/api/vay-cuoi/:id', authenticateToken, requireAdmin, async (req: AuthRe
 const validateWeddingSchedule = (payload: any, excludeId?: string): string | null => {
   const service = String(payload.DichVu || '').trim();
   if (!service || service.length > 120) return 'Vui lòng nhập tên dịch vụ hợp lệ (tối đa 120 ký tự).';
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(payload.Ngay || '')) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(payload.Gio || ''))) return 'Vui lòng chọn ngày và giờ hợp lệ.';
+  const status = String(payload.TrangThai || 'Chờ xác nhận');
+  const hasDate = /^\d{4}-\d{2}-\d{2}$/.test(String(payload.Ngay || ''));
+  const hasTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(payload.Gio || ''));
+  if ((!hasDate || !hasTime) && status !== 'Chờ xác định ngày') return 'Vui lòng chọn ngày và giờ hợp lệ, hoặc để trạng thái Chờ xác định ngày.';
   if (!String(payload.KhachHang || '').trim()) return 'Vui lòng nhập tên khách hàng.';
-  if (!['Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'].includes(String(payload.TrangThai || 'Chờ xác nhận'))) return 'Trạng thái lịch không hợp lệ.';
+  if (!['Chờ xác định ngày', 'Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'].includes(status)) return 'Trạng thái lịch không hợp lệ.';
 
   const roleIds = [payload.ThoChupID, payload.MakeupID, payload.ThoQuayID].filter(Boolean).map(String);
   if (new Set(roleIds).size !== roleIds.length) return 'Một nhân viên không thể vừa chụp, makeup hoặc quay phim trong cùng công việc.';
@@ -898,6 +901,7 @@ const validateWeddingSchedule = (payload: any, excludeId?: string): string | nul
   }
 
   const duration = Math.max(30, Math.min(1440, Number(payload.ThoiLuong || 180)));
+  if (!hasDate || !hasTime) return null;
   const startAt = Date.parse(String(payload.Ngay) + 'T' + String(payload.Gio) + ':00+07:00');
   if (!Number.isFinite(startAt)) return 'Ngày hoặc giờ thực hiện không hợp lệ.';
   const endAt = startAt + duration * 60 * 1000;
@@ -917,6 +921,106 @@ const validateWeddingSchedule = (payload: any, excludeId?: string): string | nul
   if (conflict) return 'Nhân viên đã có lịch "' + conflict.DuLieu?.DichVu + '" lúc ' + conflict.DuLieu?.Gio + ' ngày ' + conflict.DuLieu?.Ngay + ' tại ' + (conflict.DuLieu?.DiaDiem || 'địa điểm chưa rõ') + '. Cần chừa tối thiểu 60 phút di chuyển khi khác địa điểm.';
   return null;
 };
+
+/**
+ * Generate and synchronize wedding-service schedules from a contract.
+ * Auto-created rows are keyed by contract + service. Contract edits update only
+ * untouched, unconfirmed auto rows; completed, confirmed, assigned, or manually
+ * edited schedules are preserved.
+ */
+function syncWeddingSchedulesFromContract(contract: QuanLyRecord, actor: { HoTen: string; Email: string }) {
+  const data = contract.DuLieu || {};
+  const contractStatus = String(data.TrangThai || '');
+  const activeContract = !['Đã hủy', 'Hủy'].includes(contractStatus);
+  const photoGate = Array.isArray(data.ChupCong) ? data.ChupCong.filter((x: unknown) => String(x) !== 'Không chụp') : [];
+  const weddingPhoto = Array.isArray(data.ChupTiecCuoi) ? data.ChupTiecCuoi : [];
+  const weddingVideo = Array.isArray(data.QuayPhimCuoi) ? data.QuayPhimCuoi : [];
+  const serviceType = String(data.LoaiDichVu || '').toLocaleLowerCase('vi');
+  const packageName = String(data.GoiDichVu || '').toLocaleLowerCase('vi');
+  const notes = String(data.GhiChu || '').toLocaleLowerCase('vi');
+  const dates = [
+    { side: 'Nhà trai', key: 'nha-trai', date: String(data.NgayCuoiNhaTrai || ''), address: String(data.DiaChiNhaTrai || data.DiaChi || '') },
+    { side: 'Nhà gái', key: 'nha-gai', date: String(data.NgayCuoiNhaGai || ''), address: String(data.DiaChiNhaGai || data.DiaChi || '') },
+  ];
+  const desired: Array<{ key: string; service: string; date: string; address: string }> = [];
+  const add = (key: string, service: string, date = '', address = '') => {
+    desired.push({ key: 'AUTO:' + contract.QuanLyID + ':' + key, service, date, address });
+  };
+  if (activeContract) {
+    if (serviceType.includes('chụp ảnh cưới') || packageName.includes('chụp ảnh cưới')) {
+      add('chup-anh-cuoi', 'Chụp ảnh cưới', String(data.NgayChupAnhCuoi || data.NgayChup || ''), String(data.DiaChi || ''));
+    }
+    if (photoGate.length) {
+      const scheduledDates = dates.filter(x => x.date);
+      if (scheduledDates.length) scheduledDates.forEach(x => add('chup-cong-' + x.key, 'Chụp ảnh cổng - ' + x.side, x.date, x.address));
+      else add('chup-cong', 'Chụp ảnh cổng', '', String(data.DiaChi || ''));
+    }
+    dates.filter(x => x.date).forEach(x => add('ngay-cuoi-' + x.key, 'Ngày cưới - ' + x.side, x.date, x.address));
+    if (serviceType.includes('trang điểm') || packageName.includes('trang điểm') || notes.includes('makeup') || notes.includes('trang điểm')) {
+      const scheduledDates = dates.filter(x => x.date);
+      if (scheduledDates.length) scheduledDates.forEach(x => add('makeup-' + x.key, 'Makeup ngày cưới - ' + x.side, x.date, x.address));
+      else add('makeup', 'Makeup ngày cưới', '', String(data.DiaChi || ''));
+    }
+    const hasReport = [...weddingPhoto, ...weddingVideo].some((x: unknown) => /phóng sự|p sự/i.test(String(x)));
+    if (hasReport) {
+      const scheduledDates = dates.filter(x => x.date);
+      if (scheduledDates.length) scheduledDates.forEach(x => add('phong-su-' + x.key, 'Chụp phóng sự cưới - ' + x.side, x.date, x.address));
+      else add('phong-su', 'Chụp phóng sự cưới', '', String(data.DiaChi || ''));
+    }
+    if (serviceType.includes('thuê váy cưới') || notes.includes('thử váy')) {
+      add('thu-vay', 'Thử váy cưới', String(data.NgayThuVay || data.NgayThu || ''), String(data.DiaChi || ''));
+    }
+    if (photoGate.some((x: unknown) => String(x).toLocaleLowerCase('vi').includes('album')) || serviceType.includes('chụp ảnh cưới')) {
+      add('giao-album', 'Giao album', String(data.NgayGiaoAlbum || data.HanGiaoAlbum || ''), String(data.DiaChi || ''));
+    }
+  }
+
+  const existing = dbService.getQuanLyRecords('LICH_CUOI').filter((row) => row.DuLieu?.AutoSyncKey && String(row.DuLieu?.HopDongID || '') === contract.QuanLyID);
+  const byKey = new Map(existing.map(row => [String(row.DuLieu.AutoSyncKey), row]));
+  const desiredKeys = new Set(desired.map(x => x.key));
+  for (const item of desired) {
+    const old = byKey.get(item.key);
+    const status = String(old?.DuLieu?.TrangThai || '');
+    const assigned = [old?.DuLieu?.ThoChupID, old?.DuLieu?.MakeupID, old?.DuLieu?.ThoQuayID, old?.DuLieu?.NguoiPhuTrachID].some(Boolean);
+    const protectedRow = old && (old.DuLieu?.TuDongDongBo === false || ['Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'].includes(status) || assigned);
+    if (protectedRow) continue;
+    const next = {
+      ...(old?.DuLieu || {}),
+      AutoGenerated: true,
+      TuDongDongBo: true,
+      AutoSyncKey: item.key,
+      HopDongID: contract.QuanLyID,
+      MaHopDong: String(data.MaHopDong || ''),
+      KhachHang: String(data.KhachHang || [data.TenCoDau, data.TenChuRe].filter(Boolean).join(' & ') || ''),
+      SDT: String(data.SDT || ''),
+      TenCoDau: String(data.TenCoDau || ''),
+      TenChuRe: String(data.TenChuRe || ''),
+      DichVu: item.service,
+      Ngay: item.date,
+      Gio: String(old?.DuLieu?.Gio || ''),
+      ThoiLuong: Number(old?.DuLieu?.ThoiLuong || 180),
+      DiaDiem: item.address,
+      TrangThai: item.date ? 'Chờ xác nhận' : 'Chờ xác định ngày',
+      GhiChu: String(data.GhiChu || ''),
+      NguoiTaoID: actor.HoTen,
+      NguoiTao: actor.HoTen,
+      CapNhatBoi: actor.HoTen,
+      CapNhatLuc: new Date().toISOString(),
+      LichSu: old?.DuLieu?.LichSu || [{ TrangThai: item.date ? 'Chờ xác nhận' : 'Chờ xác định ngày', HanhDong: 'Tự động tạo từ hợp đồng ' + String(data.MaHopDong || ''), ThoiGian: new Date().toISOString(), NguoiThucHien: actor.HoTen }],
+    };
+    if (old) dbService.updateQuanLyRecord(old.QuanLyID, next, actor);
+    else dbService.createQuanLyRecord('LICH_CUOI', next, actor);
+  }
+
+  for (const old of existing) {
+    if (desiredKeys.has(String(old.DuLieu.AutoSyncKey))) continue;
+    const status = String(old.DuLieu?.TrangThai || '');
+    const assigned = [old.DuLieu?.ThoChupID, old.DuLieu?.MakeupID, old.DuLieu?.ThoQuayID, old.DuLieu?.NguoiPhuTrachID].some(Boolean);
+    if (old.DuLieu?.TuDongDongBo !== false && !assigned && ['Chờ xác định ngày', 'Chờ xác nhận', 'Chờ phân công'].includes(status)) {
+      dbService.deleteQuanLyRecord(old.QuanLyID, actor);
+    }
+  }
+}
 
 app.get('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) => {
   const module = typeof req.query.module === 'string' ? req.query.module : '';
@@ -1086,6 +1190,7 @@ app.post('/api/quan-ly', authenticateToken, (req: AuthRequest, res: Response) =>
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
+    if (module === 'HOP_DONG') syncWeddingSchedulesFromContract(record, { HoTen: req.user!.HoTen, Email: req.user!.Email });
     if (module === 'LICH_CUOI') {
       const assignedIds = Array.from(new Set([payload.ThoChupID, payload.MakeupID, payload.ThoQuayID, payload.NguoiPhuTrachID].filter(Boolean).map(String)));
       for (const staffId of assignedIds) dbService.addNotification('Lịch cưới mới được phân công', `${payload.DichVu} – ${payload.KhachHang}, ngày ${payload.Ngay} lúc ${payload.Gio}. Vui lòng mở Lịch cưới & Điều phối để xác nhận.`, 'info', staffId);
@@ -1242,10 +1347,12 @@ app.put('/api/quan-ly/:id', authenticateToken, (req: AuthRequest, res: Response)
       changes.NguoiDuyet = req.user!.HoTen;
     }
 
+    if (current.Module === 'LICH_CUOI' && req.user!.Quyen === 'Admin') changes.TuDongDongBo = false;
     const record = dbService.updateQuanLyRecord(req.params.id, changes, {
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
+    if (current.Module === 'HOP_DONG') syncWeddingSchedulesFromContract(record, { HoTen: req.user!.HoTen, Email: req.user!.Email });
     if (current.Module === 'LICH_CUOI') {
       const merged = { ...current.DuLieu, ...changes };
       const assignedIds = Array.from(new Set([merged.ThoChupID, merged.MakeupID, merged.ThoQuayID, merged.NguoiPhuTrachID].filter(Boolean).map(String)));
