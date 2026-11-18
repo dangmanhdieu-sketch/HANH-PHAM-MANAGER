@@ -4,7 +4,7 @@ import type { NhanVien, QuanLyRecord } from '../../types';
 import { api } from '../../api';
 
 const SERVICES = ['Trọn gói một ngày cưới', 'Trọn gói 2 ngày cưới', 'Trọn gói đính hôn - nhà thờ - rước dâu', 'Chụp cổng cưới', 'Chụp hình tiệc cưới', 'Quay phim cưới', 'Thử váy cưới', 'Chụp hình cổng cưới'];
-const STATUSES = ['Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'];
+const STATUSES = ['Chờ xác định ngày', 'Chờ xác nhận', 'Đã xác nhận', 'Đang thực hiện', 'Hoàn thành', 'Đã hủy'];
 const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -47,7 +47,7 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
   const filtered = useMemo(() => records.filter(r => {
     const d = r.DuLieu || {};
     const text = [d.KhachHang,d.MaHopDong,d.SDT,d.DiaDiem,staffName(staffList,d.ThoChupID),staffName(staffList,d.MakeupID)].join(' ').toLowerCase();
-    return String(d.Ngay||'').startsWith(month) &&
+    return (String(d.Ngay||'').startsWith(month) || (!d.Ngay && d.TrangThai === 'Chờ xác định ngày')) &&
       (statusFilter === 'Tất cả' || d.TrangThai === statusFilter) &&
       (serviceFilter === 'Tất cả' || d.DichVu === serviceFilter) &&
       (!search || text.includes(search.toLowerCase()));
@@ -88,6 +88,7 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
   };
   const assignedStaffIds = (data:any) => Array.from(new Set([data?.ThoChupID, data?.MakeupID, data?.ThoQuayID, data?.NguoiPhuTrachID].filter((id): id is string => Boolean(id))));
   const validateConflict = () => {
+    if (!form.Ngay || !form.Gio) return '';
     const roleStaff = [form.ThoChupID, form.MakeupID, form.ThoQuayID].filter(Boolean);
     const selected = assignedStaffIds(form);
     if (new Set(roleStaff).size !== roleStaff.length) return 'Một nhân viên không thể vừa chụp, makeup hoặc quay phim trong cùng một công việc.';
@@ -107,7 +108,8 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
   };
   const save = async () => {
     setError('');
-    if (!form.Ngay || !form.Gio || !form.KhachHang.trim()) { setError('Vui lòng chọn ngày, giờ và nhập tên khách hàng.'); return; }
+    if (!form.KhachHang.trim()) { setError('Vui lòng nhập tên khách hàng.'); return; }
+    if ((!form.Ngay || !form.Gio) && form.TrangThai !== 'Chờ xác định ngày') { setError('Vui lòng chọn ngày và giờ, hoặc chuyển trạng thái sang Chờ xác định ngày.'); return; }
     if (form.TrangThai === 'Đã xác nhận') {
       const service = String(form.DichVu || '').toLocaleLowerCase('vi');
       if (!form.NguoiPhuTrachID) { setError('Cần chọn người phụ trách trước khi xác nhận lịch.'); return; }
@@ -119,7 +121,7 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
     if (conflict) { setError(conflict); return; }
     setSaving(true);
     try {
-      const payload = { ...form, ThoiLuong:Number(form.ThoiLuong||180), NguoiTaoID: currentUser.NhanVienID, NguoiTao:currentUser.HoTen, CapNhatBoi:currentUser.HoTen, CapNhatLuc:new Date().toISOString() };
+      const payload = { ...form, TrangThai: form.Ngay && form.Gio ? (form.TrangThai === 'Chờ xác định ngày' ? 'Chờ xác nhận' : form.TrangThai) : 'Chờ xác định ngày', ThoiLuong:Number(form.ThoiLuong||180), NguoiTaoID: currentUser.NhanVienID, NguoiTao:currentUser.HoTen, CapNhatBoi:currentUser.HoTen, CapNhatLuc:new Date().toISOString() };
       if (editing) await api.quanLy.update(editing.QuanLyID,payload);
       else await api.quanLy.create('LICH_CUOI',payload);
       setShowForm(false); setEditing(null); await load(); window.dispatchEvent(new Event('hp:notifications-refresh'));
@@ -130,12 +132,13 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
     try { await api.quanLy.update(r.QuanLyID,{TrangThai:status,CapNhatBoi:currentUser.HoTen,CapNhatLuc:new Date().toISOString()}); await load(); window.dispatchEvent(new Event('hp:notifications-refresh')); }
     catch(e:any) { alert(e?.message || 'Không cập nhật được trạng thái.'); }
   };
+  const nextStaffStatus = (status:string) => status === 'Chờ xác nhận' ? 'Đã xác nhận' : status === 'Đã xác nhận' ? 'Đang thực hiện' : status === 'Đang thực hiện' ? 'Hoàn thành' : '';
   const dueSoon = filtered.filter(r => r.DuLieu?.TrangThai !== 'Hoàn thành' && r.DuLieu?.TrangThai !== 'Đã hủy' && r.DuLieu?.Ngay && r.DuLieu.Ngay >= today() && r.DuLieu.Ngay <= new Date(Date.now()+3*86400000).toISOString().slice(0,10));
 
   return <div className="space-y-5">
     <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
       <div><div className="text-xs uppercase tracking-[.2em] text-[#b18b50] font-bold">HẠNH PHẠM LUXURY BRIDAL</div><h1 className="text-2xl sm:text-3xl font-bold text-stone-900 mt-1">Lịch cưới & Điều phối</h1><p className="text-sm text-stone-500 mt-1">Một lịch thống nhất cho khách hàng, thợ chụp, makeup và bàn giao sản phẩm.</p></div>
-      <button onClick={openNew} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#c5a059] text-stone-950 px-4 py-3 text-sm font-bold"><Plus size={17}/> Tạo lịch mới</button>
+      {currentUser.Quyen === 'Admin' && <button onClick={openNew} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#c5a059] text-stone-950 px-4 py-3 text-sm font-bold"><Plus size={17}/> Tạo lịch mới</button>}
     </div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {[['Lịch trong tháng',stats.total,'text-stone-900'],['Đã xác nhận',stats.confirmed,'text-emerald-400'],['Thiếu phân công',stats.unassigned,'text-amber-400'],['Quá hạn',stats.overdue,'text-rose-400']].map(([label,value,color])=><div key={String(label)} className="rounded-2xl border border-[#E7DFD5] bg-white p-4"><div className="text-xs text-stone-500">{label}</div><div className={`text-2xl font-bold mt-1 ${color}`}>{value}</div></div>)}
@@ -170,10 +173,10 @@ export const WeddingDispatch: React.FC<Props> = ({ staffList, currentUser }) => 
       <div className="flex items-center justify-between p-4 border-b border-[#E7DFD5]"><h2 className="font-bold text-stone-900 flex items-center gap-2"><CalendarDays size={18} className="text-[#c5a059]"/> Danh sách lịch điều phối</h2><button onClick={()=>void load()} className="text-stone-500 hover:text-stone-900 p-2" title="Tải lại"><RefreshCw size={16}/></button></div>
       {loading ? <div className="p-10 text-center text-stone-500">Đang tải lịch...</div> : visibleRecords.length===0 ? <div className="p-10 text-center text-stone-500">Chưa có lịch trong bộ lọc này.</div> : <div className="divide-y divide-[#EEE7DE]">{visibleRecords.map(r=>{const d=r.DuLieu||{};return <div key={r.QuanLyID} className="p-4 grid grid-cols-1 lg:grid-cols-[1.1fr_1.2fr_1fr_1fr_auto] gap-3 items-center">
         <div><div className="text-xs text-[#c5a059] font-bold">{d.DichVu}</div><div className="font-bold text-stone-900 mt-1">{d.KhachHang}</div><div className="text-xs text-stone-500">{d.MaHopDong || 'Chưa liên kết hợp đồng'} · {d.SDT}</div></div>
-        <div className="text-sm text-stone-700"><div className="font-semibold">{dateLabel(d.Ngay)} · {d.Gio}</div><div className="text-xs text-stone-500 mt-1">{d.DiaDiem || 'Chưa nhập địa điểm'} · {d.ThoiLuong||180} phút</div></div>
+        <div className="text-sm text-stone-700"><div className="font-semibold">{dateLabel(d.Ngay)} · {d.Gio || 'Chưa có giờ'}</div><div className="text-xs text-stone-500 mt-1">{d.DiaDiem || 'Chưa nhập địa điểm'} · {d.ThoiLuong||180} phút</div></div>
         <div className="text-xs text-stone-700 space-y-1"><div className="flex gap-1 items-center"><Camera size={13} className="text-stone-500"/> Chụp: {staffName(staffList,d.ThoChupID)}</div><div className="flex gap-1 items-center"><Palette size={13} className="text-stone-500"/> Makeup: {staffName(staffList,d.MakeupID)}</div><div className="flex gap-1 items-center"><Video size={13} className="text-stone-500"/> Quay: {staffName(staffList,d.ThoQuayID)}</div></div>
-        <div><div className="text-xs text-stone-500">Phụ trách: {staffName(staffList,d.NguoiPhuTrachID)}</div><span className={`inline-flex mt-1 rounded-full px-2 py-1 text-[10px] font-bold ${d.TrangThai==='Hoàn thành'?'bg-emerald-900 text-emerald-300':d.TrangThai==='Đã xác nhận'?'bg-sky-900 text-sky-300':d.TrangThai==='Đã hủy'?'bg-rose-900 text-rose-300':'bg-amber-900 text-amber-200'}`}>{d.TrangThai}</span></div>
-        <div className="flex lg:flex-col gap-2"><button onClick={()=>openEdit(r)} className="rounded-lg border border-stone-600 px-3 py-2 text-xs text-stone-900 hover:border-[#c5a059]">Sửa</button><select value={d.TrangThai||'Chờ xác nhận'} onChange={e=>void updateStatus(r,e.target.value)} className="rounded-lg bg-white border border-[#E7DFD5] text-xs text-stone-900 px-2 py-2">{STATUSES.map(s=><option key={s}>{s}</option>)}</select></div>
+        <div><div className="text-xs text-stone-500">Phụ trách: {staffName(staffList,d.NguoiPhuTrachID)}</div><span className={`inline-flex mt-1 rounded-full px-2 py-1 text-[10px] font-bold ${d.TrangThai==='Hoàn thành'?'bg-emerald-900 text-emerald-300':d.TrangThai==='Đã xác nhận'?'bg-sky-900 text-sky-300':d.TrangThai==='Đã hủy'?'bg-rose-900 text-rose-300':'bg-amber-900 text-amber-200'}`}>{d.TrangThai === 'Chờ xác định ngày' && d.Ngay ? 'Chờ bổ sung giờ' : d.TrangThai}</span></div>
+        <div className="flex lg:flex-col gap-2">{currentUser.Quyen === 'Admin' ? <><button onClick={()=>openEdit(r)} className="rounded-lg border border-stone-300 px-3 py-2 text-xs text-stone-800 hover:border-[#c5a059]">Sửa</button><select value={d.TrangThai||'Chờ xác nhận'} onChange={e=>void updateStatus(r,e.target.value)} className="rounded-lg bg-white border border-[#E7DFD5] text-xs text-stone-900 px-2 py-2">{STATUSES.map(s=><option key={s}>{s}</option>)}</select></> : [d.ThoChupID,d.MakeupID,d.ThoQuayID,d.NguoiPhuTrachID].map(String).includes(currentUser.NhanVienID) && nextStaffStatus(String(d.TrangThai||'Chờ xác nhận')) ? <button onClick={()=>void updateStatus(r,nextStaffStatus(String(d.TrangThai||'Chờ xác nhận')))} className="rounded-lg bg-[#c5a059] px-3 py-2 text-xs font-bold text-stone-950">{d.TrangThai==='Chờ xác nhận'?'Xác nhận lịch':d.TrangThai==='Đã xác nhận'?'Bắt đầu thực hiện':'Báo hoàn thành'}</button> : <span className="text-[11px] text-stone-400">Chỉ xem</span>}</div>
       </div>})}</div>}
     </div>
     <div className="rounded-xl border border-[#E7DFD5] bg-white p-4 text-xs text-stone-500 flex gap-2"><PackageCheck size={16} className="text-[#c5a059] shrink-0"/><span>Lịch Giao album có thể nhập ngày hẹn trong trường Ngày và theo dõi trạng thái riêng. Hệ thống lưu chung với dữ liệu nghiệp vụ, không sửa hoặc thay thế hợp đồng/nhân viên hiện tại. Thông báo trong ứng dụng hoạt động; gửi Zalo cần cấu hình Zalo Official Account và quyền gửi tin phù hợp.</span></div>

@@ -17,6 +17,7 @@ import {
   FileText,
   Wallet,
   Shirt,
+  CheckSquare,
 } from 'lucide-react';
 
 import type { NhanVien, ThongBao } from '../types';
@@ -69,6 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'chamcong', label: 'Chấm công', shortLabel: 'Chấm công', icon: Clock },
     { id: 'luong', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
     { id: 'hopdong', label: 'Hợp đồng', shortLabel: 'Hợp đồng', icon: FileText },
+    { id: 'congviec', label: 'Công việc', shortLabel: 'Công việc', icon: CheckSquare },
     { id: 'khovay', label: 'Kho váy & QR', shortLabel: 'Kho váy', icon: Shirt },
     { id: 'thuchi', label: 'Thu chi', shortLabel: 'Thu chi', icon: Wallet },
     { id: 'thietlap', label: 'Setting', shortLabel: 'Setting', icon: Settings },
@@ -79,6 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   // ============================================================
   const employeeTabs = [
     { id: 'home', label: 'Trang chủ', shortLabel: 'Trang chủ', icon: BarChart3 },
+    { id: 'congviec', label: 'Công việc', shortLabel: 'Công việc', icon: CheckSquare },
     { id: 'profile_me', label: 'Thông tin cá nhân', shortLabel: 'Thông tin cá nhân', icon: User },
     { id: 'chamcong_me', label: 'Chấm công', shortLabel: 'Chấm công', icon: Clock },
     { id: 'nghiphep_me', label: 'Xin nghỉ phép', shortLabel: 'Nghỉ phép', icon: FileText },
@@ -95,6 +98,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const freelancerTabs = [
     { id: 'luong_me', label: 'Lương & Thu nhập', shortLabel: 'Lương & TN', icon: DollarSign },
+    { id: 'congviec', label: 'Công việc', shortLabel: 'Công việc', icon: CheckSquare },
     { id: 'danhba_me', label: 'Danh bạ nhân viên', shortLabel: 'Danh bạ', icon: Contact },
     { id: 'chamcong_me', label: 'Lịch làm việc', shortLabel: 'Lịch làm việc', icon: BarChart3 },
     { id: 'nghiphep_me', label: 'Xin nghỉ phép', shortLabel: 'Nghỉ phép', icon: FileText },
