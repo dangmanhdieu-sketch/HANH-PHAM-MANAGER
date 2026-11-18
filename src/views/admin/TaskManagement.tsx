@@ -98,7 +98,8 @@ export const TaskManagement: React.FC<Props> = ({ staffList, currentUser, onRefr
     } catch(e:any) { alert(e?.message||'Không cập nhật được trạng thái công việc.'); }
   };
   const employeeAction = (task:QuanLyRecord) => {
-    const status=String(task.DuLieu?.TrangThai||'Đã giao');
+    const rawStatus=String(task.DuLieu?.TrangThai||'Đã giao');
+    const status=['Chưa làm','Chưa thực hiện','Chưa bắt đầu'].includes(rawStatus) ? 'Đã giao' : ['Đang làm','Đang tiến hành'].includes(rawStatus) ? 'Đang thực hiện' : rawStatus;
     if (task.DuLieu?.NhanVienID!==currentUser.NhanVienID) return null;
     if (status==='Đã giao') return <button onClick={()=>void updateStatus(task,'Đã xác nhận')} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white">Xác nhận nhận việc</button>;
     if (status==='Đã xác nhận') return <button onClick={()=>void updateStatus(task,'Đang thực hiện')} className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-bold text-white">Bắt đầu làm</button>;
