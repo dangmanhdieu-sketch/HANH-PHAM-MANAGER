@@ -1995,6 +1995,18 @@ app.get('/google-drive/callback', async (req: Request, res: Response) => {
   }
 });
 
+// Normalize Express payload-size errors so the client receives JSON instead of an HTML error page.
+app.use((error: any, _req: Request, res: Response, next: NextFunction) => {
+  if (error?.type === 'entity.too.large' || error?.name === 'PayloadTooLargeError' || error?.status === 413) {
+    if (res.headersSent) return next(error);
+    return res.status(413).json({
+      error: 'File dữ liệu khôi phục vượt quá giới hạn 50 MB. Hãy kiểm tra bản sao lưu hoặc liên hệ Admin.',
+      code: 'RESTORE_PAYLOAD_TOO_LARGE',
+    });
+  }
+  return next(error);
+});
+
 // ==========================================
 // VITE / STATIC SERVING
 // ==========================================
