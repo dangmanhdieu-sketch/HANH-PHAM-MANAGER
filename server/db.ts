@@ -2721,9 +2721,13 @@ class DatabaseService {
       THEME: incoming.THEME || { ...DEFAULT_THEME },
     };
 
-    // A database restore replaces the in-memory source of truth. Old pending
-    // record-level delta IDs belong to the previous database and must never be
-    // replayed against the restored arrays (notably auditLogMutations).
+    // Stage the restore without mutating live in-memory state first.
+    // Drain any queued write before replacing the source snapshot.
+    await this.firestoreSaveQueue.catch((error) => {
+      console.error('[Firebase] Previous queued write failed before restore:', error);
+    });
+
+    const previousDatabase = this.db;
     this.db = restored;
     this.hoaHongDirtyIds.clear();
     this.hoaHongDeletedIds.clear();
@@ -2732,16 +2736,17 @@ class DatabaseService {
     this.auditDirtyIds.clear();
     this.quanLyDirtyIds.clear();
     this.quanLyDeletedIds.clear();
-    this.firestoreSaveQueue = this.firestoreSaveQueue.catch((error) => {
-      console.error('[Firebase] Previous queued write failed before restore:', error);
-    });
 
-    // Rebuild the record-level dirty sets from the restored database by
-    // comparing to their durable Firestore mutation snapshots only after the
-    // full snapshot has been committed. The restore write itself is a full
-    // authoritative table snapshot, not a replay of pre-restore dirty IDs.
+    // A restore is a full authoritative snapshot. Never replay delta IDs
+    // captured from the database that existed before this restore.
     this.refreshKPIs();
-    this.save();
+    try {
+      await this.saveAndVerify();
+    } catch (error) {
+      // Keep the old in-memory state if the authoritative snapshot write fails.
+      this.db = previousDatabase;
+      throw error;
+    }
 
     this.logAudit(
       adminUser.HoTen,
