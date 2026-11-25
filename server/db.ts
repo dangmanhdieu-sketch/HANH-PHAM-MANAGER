@@ -547,7 +547,7 @@ class DatabaseService {
 
       this.firestore = getFirestore(app);
       this.firestoreEnabled = true;
-      console.log(`[Firebase] Firestore enabled: ${this.firestoreCollection}/${this.firestoreDocument}`);
+      console.log(`[Firebase] Firestore enabled: project=${expectedProjectId}, path=${this.firestoreCollection}/${this.firestoreDocument}, writer=${this.firestoreWriterId}`);
     } catch (err) {
       this.firestore = null;
       this.firestoreEnabled = false;
@@ -1462,6 +1462,8 @@ class DatabaseService {
           persistMs: Date.now() - persistStartedAt,
           totalMs: Date.now() - requestStartedAt,
           changedTables,
+          changedRecordDeltas: { hoaHong: this.hoaHongDirtyIds.size + this.hoaHongDeletedIds.size, chamCong: this.chamCongDirtyIds.size + this.chamCongDeletedIds.size, audit: this.auditDirtyIds.size, quanLy: this.quanLyDirtyIds.size + this.quanLyDeletedIds.size },
+          dataCounts: { nhanVien: this.db.NHANVIEN.length, chamCong: this.db.CHAMCONG.length, luong: this.db.LUONG.length, tamUng: this.db.TAM_UNG.length, hoaHong: this.db.HOAHONG.length, quanLy: this.db.QUAN_LY.length },
         });
       });
     this.firestoreSaveQueue = write.catch((err) => {
