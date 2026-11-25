@@ -38,8 +38,8 @@ function getAppTodayDate(): string {
 }
 
 // High payload limit for camera photo uploads in base64
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 
 // Compress large JSON API responses for faster loading on mobile networks.
 // Node's built-in gzip avoids an extra runtime dependency. Mutations are still
@@ -1998,7 +1998,7 @@ app.get('/google-drive/callback', async (req: Request, res: Response) => {
 app.use((error: any, _req: Request, res: Response, next: NextFunction) => {
   if (error?.type === 'entity.too.large' || error?.name === 'PayloadTooLargeError' || error?.status === 413) {
     if (res.headersSent) return next(error);
-    return res.status(413).json({ error: 'File khôi phục vượt giới hạn 50 MB.', code: 'RESTORE_PAYLOAD_TOO_LARGE' });
+    return res.status(413).json({ error: 'File khôi phục vượt giới hạn 200 MB.', code: 'RESTORE_PAYLOAD_TOO_LARGE' });
   }
   return next(error);
 });
