@@ -1880,10 +1880,10 @@ app.get('/api/backup/download', authenticateToken, requireAdmin, (_req: AuthRequ
   return res.send(JSON.stringify(backup.data, null, 2));
 });
 
-app.post('/api/backup/restore', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
+app.post('/api/backup/restore', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const incomingData = req.body;
-    dbService.restoreDatabase(incomingData, {
+    await dbService.restoreDatabase(incomingData, {
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });

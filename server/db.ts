@@ -2698,16 +2698,55 @@ class DatabaseService {
     return { filename, data: this.db };
   }
 
-  public restoreDatabase(incoming: DatabaseSchema, adminUser: { HoTen: string; Email: string }): boolean {
+  public async restoreDatabase(incoming: DatabaseSchema, adminUser: { HoTen: string; Email: string }): Promise<boolean> {
     if (!incoming.NHANVIEN || !Array.isArray(incoming.NHANVIEN)) {
       throw new Error('Dữ liệu phục hồi không hợp lệ: thiếu bảng NHANVIEN');
     }
-    // Make safety backup of current state first
+    // Make safety backup of current state first.
+    // Keep the current live database untouched until the incoming payload passes validation.
     this.backupDatabase();
 
-    this.db = incoming;
+    const restored: DatabaseSchema = {
+      ...incoming,
+      NHANVIEN: incoming.NHANVIEN,
+      CHAMCONG: Array.isArray(incoming.CHAMCONG) ? incoming.CHAMCONG : [],
+      LUONG: Array.isArray(incoming.LUONG) ? incoming.LUONG : [],
+      TAM_UNG: Array.isArray(incoming.TAM_UNG) ? incoming.TAM_UNG : [],
+      HOAHONG: Array.isArray(incoming.HOAHONG) ? incoming.HOAHONG : [],
+      THONGKE: Array.isArray(incoming.THONGKE) ? incoming.THONGKE : [],
+      AUDIT_LOG: Array.isArray(incoming.AUDIT_LOG) ? incoming.AUDIT_LOG : [],
+      NOTIFICATIONS: Array.isArray(incoming.NOTIFICATIONS) ? incoming.NOTIFICATIONS : [],
+      QUAN_LY: Array.isArray(incoming.QUAN_LY) ? incoming.QUAN_LY : [],
+      SYSTEM_CONFIG: incoming.SYSTEM_CONFIG || { ...DEFAULT_CONFIG },
+      THEME: incoming.THEME || { ...DEFAULT_THEME },
+    };
+
+    // Stage the restore without mutating live in-memory state first.
+    // Drain any queued write before replacing the source snapshot.
+    await this.firestoreSaveQueue.catch((error) => {
+      console.error('[Firebase] Previous queued write failed before restore:', error);
+    });
+
+    const previousDatabase = this.db;
+    this.db = restored;
+    this.hoaHongDirtyIds.clear();
+    this.hoaHongDeletedIds.clear();
+    this.chamCongDirtyIds.clear();
+    this.chamCongDeletedIds.clear();
+    this.auditDirtyIds.clear();
+    this.quanLyDirtyIds.clear();
+    this.quanLyDeletedIds.clear();
+
+    // A restore is a full authoritative snapshot. Never replay delta IDs
+    // captured from the database that existed before this restore.
     this.refreshKPIs();
-    this.save();
+    try {
+      await this.saveAndVerify();
+    } catch (error) {
+      // Keep the old in-memory state if the authoritative snapshot write fails.
+      this.db = previousDatabase;
+      throw error;
+    }
 
     this.logAudit(
       adminUser.HoTen,
