@@ -1146,7 +1146,18 @@ class DatabaseService {
     const writes: Array<{ id: string; record?: Record<string, any>; deleted: boolean }> = [];
     for (const id of dirtyIds) {
       const record = records.find((item) => String(item[idField]) === id);
-      if (!record) throw new Error(`[Firebase] Dirty ${collectionName} record ${id} is missing; refusing partial write.`);
+      if (!record) {
+        // Audit logs are a bounded rolling list and can be trimmed or restored
+        // independently of delta tracking. A stale audit delta must not block
+        // unrelated durable mutations (payroll approvals, restore, etc.).
+        // Only prune the missing audit delta; never prune other table deltas.
+        if (collectionName === 'auditLogMutations') {
+          console.warn('[Firebase] Pruning stale audit-log dirty ID with no in-memory record:', id);
+          dirtyIds.delete(id);
+          continue;
+        }
+        throw new Error(`[Firebase] Dirty ${collectionName} record ${id} is missing; refusing partial write.`);
+      }
       writes.push({ id, record, deleted: false });
     }
     for (const id of deletedIds) writes.push({ id, deleted: true });
