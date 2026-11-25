@@ -105,6 +105,7 @@ app.use('/api', (req: Request, res: Response, next: NextFunction) => {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
 
   const originalSend = res.send.bind(res);
+  const mutationStartedAt = Date.now();
   let persistenceStarted = false;
 
   res.send = ((body?: any) => {
@@ -114,12 +115,21 @@ app.use('/api', (req: Request, res: Response, next: NextFunction) => {
 
     persistenceStarted = true;
     void dbService.saveAndVerify()
-      .then(() => originalSend(body))
+      .then(() => {
+        console.info('[PERF] api-mutation-response', {
+          method: req.method,
+          path: req.path,
+          persistenceAndResponseMs: Date.now() - mutationStartedAt,
+          status: res.statusCode,
+        });
+        return originalSend(body);
+      })
       .catch((error: any) => {
         console.error('[API] Mutation blocked because Firestore persistence was not verified:', {
           method: req.method,
           path: req.path,
           error: error?.message || error,
+          failedAfterMs: Date.now() - mutationStartedAt,
         });
         if (!res.headersSent) {
           res.statusCode = 503;
