@@ -2702,10 +2702,44 @@ class DatabaseService {
     if (!incoming.NHANVIEN || !Array.isArray(incoming.NHANVIEN)) {
       throw new Error('Dữ liệu phục hồi không hợp lệ: thiếu bảng NHANVIEN');
     }
-    // Make safety backup of current state first
+    // Make safety backup of current state first.
+    // Keep the current live database untouched until the incoming payload passes validation.
     this.backupDatabase();
 
-    this.db = incoming;
+    const restored: DatabaseSchema = {
+      ...incoming,
+      NHANVIEN: incoming.NHANVIEN,
+      CHAMCONG: Array.isArray(incoming.CHAMCONG) ? incoming.CHAMCONG : [],
+      LUONG: Array.isArray(incoming.LUONG) ? incoming.LUONG : [],
+      TAM_UNG: Array.isArray(incoming.TAM_UNG) ? incoming.TAM_UNG : [],
+      HOAHONG: Array.isArray(incoming.HOAHONG) ? incoming.HOAHONG : [],
+      THONGKE: Array.isArray(incoming.THONGKE) ? incoming.THONGKE : [],
+      AUDIT_LOG: Array.isArray(incoming.AUDIT_LOG) ? incoming.AUDIT_LOG : [],
+      NOTIFICATIONS: Array.isArray(incoming.NOTIFICATIONS) ? incoming.NOTIFICATIONS : [],
+      QUAN_LY: Array.isArray(incoming.QUAN_LY) ? incoming.QUAN_LY : [],
+      SYSTEM_CONFIG: incoming.SYSTEM_CONFIG || { ...DEFAULT_CONFIG },
+      THEME: incoming.THEME || { ...DEFAULT_THEME },
+    };
+
+    // A database restore replaces the in-memory source of truth. Old pending
+    // record-level delta IDs belong to the previous database and must never be
+    // replayed against the restored arrays (notably auditLogMutations).
+    this.db = restored;
+    this.hoaHongDirtyIds.clear();
+    this.hoaHongDeletedIds.clear();
+    this.chamCongDirtyIds.clear();
+    this.chamCongDeletedIds.clear();
+    this.auditDirtyIds.clear();
+    this.quanLyDirtyIds.clear();
+    this.quanLyDeletedIds.clear();
+    this.firestoreSaveQueue = this.firestoreSaveQueue.catch((error) => {
+      console.error('[Firebase] Previous queued write failed before restore:', error);
+    });
+
+    // Rebuild the record-level dirty sets from the restored database by
+    // comparing to their durable Firestore mutation snapshots only after the
+    // full snapshot has been committed. The restore write itself is a full
+    // authoritative table snapshot, not a replay of pre-restore dirty IDs.
     this.refreshKPIs();
     this.save();
 
