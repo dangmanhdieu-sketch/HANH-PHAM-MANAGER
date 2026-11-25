@@ -547,7 +547,7 @@ class DatabaseService {
 
       this.firestore = getFirestore(app);
       this.firestoreEnabled = true;
-      console.log(`[Firebase] Firestore enabled: ${this.firestoreCollection}/${this.firestoreDocument}`);
+      console.log(`[Firebase] Firestore enabled: project=${expectedProjectId}, path=${this.firestoreCollection}/${this.firestoreDocument}, writer=${this.firestoreWriterId}`);
     } catch (err) {
       this.firestore = null;
       this.firestoreEnabled = false;
