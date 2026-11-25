@@ -2698,7 +2698,7 @@ class DatabaseService {
     return { filename, data: this.db };
   }
 
-  public restoreDatabase(incoming: DatabaseSchema, adminUser: { HoTen: string; Email: string }): boolean {
+  public async restoreDatabase(incoming: DatabaseSchema, adminUser: { HoTen: string; Email: string }): Promise<boolean> {
     if (!incoming.NHANVIEN || !Array.isArray(incoming.NHANVIEN)) {
       throw new Error('Dữ liệu phục hồi không hợp lệ: thiếu bảng NHANVIEN');
     }
