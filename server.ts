@@ -1883,7 +1883,7 @@ app.get('/api/backup/download', authenticateToken, requireAdmin, (_req: AuthRequ
 app.post('/api/backup/restore', authenticateToken, requireAdmin, (req: AuthRequest, res: Response) => {
   try {
     const incomingData = req.body;
-    dbService.restoreDatabase(incomingData, {
+    await dbService.restoreDatabase(incomingData, {
       HoTen: req.user!.HoTen,
       Email: req.user!.Email,
     });
