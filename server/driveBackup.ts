@@ -57,7 +57,11 @@ async function getToken(): Promise<string> {
   const data = await response.json() as GoogleToken;
   if (!response.ok || !data.access_token) {
     cachedToken = null;
-    throw new Error(data.error_description || data.error || 'Không lấy được Google Drive access token.');
+    const tokenError = data.error || '';
+    if (tokenError === 'invalid_grant') {
+      throw new Error('Google Drive refresh token đã hết hạn hoặc bị thu hồi (invalid_grant). Cần kết nối lại Drive và cập nhật GOOGLE_DRIVE_REFRESH_TOKEN trên Render.');
+    }
+    throw new Error(data.error_description || tokenError || 'Không lấy được Google Drive access token.');
   }
   cachedToken = { value: data.access_token, expiresAt: Date.now() + (Math.max(300, data.expires_in || 3600) - 60) * 1000 };
   return data.access_token;
